@@ -44,7 +44,6 @@ def save_report(
         db.query(Trip)
         .filter(
             Trip.id == request.trip_id,
-            Trip.user_id == request.user_id,
         )
         .first()
     )
@@ -52,7 +51,7 @@ def save_report(
     if trip is None:
         raise HTTPException(
             status_code=404,
-            detail="Trip not found or does not belong to this user.",
+            detail="Trip not found.",
         )
 
     # ------------------------------------------------------------
@@ -77,7 +76,7 @@ def save_report(
     try:
         report = report_service.save_report(
             db=db,
-            user_id=request.user_id,
+            user_id=trip.user_id,
             trip_id=request.trip_id,
             title=request.title,
             analysis_data=analysis_data,

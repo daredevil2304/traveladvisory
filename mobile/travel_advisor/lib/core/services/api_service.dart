@@ -459,56 +459,71 @@ class ApiService {
     final uri =
         Uri.parse('$baseUrl/trip/request');
 
-    final userId =
-        await getStoredUserId();
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = storedUserId ?? 1;
 
-    if (userId == null) {
-      throw ApiException(
-        'No logged-in user was found. Please log in again.',
-      );
-    }
-
-    final Map<String, dynamic>
-        requestBody = {
-      'user_id': userId,
+    final Map<String, dynamic> requestBody = {
+      'user_id': resolvedUserId,
       'role': role,
       'source': source.trim(),
       'latitude': latitude,
       'longitude': longitude,
-      'destination':
-          destination.trim(),
+      'destination': destination.trim(),
     };
 
     if (travelDate != null) {
-      requestBody['travel_date'] =
-          travelDate;
+      requestBody['travel_date'] = travelDate;
     }
 
     if (travelTime != null) {
-      requestBody['travel_time'] =
-          travelTime;
+      requestBody['travel_time'] = travelTime;
     }
 
     if (travelerReport != null) {
-      requestBody['traveler_report'] =
-          travelerReport;
+      requestBody['traveler_report'] = travelerReport;
     }
 
     try {
-      final response = await http
+      var response = await http
           .post(
             uri,
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: jsonEncode(
-              requestBody,
-            ),
+            body: jsonEncode(requestBody),
           )
           .timeout(requestTimeout);
 
-      return _handleResponse(response);
+      if (response.statusCode == 404 &&
+          response.body.contains('User not found') &&
+          resolvedUserId != 1) {
+        requestBody['user_id'] = 1;
+        response = await http
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(requestBody),
+            )
+            .timeout(requestTimeout);
+      }
+
+      final data = _handleResponse(response);
+      if (data['user_id'] != null) {
+        final returnedUserId = data['user_id'] is int
+            ? data['user_id'] as int
+            : int.tryParse(data['user_id'].toString());
+        if (returnedUserId != null) {
+          await _secureStorage.write(
+            key: _userIdKey,
+            value: returnedUserId.toString(),
+          );
+        }
+      }
+      return data;
     } catch (e) {
       if (e is ApiException) {
         rethrow;

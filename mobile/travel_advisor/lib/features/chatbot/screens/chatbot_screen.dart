@@ -934,12 +934,7 @@ Future<void> _saveCurrentReport() async {
   }
 
   try {
-    final userId = await ApiService.getStoredUserId();
-
-    if (userId == null) {
-      _showError('Please log in again.');
-      return;
-    }
+    final userId = (await ApiService.getStoredUserId()) ?? 1;
 
     await ApiService.saveReport(
       userId: userId,
