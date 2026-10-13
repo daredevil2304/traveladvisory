@@ -281,6 +281,53 @@ class ApiService {
   }
 
   // ============================================================
+  // VERIFY PHONE SESSION (FIREBASE PHONE AUTH)
+  // ============================================================
+
+  static Future<Map<String, dynamic>> verifyPhoneSession({
+    required String mobile,
+    bool isLogin = false,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/verify-phone-session');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'mobile': mobile.trim(),
+              'is_login': isLogin,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      final data = _handleResponse(response);
+
+      final userId = data['user_id'];
+      if (userId != null) {
+        await _secureStorage.write(
+          key: _userIdKey,
+          value: userId.toString(),
+        );
+      }
+
+      return data;
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
   // PERSISTENT LOGIN
   // ============================================================
 

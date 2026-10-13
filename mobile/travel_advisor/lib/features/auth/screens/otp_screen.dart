@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/phone_auth_service.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -39,6 +40,8 @@ class _OtpScreenState extends State<OtpScreen> {
   String? _identifier;
   String? _mobile;
   bool _isLogin = false;
+  String? _verificationId;
+  bool _hasInitiatedFirebase = false;
 
   @override
   void didChangeDependencies() {
@@ -48,7 +51,54 @@ class _OtpScreenState extends State<OtpScreen> {
       _identifier = args['identifier']?.toString() ?? args['email']?.toString();
       _mobile = args['mobile']?.toString();
       _isLogin = args['isLogin'] == true;
+
+      if (!_hasInitiatedFirebase) {
+        _hasInitiatedFirebase = true;
+        _sendFirebaseOtp();
+      }
     }
+  }
+
+  void _sendFirebaseOtp() {
+    final phone = _mobile ?? _identifier;
+    if (phone == null || phone.isEmpty) return;
+
+    PhoneAuthService.sendOtp(
+      phoneNumber: phone,
+      onCodeSent: (verificationId) {
+        if (!mounted) return;
+        setState(() {
+          _verificationId = verificationId;
+        });
+        _startTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'A verification code has been dispatched to $phone via cellular SMS.',
+            ),
+            backgroundColor: AppTheme.forestGreen,
+          ),
+        );
+      },
+      onAutoRetrieval: (smsCode) {
+        if (!mounted) return;
+        if (smsCode.isNotEmpty && smsCode.length == _otpLength) {
+          for (int i = 0; i < _otpLength; i++) {
+            _controllers[i].text = smsCode[i];
+          }
+        }
+        _verifyOtp();
+      },
+      onError: (errorMessage) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -196,11 +246,9 @@ class _OtpScreenState extends State<OtpScreen> {
     _startTimer();
 
     try {
-      if (_isLogin) {
-        final mobile = _mobile ?? _identifier;
-        if (mobile != null && mobile.isNotEmpty) {
-          await ApiService.sendLoginOtp(mobile: mobile);
-        }
+      final phone = _mobile ?? _identifier;
+      if (phone != null && phone.isNotEmpty) {
+        _sendFirebaseOtp();
       } else {
         final id = _identifier ?? _mobile;
         if (id != null && id.isNotEmpty) {
@@ -259,7 +307,18 @@ class _OtpScreenState extends State<OtpScreen> {
     });
 
     try {
-      if (_isLogin) {
+      if (_verificationId != null && _verificationId!.isNotEmpty) {
+        await PhoneAuthService.verifyOtp(
+          verificationId: _verificationId!,
+          smsCode: otp,
+        );
+
+        final phone = _mobile ?? _identifier ?? '';
+        await ApiService.verifyPhoneSession(
+          mobile: phone,
+          isLogin: _isLogin,
+        );
+      } else if (_isLogin) {
         final mobile = _mobile ?? _identifier;
         if (mobile == null || mobile.isEmpty) {
           throw ApiException('Mobile number is required for OTP verification.');
@@ -378,25 +437,15 @@ class _OtpScreenState extends State<OtpScreen> {
           );
         },
       );
-    } on ApiException catch (e) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isVerifying = false;
       });
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppTheme.danger,
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isVerifying = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Verification failed. Please try again.'),
+          content: Text(msg),
           backgroundColor: AppTheme.danger,
         ),
       );

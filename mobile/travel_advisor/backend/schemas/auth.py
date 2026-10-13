@@ -167,3 +167,11 @@ class LoginWithOTPRequest(BaseModel):
         max_length=6,
         pattern=r"^\d{6}$",
     )
+
+
+class VerifyPhoneSessionRequest(BaseModel):
+    mobile: str = Field(
+        min_length=10,
+        max_length=20,
+    )
+    is_login: bool = False

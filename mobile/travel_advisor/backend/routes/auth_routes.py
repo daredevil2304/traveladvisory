@@ -17,6 +17,7 @@ from schemas.auth import (
     SendLoginOTPRequest,
     SendLoginOTPResponse,
     LoginWithOTPRequest,
+    VerifyPhoneSessionRequest,
     VerifyOTPRequest,
     VerifyOTPResponse,
 )
@@ -341,6 +342,56 @@ def login_with_otp(
 
     return LoginResponse(
         message="Login successful.",
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        is_verified=user.is_verified,
+    )
+
+
+# ============================================================
+# VERIFY PHONE SESSION (FIREBASE PHONE AUTH)
+# ============================================================
+
+@router.post(
+    "/verify-phone-session",
+    response_model=LoginResponse,
+)
+def verify_phone_session(
+    request: VerifyPhoneSessionRequest,
+    db: Session = Depends(get_db),
+):
+    cleaned_mobile = request.mobile.replace("+91", "").strip()[-10:]
+    user = get_user_by_mobile(
+        db=db,
+        mobile=cleaned_mobile,
+    )
+
+    if user is None:
+        user = get_user_by_mobile(
+            db=db,
+            mobile=request.mobile,
+        )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this mobile number.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account is inactive.",
+        )
+
+    if not user.is_verified:
+        user.is_verified = True
+        db.commit()
+        db.refresh(user)
+
+    return LoginResponse(
+        message="Verification successful.",
         user_id=user.id,
         email=user.email,
         full_name=user.full_name,
