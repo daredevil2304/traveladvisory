@@ -64,6 +64,7 @@ flutter:
 
   assets:
     - assets/images/mumbai_pune_travel_advisor_logo.svg
+    - shorebird.yaml
 
   # To add assets to your application, add an assets section, like this:
   # assets:
