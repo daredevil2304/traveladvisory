@@ -547,6 +547,13 @@ class SegmentIntelligenceService:
                 region
             )
 
+            if hasattr(details, "start") and hasattr(details, "end"):
+                return {
+                    "region": details.region,
+                    "start": details.start,
+                    "end": details.end,
+                }
+
             if isinstance(
                 details,
                 dict,

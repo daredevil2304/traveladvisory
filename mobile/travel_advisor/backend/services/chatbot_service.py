@@ -288,6 +288,14 @@ IMPORTANT RULES:
                 start = details.get("start")
                 end = details.get("end")
                 reg = seg.get("region", "")
+                if (not start or not end) and reg:
+                    try:
+                        from services.route_segment_service import get_segment_details
+                        rs = get_segment_details(reg)
+                        start = rs.start
+                        end = rs.end
+                    except Exception:
+                        pass
                 label = f"{start} to {end} ({reg})" if (start and end) else reg
 
                 score_info = seg.get("safety_score_result") or {}
