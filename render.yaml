@@ -14,3 +14,5 @@ services:
         sync: false
       - key: OPENWEATHER_API_KEY
         sync: false
+      - key: FAST2SMS_API_KEY
+        sync: false
