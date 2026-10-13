@@ -830,109 +830,121 @@ class SafetyScoreService:
 
         reasons: list[str] = []
 
+        temp = (
+            weather_result.get("temperature_c")
+            if isinstance(weather_result, dict)
+            else None
+        )
+        cond = (
+            weather_result.get("weather_condition", "Clear")
+            if isinstance(weather_result, dict)
+            else "Clear"
+        )
+        wind = (
+            weather_result.get("wind_speed_kmh")
+            if isinstance(weather_result, dict)
+            else None
+        )
+        rain_mm = (
+            weather_result.get("rainfall_mm")
+            if isinstance(weather_result, dict)
+            else None
+        )
+
         # ---------------------------------------------------------
         # Weather reasons
         # ---------------------------------------------------------
 
-        if isinstance(
-            weather_result,
-            dict,
-        ):
-
-            rain = weather_result.get(
-                "rain"
-            )
-
-            if isinstance(
-                rain,
-                str,
-            ) and rain.casefold() not in {
+        if isinstance(weather_result, dict):
+            rain = weather_result.get("rain")
+            if isinstance(rain, str) and rain.casefold() not in {
                 "no rain",
+                "none",
             }:
+                rain_detail = (
+                    f" ({rain_mm} mm)"
+                    if rain_mm and rain_mm > 0
+                    else ""
+                )
                 reasons.append(
-                    f"Weather indicates {rain}."
+                    f"Weather indicates {rain}{rain_detail}. Reduce speed for wet asphalt."
                 )
 
-            visibility = weather_result.get(
-                "visibility"
-            )
-
-            if isinstance(
-                visibility,
-                str,
-            ) and visibility.casefold() in {
+            visibility = weather_result.get("visibility")
+            if isinstance(visibility, str) and visibility.casefold() in {
                 "poor",
                 "very poor",
                 "moderately reduced",
             }:
+                vis_km = weather_result.get("visibility_km")
+                vis_detail = (
+                    f" ({vis_km} km)"
+                    if vis_km
+                    else ""
+                )
                 reasons.append(
-                    f"Weather visibility is {visibility}."
+                    f"Reduced visibility observed{vis_detail}. Maintain safe following distance."
                 )
 
-            fog = weather_result.get(
-                "fog"
-            )
-
-            if isinstance(
-                fog,
-                str,
-            ) and fog.casefold() not in {
+            fog = weather_result.get("fog")
+            if isinstance(fog, str) and fog.casefold() not in {
                 "none",
             }:
                 reasons.append(
-                    f"Fog/mist condition is {fog}."
+                    f"Fog and mist detected ({fog}). Use low-beam headlamps."
+                )
+
+            if wind is not None and wind > 35:
+                reasons.append(
+                    f"Elevated wind gusts of {round(wind)} km/h along this stretch."
                 )
 
         # ---------------------------------------------------------
         # Traveler reasons
         # ---------------------------------------------------------
 
-        if isinstance(
-            traveler_result,
-            dict,
-        ):
-
-            unusual = traveler_result.get(
-                "unusual_conditions"
-            )
-
-            if isinstance(
-                unusual,
-                str,
-            ) and unusual.casefold() not in {
+        if isinstance(traveler_result, dict):
+            unusual = traveler_result.get("unusual_conditions")
+            if isinstance(unusual, str) and unusual.casefold() not in {
                 "none",
+                "nothing unusual",
             }:
                 reasons.append(
-                    "Traveler reports indicate "
-                    f"{unusual}."
+                    f"Traveler reports indicate {unusual}."
                 )
 
-            visibility = traveler_result.get(
-                "visibility"
-            )
-
-            if isinstance(
-                visibility,
-                str,
-            ) and visibility.casefold() in {
+            visibility = traveler_result.get("visibility")
+            if isinstance(visibility, str) and visibility.casefold() in {
                 "poor",
                 "very poor",
                 "moderately reduced",
             }:
                 reasons.append(
-                    "Traveler reports indicate "
-                    f"{visibility} visibility."
+                    f"Traveler reports indicate {visibility} visibility."
+                )
+
+            traffic = traveler_result.get("traffic")
+            if isinstance(traffic, str) and traffic.casefold() in {
+                "heavy",
+                "very heavy",
+                "standstill",
+            }:
+                reasons.append(
+                    f"Traffic flow reported as {traffic}."
                 )
 
         # ---------------------------------------------------------
-        # Score-based fallback
+        # Dynamic clear-condition affirmative reasoning
         # ---------------------------------------------------------
 
-        if not reasons and dimension_scores:
+        if not reasons:
+            temp_desc = (
+                f" at {round(temp)}°C"
+                if temp is not None
+                else ""
+            )
             reasons.append(
-                "Available weather and traveler "
-                "observations were incorporated into "
-                "the segment assessment."
+                f"Clear route conditions with {cond.lower()} skies{temp_desc} and dry road surface."
             )
 
         return reasons

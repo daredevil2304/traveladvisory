@@ -392,6 +392,18 @@ class SegmentIntelligenceService:
                 weather.weather_condition
             )
 
+        if weather.temperature_c is not None:
+            dimensions["temperature_c"] = weather.temperature_c
+
+        if weather.wind_speed_kmh is not None:
+            dimensions["wind_speed_kmh"] = weather.wind_speed_kmh
+
+        if weather.rainfall_mm is not None:
+            dimensions["rainfall_mm"] = weather.rainfall_mm
+
+        if weather.visibility_km is not None:
+            dimensions["visibility_km"] = weather.visibility_km
+
         return dimensions or None
 
     # =============================================================

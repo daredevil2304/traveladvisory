@@ -77,6 +77,9 @@ IMPORTANT RULES:
 
 14. This is a travel-information assistant, not a replacement for
     the user's own judgment or official road authorities.
+
+15. Do NOT use markdown bold asterisks (such as **) anywhere in your output.
+    Write clean, readable sentences without asterisks, hashes, or code tags.
 """.strip()
 
     def answer(

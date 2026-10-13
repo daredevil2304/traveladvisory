@@ -441,17 +441,39 @@ class TripAnalysisService:
             ):
                 reasons = []
 
+            has_hazard = any(
+                any(
+                    neg in r.lower()
+                    for neg in [
+                        "rain",
+                        "fog",
+                        "mist",
+                        "reduced visibility",
+                        "wind",
+                        "waterlog",
+                        "slippery",
+                        "damage",
+                        "closure",
+                        "accident",
+                        "incident",
+                        "debris",
+                        "heavy traffic",
+                        "standstill",
+                        "landslide",
+                    ]
+                )
+                for r in reasons
+            )
+
             score_is_low = (
                 isinstance(
                     score,
                     (int, float),
                 )
-                and float(score) < 60.0
+                and float(score) < 80.0
             )
 
-            has_reasons = bool(reasons)
-
-            if not score_is_low and not has_reasons:
+            if not score_is_low and not has_hazard:
                 continue
 
             problematic.append(

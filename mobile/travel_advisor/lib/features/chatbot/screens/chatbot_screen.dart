@@ -260,6 +260,7 @@ class _ChatbotScreenState
     }
 
     if (_journeyReady) {
+      _analyzeJourney();
       return;
     }
 
@@ -288,6 +289,7 @@ class _ChatbotScreenState
     }
 
     if (_journeyReady) {
+      _analyzeJourney();
       return;
     }
 
@@ -540,8 +542,18 @@ class _ChatbotScreenState
       return;
     }
 
-    // Traveler: Skip manual inputs and auto-generate report
-    _analyzeJourney();
+    // Traveler: Ask for route observations or provide immediate analysis
+    _step = _ConversationStep.travelerRain;
+    _addBotMessage(
+      'Got it. Are you experiencing rain along the route?',
+      quickReplies: const [
+        'None',
+        'Light drizzle',
+        'Moderate rain',
+        'Heavy downpour',
+        'Skip to Analysis',
+      ],
+    );
   }
 
   // ============================================================
@@ -621,6 +633,12 @@ class _ChatbotScreenState
   void _handleTravelerRain(
     String message,
   ) {
+    if (message.toLowerCase().contains('skip') ||
+        message.toLowerCase().contains('analyze')) {
+      _analyzeJourney();
+      return;
+    }
+
     _rain =
         message.trim();
 
@@ -629,14 +647,13 @@ class _ChatbotScreenState
             .travelerVisibility;
 
     _addBotMessage(
-      'And how is the visibility currently?',
+      'How is the visibility along the route?',
       quickReplies: const [
-        'Very clear',
         'Clear',
         'Slightly reduced',
         'Moderately reduced',
         'Poor',
-        'Very poor',
+        'Skip to Analysis',
       ],
     );
   }
@@ -648,6 +665,12 @@ class _ChatbotScreenState
   void _handleTravelerVisibility(
     String message,
   ) {
+    if (message.toLowerCase().contains('skip') ||
+        message.toLowerCase().contains('analyze')) {
+      _analyzeJourney();
+      return;
+    }
+
     _visibility =
         message.trim();
 
@@ -656,13 +679,12 @@ class _ChatbotScreenState
             .travelerFog;
 
     _addBotMessage(
-      'Are you noticing any fog or mist?',
+      'Are you noticing any fog / mist?',
       quickReplies: const [
         'None',
         'Light mist',
-        'Moderate mist',
         'Dense fog',
-        'Very dense fog',
+        'Skip to Analysis',
       ],
     );
   }
@@ -674,6 +696,12 @@ class _ChatbotScreenState
   void _handleTravelerFog(
     String message,
   ) {
+    if (message.toLowerCase().contains('skip') ||
+        message.toLowerCase().contains('analyze')) {
+      _analyzeJourney();
+      return;
+    }
+
     _fog =
         message.trim();
 
@@ -688,13 +716,8 @@ class _ChatbotScreenState
         'Slippery road',
         'Waterlogging',
         'Landslide / Rockfall',
-        'Fallen tree',
         'Debris',
-        'Road damage',
-        'Construction',
-        'Accident / Incident',
-        'Road closure',
-        'Other',
+        'Skip to Analysis',
       ],
     );
   }
@@ -706,6 +729,12 @@ class _ChatbotScreenState
   void _handleTravelerUnusual(
     String message,
   ) {
+    if (message.toLowerCase().contains('skip') ||
+        message.toLowerCase().contains('analyze')) {
+      _analyzeJourney();
+      return;
+    }
+
     _unusualConditions =
         _normalizeUnusualCondition(
       message,
@@ -719,11 +748,9 @@ class _ChatbotScreenState
       'How does the traffic appear?',
       quickReplies: const [
         'Free flow',
-        'Light',
         'Moderate',
         'Heavy',
-        'Very heavy',
-        'Standstill',
+        'Analyze Route',
       ],
     );
   }
@@ -735,17 +762,14 @@ class _ChatbotScreenState
   void _handleTravelerTraffic(
     String message,
   ) {
-    _traffic =
-        _normalizeTraffic(
-      message,
-    );
+    if (!message.toLowerCase().contains('analyze')) {
+      _traffic =
+          _normalizeTraffic(
+        message,
+      );
+    }
 
-    /*
-     * Traffic is collected as traveler evidence.
-     *
-     * It is intentionally NOT part of the Safety Score.
-     */
-    _prepareJourneyAnalysis();
+    _analyzeJourney();
   }
 
   // ============================================================
@@ -876,9 +900,9 @@ final Map<String, dynamic> analysisData =
       'Your journey analysis is ready. I am redirecting you to the report...',
     );
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 500), () async {
       if (mounted) {
-        Navigator.pushNamed(
+        final result = await Navigator.pushNamed(
           context,
           AppRoutes.journeyAnalysis,
           arguments: {
@@ -888,6 +912,19 @@ final Map<String, dynamic> analysisData =
             'role': _role,
           },
         );
+
+        if (result is Map && result['action'] == 'live_updates' && mounted) {
+          _step = _ConversationStep.travelerRain;
+          _addBotMessage(
+            'Share your live route observations below. Are you experiencing rain along the highway?',
+            quickReplies: const [
+              'None',
+              'Light drizzle',
+              'Moderate rain',
+              'Heavy downpour',
+            ],
+          );
+        }
       }
     });
   } on ApiException catch (e) {
@@ -946,8 +983,15 @@ Future<void> _saveCurrentReport() async {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Travel report saved successfully.'),
+      SnackBar(
+        content: const Text('Travel report saved successfully.'),
+        action: SnackBarAction(
+          label: 'VIEW',
+          textColor: AppTheme.white,
+          onPressed: () {
+            Navigator.pushNamed(context, AppRoutes.savedReports);
+          },
+        ),
       ),
     );
   } on ApiException catch (e) {
@@ -2609,8 +2653,69 @@ List<String> _stringList(
   }
 
   // ============================================================
-  // MESSAGE BUBBLE
+  // MESSAGE BUBBLE & FORMATTING
   // ============================================================
+
+  Widget _buildFormattedMessageText(
+    String text,
+    bool isUser,
+  ) {
+    final TextStyle defaultStyle = TextStyle(
+      fontSize: 14,
+      height: 1.45,
+      color: isUser ? AppTheme.white : AppTheme.textPrimary,
+    );
+
+    final TextStyle boldStyle = defaultStyle.copyWith(
+      fontWeight: FontWeight.w700,
+      color: isUser ? AppTheme.white : AppTheme.darkNavy,
+    );
+
+    // Replace markdown star bullets with bullet character
+    final String cleaned = text.replaceAll(RegExp(r'^\s*\*\s+', multiLine: true), '• ');
+
+    if (!cleaned.contains('**')) {
+      return Text(
+        cleaned,
+        style: defaultStyle,
+      );
+    }
+
+    final List<InlineSpan> spans = [];
+    final RegExp regex = RegExp(r'\*\*(.+?)\*\*');
+    int lastIndex = 0;
+
+    for (final Match match in regex.allMatches(cleaned)) {
+      if (match.start > lastIndex) {
+        spans.add(
+          TextSpan(
+            text: cleaned.substring(lastIndex, match.start),
+            style: defaultStyle,
+          ),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: match.group(1),
+          style: boldStyle,
+        ),
+      );
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < cleaned.length) {
+      spans.add(
+        TextSpan(
+          text: cleaned.substring(lastIndex),
+          style: defaultStyle,
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
+  }
 
   Widget _buildMessageBubble(
     _ChatMessage message,
@@ -2688,22 +2793,9 @@ List<String> _stringList(
                                   .border,
                         ),
             ),
-            child:
-                Text(
+            child: _buildFormattedMessageText(
               message.text,
-              style:
-                  TextStyle(
-                fontSize:
-                    14,
-                height:
-                    1.45,
-                color: message
-                        .isUser
-                    ? AppTheme
-                        .white
-                    : AppTheme
-                        .textPrimary,
-              ),
+              message.isUser,
             ),
           ),
         ),
@@ -2942,6 +3034,21 @@ Widget build(
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.bookmark_outline_rounded,
+              color: AppTheme.darkNavy,
+            ),
+            tooltip: 'Saved Reports',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.savedReports,
+              );
+            },
+          ),
+        ],
       ),
       body:
           SafeArea(

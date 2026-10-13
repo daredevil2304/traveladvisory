@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 
 class JourneyAnalysisScreen extends StatelessWidget {
@@ -39,7 +40,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
           onPressed: () {
-            Navigator.pop(context); // Goes back to the chat (Change 6)
+            Navigator.pop(context); // Goes back to the chat
           },
         ),
         title: const Text(
@@ -51,6 +52,15 @@ class JourneyAnalysisScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
+            tooltip: 'Saved Reports',
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.savedReports);
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -176,7 +186,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.pop(context); // Takes them back to the chat to give inputs
+                    Navigator.pop(context, {'action': 'live_updates'});
                   },
                   icon: const Icon(Icons.add_location_alt_rounded),
                   label: const Text(
@@ -212,6 +222,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
 
     final dynamic rawScore = segment['safety_score'];
     final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
+    final Color scoreColor = _getScoreColor(score ?? 50);
     final reasonsRaw = segment['reasons'];
     final List<dynamic> reasons = (reasonsRaw is List) ? reasonsRaw : [];
 
@@ -243,7 +254,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getScoreColor(score).withValues(alpha: 0.1),
+                    color: scoreColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -251,7 +262,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: _getScoreColor(score),
+                      color: scoreColor,
                     ),
                   ),
                 ),
@@ -265,7 +276,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
                     Expanded(
                       child: Text(
                         reason.toString(),
@@ -295,6 +306,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
     final safetyResult = segment['safety_score_result'];
     final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
     final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
+    final Color scoreColor = _getScoreColor(score ?? 80);
 
     final weather = segment['weather_result'];
     String weatherSummary = 'Clear';
@@ -308,6 +320,9 @@ class JourneyAnalysisScreen extends StatelessWidget {
       }
     }
 
+    final reasonsRaw = (safetyResult is Map) ? safetyResult['reasons'] : segment['reasons'];
+    final List<dynamic> reasons = (reasonsRaw is List) ? reasonsRaw : [];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -316,66 +331,105 @@ class JourneyAnalysisScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.lightMint,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.alt_route_rounded, color: AppTheme.forestGreen, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.darkNavy,
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: scoreColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.alt_route_rounded, color: scoreColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.darkNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      weatherSummary,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (score != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$score/100',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: scoreColor,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  weatherSummary,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-          if (score != null)
+          if (reasons.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _getScoreColor(score).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                color: AppTheme.lightMint.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                '$score/100',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _getScoreColor(score),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: reasons.map((r) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: Text(
+                            r.toString(),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ),
+          ],
         ],
       ),
     );
   }
 
   Color _getScoreColor(int score) {
-    if (score >= 80) return AppTheme.forestGreen;
-    if (score >= 50) return Colors.orange;
-    return Colors.red;
+    if (score >= 80) return const Color(0xFF16A34A);
+    if (score >= 60) return const Color(0xFFD97706);
+    return const Color(0xFFDC2626);
   }
 }
 

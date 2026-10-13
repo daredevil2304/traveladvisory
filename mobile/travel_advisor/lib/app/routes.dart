@@ -12,6 +12,7 @@ import '../features/auth/screens/verify_account_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/location/screens/location_permission_screen.dart';
 import '../features/onboarding/screens/role_selection_screen.dart';
+import '../features/reports/screens/saved_reports_screen.dart';
 import '../features/trip/screens/trip_details_screen.dart';
 
 
@@ -45,6 +46,9 @@ class AppRoutes {
 
   static const String journeyAnalysis =
       '/journey-analysis';
+
+  static const String savedReports =
+      '/saved-reports';
 
 
   static Map<String, WidgetBuilder> get routes => {
@@ -86,5 +90,8 @@ class AppRoutes {
 
         journeyAnalysis: (context) =>
             const JourneyAnalysisScreen(),
+
+        savedReports: (context) =>
+            const SavedReportsScreen(),
       };
 }
