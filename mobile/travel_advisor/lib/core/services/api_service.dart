@@ -23,10 +23,10 @@ class ApiService {
   static const String _userIdKey = 'user_id';
 
   static const String baseUrl =
-      'http://10.0.2.2:8000';
+      'https://traveladvisory-b15b.onrender.com';
 
   static const Duration requestTimeout =
-      Duration(seconds: 15);
+      Duration(seconds: 45);
 
   // ============================================================
   // REGISTER
