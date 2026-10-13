@@ -399,3 +399,50 @@ def analyze_trip(
     # ============================================================
 
     return analysis_data
+
+
+# ============================================================
+# 5. CHATBOT ALIAS
+# ============================================================
+
+@router.post(
+    "/{trip_id}/chatbot",
+)
+def trip_chatbot_alias(
+    trip_id: int,
+    request: dict,
+    db: Session = Depends(get_db),
+):
+    from services.chatbot_service import chatbot_service
+    from services.groq_provider import GroqError
+
+    message = request.get("message", "")
+
+    try:
+        result = chatbot_service.answer(
+            db=db,
+            trip_id=trip_id,
+            message=message,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+    except GroqError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The chatbot provider could not generate a response.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Chatbot request failed.",
+        ) from exc
+
+    return {
+        "trip_id": trip_id,
+        "answer": result.answer,
+        "provider": result.provider,
+        "model": result.model,
+    }

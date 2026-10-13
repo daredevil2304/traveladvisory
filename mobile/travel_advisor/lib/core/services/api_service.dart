@@ -582,10 +582,7 @@ class ApiService {
     required int tripId,
     required String message,
   }) async {
-    final uri =
-        Uri.parse(
-      '$baseUrl/trip/$tripId/chatbot',
-    );
+    final uri = Uri.parse('$baseUrl/chatbot/message');
 
     try {
       final response = await http
@@ -596,6 +593,7 @@ class ApiService {
               'Accept': 'application/json',
             },
             body: jsonEncode({
+              'trip_id': tripId,
               'message': message.trim(),
             }),
           )
