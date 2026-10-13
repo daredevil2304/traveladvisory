@@ -187,8 +187,12 @@ class _ChatbotScreenState
 
     if (_latitude == null ||
         _longitude == null) {
+      _step = _ConversationStep.manualSource;
       _addBotMessage(
-        'I could not determine your current location. Please check your location permission and try again.',
+        'Please select your starting location along the corridor.',
+        quickReplies: _routePoints
+            .map((item) => item.displayName)
+            .toList(),
       );
       return;
     }
@@ -453,6 +457,10 @@ class _ChatbotScreenState
 
     _source =
         point.name;
+    _latitude =
+        point.latitude;
+    _longitude =
+        point.longitude;
 
     _addBotMessage(
       'Sure, we will start from ${point.displayName}.',
@@ -524,7 +532,7 @@ class _ChatbotScreenState
       _addBotMessage(
         'Got it. When are you planning to travel?',
         quickReplies: const [
-          'Today',
+          'Same Day',
           'Tomorrow',
         ],
       );
@@ -550,9 +558,9 @@ class _ChatbotScreenState
 
     if (date == null) {
       _addBotMessage(
-        'Please choose Today or Tomorrow, or enter a date such as 30/09/2026.',
+        'Please specify your travel date, such as Tomorrow, Same Day, alternatively 30/09/2026.',
         quickReplies: const [
-          'Today',
+          'Same Day',
           'Tomorrow',
         ],
       );
@@ -621,7 +629,7 @@ class _ChatbotScreenState
             .travelerVisibility;
 
     _addBotMessage(
-      'And how is the visibility right now?',
+      'And how is the visibility currently?',
       quickReplies: const [
         'Very clear',
         'Clear',
@@ -674,7 +682,7 @@ class _ChatbotScreenState
             .travelerUnusual;
 
     _addBotMessage(
-      'Anything unusual on the road right now?',
+      'Any unusual road conditions observed?',
       quickReplies: const [
         'Nothing unusual',
         'Slippery road',
@@ -708,7 +716,7 @@ class _ChatbotScreenState
             .travelerTraffic;
 
     _addBotMessage(
-      'And how is the traffic right now?',
+      'How does the traffic appear?',
       quickReplies: const [
         'Free flow',
         'Light',
@@ -767,10 +775,14 @@ Future<void> _analyzeJourney() async {
   }
 
   if (_latitude == null || _longitude == null) {
-    _showError(
-      'Your location could not be determined. Please go back and allow location access.',
-    );
-    return;
+    final _RoutePoint? point = _source != null ? _findRoutePoint(_source!) : null;
+    if (point != null) {
+      _latitude = point.latitude;
+      _longitude = point.longitude;
+    } else {
+      _latitude = 18.9388;
+      _longitude = 72.8354;
+    }
   }
 
   if (_source == null || _source!.trim().isEmpty) {
@@ -852,11 +864,13 @@ final Map<String, dynamic> analysisData =
         : Map<String, dynamic>.from(analysis as Map);
 
     setState(() {
-  _tripAnalysis = analysisData;
-  _isAnalyzing = false;
-  _journeyReady = false;
-  _analysisComplete = true;
-});
+      _tripAnalysis = analysisData;
+      _isAnalyzing = false;
+      _journeyReady = false;
+      _analysisComplete = true;
+    });
+
+    _addAdvisoryToChat(analysisData);
 
     _addBotMessage(
       'Your journey analysis is ready. I am redirecting you to the report...',
@@ -1021,7 +1035,7 @@ Future<void> _saveCurrentReport() async {
     );
 
     _addBotMessage(
-      'You can continue asking me about this journey. For example: "Why is this score low?", "Which segment needs attention?", or "What precautions should I take?"',
+      'You can continue asking me questions about this journey, such as: "Why is this score low?", "Which segment needs attention?", "What precautions should I take?"',
     );
   }
 
@@ -1454,7 +1468,7 @@ Future<void> _handlePostAnalysisMessage(
     });
 
     _addBotMessage(
-      'I couldn’t get a response from the travel assistant right now.',
+      'I could not retrieve a response from the travel assistant at this moment.',
     );
 
     _showError(e.message);
@@ -1686,8 +1700,8 @@ Future<void> _handlePostAnalysisMessage(
     final DateTime now =
         DateTime.now();
 
-    if (normalized ==
-        'today') {
+    if (normalized == 'today' ||
+        normalized == 'same day') {
       return _formatDate(
         now,
       );

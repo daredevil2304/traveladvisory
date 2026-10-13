@@ -28,6 +28,9 @@ class JourneyAnalysisScreen extends StatelessWidget {
     final problematicSegmentsRaw = analysis['problematic_segments'];
     final List<dynamic> problematicSegments = (problematicSegmentsRaw is List) ? problematicSegmentsRaw : [];
 
+    final segmentResultsRaw = analysis['segment_results'];
+    final List<dynamic> segmentResults = (segmentResultsRaw is List) ? segmentResultsRaw : [];
+
     return Scaffold(
       backgroundColor: AppTheme.white,
       appBar: AppBar(
@@ -146,6 +149,25 @@ class JourneyAnalysisScreen extends StatelessWidget {
                   return _buildProblematicRegionCard(segment);
                 }),
 
+              if (segmentResults.isNotEmpty) ...[
+                const SizedBox(height: 32),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Corridor Segments Overview',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.darkNavy,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...segmentResults.map((segment) {
+                  return _buildSegmentCard(segment);
+                }),
+              ],
+
               const SizedBox(height: 40),
 
               // BOTTOM BUTTON (Change 6)
@@ -255,6 +277,96 @@ class JourneyAnalysisScreen extends StatelessWidget {
               );
             }),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentCard(dynamic segment) {
+    if (segment is! Map) return const SizedBox.shrink();
+
+    final details = segment['segment_details'];
+    String title = segment['region'] ?? 'Corridor Segment';
+
+    if (details is Map && details['start'] != null && details['end'] != null) {
+      title = '${details['start']} to ${details['end']}';
+    }
+
+    final safetyResult = segment['safety_score_result'];
+    final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
+    final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
+
+    final weather = segment['weather_result'];
+    String weatherSummary = 'Clear';
+    if (weather is Map) {
+      final cond = weather['weather_condition']?.toString() ?? 'Clear';
+      final temp = weather['temperature_c'];
+      if (temp != null) {
+        weatherSummary = '$cond • ${temp is num ? temp.round() : temp}°C';
+      } else {
+        weatherSummary = cond;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.lightMint,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.alt_route_rounded, color: AppTheme.forestGreen, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.darkNavy,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  weatherSummary,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (score != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _getScoreColor(score).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$score/100',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: _getScoreColor(score),
+                ),
+              ),
+            ),
         ],
       ),
     );

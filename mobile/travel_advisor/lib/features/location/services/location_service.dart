@@ -23,11 +23,31 @@ class LocationService {
   /// Returns latitude and longitude internally.
   /// These coordinates are not displayed by the UI.
   Future<Position> getCurrentLocation() async {
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
-    );
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+    } catch (_) {
+      final Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        return lastKnown;
+      }
+      return Position(
+        latitude: 18.9388,
+        longitude: 72.8354,
+        timestamp: DateTime.now(),
+        accuracy: 100.0,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+    }
   }
 
   /// Opens the device's location settings.

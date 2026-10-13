@@ -336,19 +336,38 @@ class _LocationPermissionScreenState
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-              // ------------------------------------------------------
-              // REQUIRED LOCATION MESSAGE
-              // ------------------------------------------------------
-              Center(
-                child: Text(
-                  'Location access is required to continue.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: TextButton(
+                  onPressed: () {
+                    final routeArguments =
+                        ModalRoute.of(context)?.settings.arguments;
+                    String role = 'traveler';
+                    if (routeArguments is Map<String, dynamic>) {
+                      final passedRole = routeArguments['role'];
+                      if (passedRole is String && passedRole.isNotEmpty) {
+                        role = passedRole;
+                      }
+                    }
+                    Navigator.pushReplacementNamed(
+                      context,
+                      AppRoutes.chatbot,
+                      arguments: {
+                        'role': role,
+                      },
+                    );
+                  },
+                  child: const Text(
+                    'SELECT LOCATION MANUALLY',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.forestGreen,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
               ),

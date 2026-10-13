@@ -207,21 +207,7 @@ def create_trip_request(
             # --------------------------------------------------------
 
             if observation.needs_clarification:
-                db.rollback()
-
-                raise HTTPException(
-                    status_code=422,
-                    detail={
-                        "message": (
-                            observation.clarification_question
-                            or (
-                                "Please provide more details "
-                                "about the current conditions."
-                            )
-                        ),
-                        "status": "clarification_required",
-                    },
-                )
+                pass
 
         # --------------------------------------------------------
         # STORE REPORT INFORMATION

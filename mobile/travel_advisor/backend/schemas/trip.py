@@ -98,11 +98,6 @@ class TripRequest(BaseModel):
                     "Travel time should not be provided for traveler journeys."
                 )
 
-            if self.traveler_report is None:
-                raise ValueError(
-                    "Traveler report is required for traveler journeys."
-                )
-
         return self
 
 

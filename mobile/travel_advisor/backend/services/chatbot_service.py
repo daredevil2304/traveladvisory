@@ -227,7 +227,7 @@ IMPORTANT RULES:
         if isinstance(problematic, list) and problematic:
             lines.append("")
             lines.append(
-                "=== PROBLEMATIC SEGMENTS (ONLY MENTION THESE) ==="
+                "=== PROBLEMATIC SEGMENTS ==="
             )
 
             for segment in problematic[:10]:
@@ -276,6 +276,52 @@ IMPORTANT RULES:
                     )
 
                 lines.append(text)
+
+        segment_results = analysis.get("segment_results")
+        if isinstance(segment_results, list) and segment_results:
+            lines.append("")
+            lines.append("=== ROUTE SEGMENTS & WEATHER OBSERVATIONS ===")
+            for seg in segment_results:
+                if not isinstance(seg, dict):
+                    continue
+                details = seg.get("segment_details") or {}
+                start = details.get("start")
+                end = details.get("end")
+                reg = seg.get("region", "")
+                label = f"{start} to {end} ({reg})" if (start and end) else reg
+
+                score_info = seg.get("safety_score_result") or {}
+                seg_score = score_info.get("score")
+                seg_reasons = score_info.get("reasons") or []
+
+                weather = seg.get("weather_result") or {}
+                cond = weather.get("weather_condition") or "Clear / Normal"
+                temp = weather.get("temperature_c")
+                rain = weather.get("rainfall_mm")
+                vis = weather.get("visibility_km")
+                humid = weather.get("humidity_percent")
+                wind = weather.get("wind_speed_kmh")
+
+                weather_desc: list[str] = [f"Condition: {cond}"]
+                if temp is not None:
+                    weather_desc.append(f"Temperature: {temp}°C")
+                if rain is not None:
+                    weather_desc.append(f"Rainfall: {rain} mm/h")
+                if vis is not None:
+                    weather_desc.append(f"Visibility: {vis} km")
+                if humid is not None:
+                    weather_desc.append(f"Humidity: {humid}%")
+                if wind is not None:
+                    weather_desc.append(f"Wind: {wind} km/h")
+
+                lines.append(f"- Segment {label}:")
+                if seg_score is not None:
+                    lines.append(f"  Safety Score: {seg_score}/100")
+                else:
+                    lines.append("  Safety Score: unavailable")
+                lines.append(f"  Live Weather: {', '.join(weather_desc)}")
+                if seg_reasons:
+                    lines.append(f"  Advisories: {'; '.join(str(r) for r in seg_reasons[:3])}")
 
         return "\n".join(lines)
 
