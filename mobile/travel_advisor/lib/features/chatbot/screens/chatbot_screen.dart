@@ -51,8 +51,8 @@ class _ChatbotScreenState
   bool _journeyReady = false;
   bool _isAnalyzing = false;
   bool _analysisComplete = false;
-  final bool _reportSaved = false;
-  final bool _isSavingReport = false;
+  bool _reportSaved = false;
+  bool _isSavingReport = false;
   Map<String, dynamic>? _tripAnalysis;
 
   int? _tripId;
@@ -970,6 +970,10 @@ Future<void> _saveCurrentReport() async {
     return;
   }
 
+  setState(() {
+    _isSavingReport = true;
+  });
+
   try {
     final userId = (await ApiService.getStoredUserId()) ?? 1;
 
@@ -981,6 +985,11 @@ Future<void> _saveCurrentReport() async {
     );
 
     if (!mounted) return;
+
+    setState(() {
+      _reportSaved = true;
+      _isSavingReport = false;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -995,8 +1004,18 @@ Future<void> _saveCurrentReport() async {
       ),
     );
   } on ApiException catch (e) {
+    if (mounted) {
+      setState(() {
+        _isSavingReport = false;
+      });
+    }
     _showError(e.message);
-  } catch (_) {
+  } catch (err) {
+    if (mounted) {
+      setState(() {
+        _isSavingReport = false;
+      });
+    }
     _showError('Unable to save the report.');
   }
 }

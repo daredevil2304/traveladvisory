@@ -78,10 +78,11 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
 
       final dynamic analysisData = detail['analysis_data'] ?? summary['analysis_data'];
       String title = summary['title']?.toString() ?? 'Travel Report';
-      String source = 'Mumbai';
-      String destination = 'Pune';
+      String source = summary['source']?.toString() ?? detail['source']?.toString() ?? 'Mumbai';
+      String destination = summary['destination']?.toString() ?? detail['destination']?.toString() ?? 'Pune';
+      String role = summary['role']?.toString() ?? detail['role']?.toString() ?? 'traveler';
 
-      if (title.contains('→')) {
+      if ((summary['source'] == null || summary['source'].toString().isEmpty) && title.contains('→')) {
         final parts = title.split('→');
         source = parts[0].replaceAll('Travel Report', '').trim();
         destination = parts[1].replaceAll('Travel Report', '').trim();
@@ -94,7 +95,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
           'analysis': analysisData,
           'source': source,
           'destination': destination,
-          'role': 'traveler',
+          'role': role,
         },
       );
     } catch (e) {
@@ -281,8 +282,8 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
         final int reportId = item['id'] is num ? (item['id'] as num).toInt() : 0;
         final String title = item['title']?.toString() ?? 'Travel Report';
         final String dateStr = _formatDate(item['created_at']);
-        final dynamic scoreVal = item['overall_safety_score'];
-        final int score = scoreVal is num ? scoreVal.toInt() : 0;
+        final dynamic scoreVal = item['safety_score'] ?? item['overall_safety_score'];
+        final int score = scoreVal is num ? scoreVal.round() : 0;
         final Color scoreColor = _getScoreColor(score);
 
         return Card(
