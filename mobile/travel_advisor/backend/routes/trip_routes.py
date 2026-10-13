@@ -9,6 +9,7 @@ from database import get_db
 from models.trip import Trip
 from models.user import User
 from schemas.trip import (
+    TravelerObservationRequest,
     TripRequest,
     TripRequestResponse,
 )
@@ -445,4 +446,66 @@ def trip_chatbot_alias(
         "answer": result.answer,
         "provider": result.provider,
         "model": result.model,
+    }
+
+
+# ============================================================
+# 6. SUBMIT TRIP OBSERVATION / USER INPUT
+# ============================================================
+
+@router.post(
+    "/{trip_id}/observation",
+)
+def submit_trip_observation(
+    trip_id: int,
+    request: TravelerObservationRequest,
+    db: Session = Depends(get_db),
+):
+    trip = (
+        db.query(Trip)
+        .filter(Trip.id == trip_id)
+        .first()
+    )
+
+    if trip is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Trip with id {trip_id} was not found.",
+        )
+
+    user_id = request.user_id or trip.user_id
+    lat = request.latitude if request.latitude is not None else trip.source_latitude
+    lon = request.longitude if request.longitude is not None else trip.source_longitude
+
+    parts = []
+    if request.rain:
+        parts.append(f"Rain: {request.rain}")
+    if request.visibility:
+        parts.append(f"Visibility: {request.visibility}")
+    if request.fog:
+        parts.append(f"Fog: {request.fog}")
+    if request.unusual_conditions:
+        parts.append(f"Conditions: {request.unusual_conditions}")
+    if request.traffic:
+        parts.append(f"Traffic: {request.traffic}")
+    if request.raw_message:
+        parts.append(request.raw_message)
+
+    msg = "; ".join(parts) if parts else "Traveler highway live update"
+
+    report, observation = traveler_report_service.create_report_from_message(
+        db=db,
+        user_id=user_id,
+        trip_id=trip.id,
+        latitude=lat,
+        longitude=lon,
+        raw_message=msg,
+        route_region=request.route_region,
+    )
+
+    return {
+        "status": "success",
+        "trip_id": trip_id,
+        "report_id": report.id,
+        "message": "Observation recorded successfully.",
     }

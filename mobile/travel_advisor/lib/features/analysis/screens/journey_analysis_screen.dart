@@ -3,9 +3,60 @@ import 'package:flutter/material.dart';
 
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
+import '../../../core/services/api_service.dart';
 
-class JourneyAnalysisScreen extends StatelessWidget {
+class JourneyAnalysisScreen extends StatefulWidget {
   const JourneyAnalysisScreen({super.key});
+
+  @override
+  State<JourneyAnalysisScreen> createState() => _JourneyAnalysisScreenState();
+}
+
+class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
+  bool _showAllDetails = false;
+  bool _isSavingReport = false;
+  bool _reportSaved = false;
+
+  Future<void> _handleSaveReport(int? tripId, String source, String destination) async {
+    if (tripId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trip ID not available to save report.')),
+      );
+      return;
+    }
+
+    setState(() => _isSavingReport = true);
+    try {
+      final userId = (await ApiService.getStoredUserId()) ?? 1;
+      await ApiService.saveReport(
+        userId: userId,
+        tripId: tripId,
+        title: '$source → $destination Travel Report',
+      );
+      if (!mounted) return;
+      setState(() {
+        _reportSaved = true;
+        _isSavingReport = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Travel report saved successfully.'),
+          action: SnackBarAction(
+            label: 'VIEW',
+            textColor: AppTheme.white,
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.savedReports);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isSavingReport = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save report: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,24 +64,39 @@ class JourneyAnalysisScreen extends StatelessWidget {
 
     String source = 'Current Location';
     String destination = 'Destination';
+    String role = 'traveler';
     Map<String, dynamic> analysis = {};
+    int? tripId;
 
     if (arguments is Map<String, dynamic>) {
       source = arguments['source'] ?? source;
       destination = arguments['destination'] ?? destination;
+      role = (arguments['role']?.toString().toLowerCase() ?? 'traveler');
       if (arguments['analysis'] != null) {
         analysis = Map<String, dynamic>.from(arguments['analysis'] as Map);
       }
+      if (arguments['tripId'] != null) {
+        tripId = int.tryParse(arguments['tripId'].toString());
+      } else if (analysis['trip_id'] != null) {
+        tripId = int.tryParse(analysis['trip_id'].toString());
+      }
     }
+
+    final bool isPlanner = (role == 'planner');
 
     final overallScore = analysis['overall_safety_score'];
     final int score = (overallScore != null) ? (overallScore as num).toInt() : 0;
-    
+
     final problematicSegmentsRaw = analysis['problematic_segments'];
-    final List<dynamic> problematicSegments = (problematicSegmentsRaw is List) ? problematicSegmentsRaw : [];
+    final List<dynamic> problematicSegments =
+        (problematicSegmentsRaw is List) ? problematicSegmentsRaw : [];
 
     final segmentResultsRaw = analysis['segment_results'];
-    final List<dynamic> segmentResults = (segmentResultsRaw is List) ? segmentResultsRaw : [];
+    final List<dynamic> segmentResults =
+        (segmentResultsRaw is List) ? segmentResultsRaw : [];
+
+    final travelDate = analysis['travel_date']?.toString();
+    final travelTime = analysis['travel_time']?.toString();
 
     return Scaffold(
       backgroundColor: AppTheme.white,
@@ -40,7 +106,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
           onPressed: () {
-            Navigator.pop(context); // Goes back to the chat
+            Navigator.pop(context);
           },
         ),
         title: const Text(
@@ -68,7 +134,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // HEADER
+              // ROUTE TITLE
               Text(
                 '$source to $destination',
                 style: const TextStyle(
@@ -78,9 +144,36 @@ class JourneyAnalysisScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 30),
 
-              // CIRCULAR METER (Change 3)
+              if (isPlanner && (travelDate != null || travelTime != null)) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.lightMint,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.event_note_rounded, size: 16, color: AppTheme.forestGreen),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Scheduled: ${travelDate ?? ''} ${travelTime ?? ''}'.trim(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.forestGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 28),
+
+              // CIRCULAR SAFETY METER GAUGE
               SizedBox(
                 width: 240,
                 height: 240,
@@ -99,6 +192,7 @@ class JourneyAnalysisScreen extends StatelessWidget {
                             height: 1.0,
                           ),
                         ),
+                        const SizedBox(height: 4),
                         const Text(
                           'Safety Score',
                           style: TextStyle(
@@ -113,9 +207,9 @@ class JourneyAnalysisScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 36),
 
-              // PROBLEMATIC REGIONS (Change 4 & 5)
+              // PROBLEMATIC REGIONS SECTION
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -127,31 +221,45 @@ class JourneyAnalysisScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               if (problematicSegments.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
                     color: AppTheme.lightMint,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.check_circle_rounded, color: AppTheme.forestGreen, size: 28),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'All regions on your route look perfectly safe! Enjoy your journey.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.forestGreen,
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            width: 5,
+                            color: const Color(0xFF16A34A),
                           ),
-                        ),
+                          const Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.all(18),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle_rounded, color: AppTheme.forestGreen, size: 28),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      'All regions along your corridor appear secure with no major hazards.',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.forestGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 )
               else
@@ -159,43 +267,127 @@ class JourneyAnalysisScreen extends StatelessWidget {
                   return _buildProblematicRegionCard(segment);
                 }),
 
+              // CORRIDOR SEGMENTS SECTION
               if (segmentResults.isNotEmpty) ...[
                 const SizedBox(height: 32),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Corridor Segments Overview',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.darkNavy,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isPlanner ? 'Corridor Segments' : 'Route Overview',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.darkNavy,
+                        ),
+                      ),
+                    ),
+                    if (!isPlanner)
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _showAllDetails = !_showAllDetails;
+                          });
+                        },
+                        child: Text(
+                          _showAllDetails ? 'Summary' : 'Full Details',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.forestGreen,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // For traveler: compact format by default unless expanded
+                if (!isPlanner && !_showAllDetails)
+                  _buildTravelerCompactOverview(segmentResults)
+                else
+                  // For planner (or expanded traveler): full deep breakdown
+                  ...segmentResults.map((segment) {
+                    return _buildSegmentCard(segment);
+                  }),
+              ],
+
+              const SizedBox(height: 36),
+
+              // SAVE REPORT BUTTON (On report analysis page)
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: (_isSavingReport || _reportSaved)
+                      ? null
+                      : () => _handleSaveReport(tripId, source, destination),
+                  icon: _isSavingReport
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.white,
+                          ),
+                        )
+                      : Icon(
+                          _reportSaved
+                              ? Icons.check_circle_rounded
+                              : Icons.bookmark_add_rounded,
+                        ),
+                  label: Text(
+                    _isSavingReport
+                        ? 'Saving Report...'
+                        : _reportSaved
+                            ? 'Report Saved'
+                            : 'Save Report',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.forestGreen,
+                    foregroundColor: AppTheme.white,
+                    disabledBackgroundColor: _reportSaved
+                        ? AppTheme.forestGreen.withValues(alpha: 0.7)
+                        : Colors.grey.shade300,
+                    disabledForegroundColor: AppTheme.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ...segmentResults.map((segment) {
-                  return _buildSegmentCard(segment);
-                }),
-              ],
+              ),
+              const SizedBox(height: 12),
 
-              const SizedBox(height: 40),
-
-              // BOTTOM BUTTON (Change 6)
+              // BOTTOM ACTION BUTTON (Live updates / Return to Chat)
               SizedBox(
                 width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
+                height: 54,
+                child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(context, {'action': 'live_updates'});
                   },
-                  icon: const Icon(Icons.add_location_alt_rounded),
+                  icon: const Icon(
+                    Icons.add_location_alt_rounded,
+                    color: AppTheme.forestGreen,
+                  ),
                   label: const Text(
                     'Share Live Updates',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.forestGreen,
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: AppTheme.white,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: AppTheme.forestGreen,
+                      width: 1.5,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -210,11 +402,118 @@ class JourneyAnalysisScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildTravelerCompactOverview(List<dynamic> segments) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: List.generate(segments.length, (index) {
+          final segment = segments[index];
+          if (segment is! Map) return const SizedBox.shrink();
+
+          final details = segment['segment_details'];
+          String title = segment['region'] ?? 'Corridor Segment';
+          if (details is Map && details['start'] != null && details['end'] != null) {
+            title = '${details['start']} → ${details['end']}';
+          }
+
+          final safetyResult = segment['safety_score_result'];
+          final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
+          final int score = (rawScore != null) ? (rawScore as num).toInt() : 80;
+          final Color scoreColor = _getScoreColor(score);
+
+          final weather = segment['weather_result'];
+          String condText = 'Clear';
+          if (weather is Map) {
+            final cond = weather['weather_condition']?.toString() ?? 'Clear';
+            final temp = weather['temperature_c'];
+            if (temp != null) {
+              condText = '$cond • ${temp is num ? temp.round() : temp}°C';
+            } else {
+              condText = cond;
+            }
+          }
+
+          final bool isLast = index == segments.length - 1;
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: isLast ? BorderSide.none : const BorderSide(color: AppTheme.border),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: scoreColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  score >= 80 ? Icons.check_circle_rounded : Icons.info_rounded,
+                  color: scoreColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.darkNavy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        condText,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$score',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: scoreColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Widget _buildProblematicRegionCard(dynamic segment) {
     if (segment is! Map) return const SizedBox.shrink();
 
     final details = segment['segment_details'];
-    String title = segment['region'] ?? 'Unknown Region';
+    String title = segment['region'] ?? 'Flagged Region';
 
     if (details is Map && details['start'] != null && details['end'] != null) {
       title = 'Between ${details['start']} and ${details['end']}';
@@ -228,67 +527,85 @@ class JourneyAnalysisScreen extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Container(
+                width: 5,
+                color: scoreColor,
+              ),
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.darkNavy,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkNavy,
+                              ),
+                            ),
+                          ),
+                          if (score != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: scoreColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Score: $score',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: scoreColor,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (reasons.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        ...reasons.map((reason) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
+                                Expanded(
+                                  child: Text(
+                                    reason.toString(),
+                                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
                   ),
                 ),
               ),
-              if (score != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Score: $score',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: scoreColor,
-                    ),
-                  ),
-                ),
             ],
           ),
-          if (reasons.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            ...reasons.map((reason) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
-                    Expanded(
-                      child: Text(
-                        reason.toString(),
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -325,103 +642,121 @@ class JourneyAnalysisScreen extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scoreColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.alt_route_rounded, color: scoreColor, size: 22),
+                width: 5,
+                color: scoreColor,
               ),
-              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.darkNavy,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      weatherSummary,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (score != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$score/100',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: scoreColor,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          if (reasons.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppTheme.lightMint.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: reasons.map((r) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
-                        Expanded(
-                          child: Text(
-                            r.toString(),
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondary,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: scoreColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
+                            child: Icon(Icons.alt_route_rounded, color: scoreColor, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.darkNavy,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  weatherSummary,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (score != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: scoreColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '$score/100',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: scoreColor,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (reasons.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: scoreColor.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: reasons.map((r) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('• ', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
+                                    Expanded(
+                                      child: Text(
+                                        r.toString(),
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
                       ],
-                    ),
-                  );
-                }).toList(),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -444,7 +779,11 @@ class SafetyMeterPainter extends CustomPainter {
     final Offset center = Offset(size.width / 2, size.height / 2);
     const double strokeWidth = 24.0;
 
-    // Draw background track
+    // Track arc: 240 degrees (4.18879 radians), starting at 150 degrees (2.61799 radians)
+    // 150° is bottom-left, sweeping 240° clockwise over top to 390° / 30° (bottom-right)
+    const double startAngle = 2.61799;
+    const double sweepAngle = 4.18879;
+
     final Paint trackPaint = Paint()
       ..color = Colors.grey.shade200
       ..strokeWidth = strokeWidth
@@ -452,38 +791,74 @@ class SafetyMeterPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final Rect rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
-    
-    // We draw a 240 degree arc (4.18879 radians), starting at 150 degrees (2.61799 radians)
-    const double startAngle = 2.61799;
-    const double sweepAngle = 4.18879;
 
+    // 1. Draw the background grey track
     canvas.drawArc(rect, startAngle, sweepAngle, false, trackPaint);
 
-    // Calculate score sweep
     final double normalizedScore = (score / 100.0).clamp(0.0, 1.0);
-    final double scoreSweepAngle = sweepAngle * normalizedScore;
+    if (normalizedScore <= 0.0) return;
 
-    if (scoreSweepAngle > 0) {
-      // Define the gradient
-      const SweepGradient gradient = SweepGradient(
-        startAngle: startAngle,
-        endAngle: startAngle + sweepAngle,
-        colors: [
-          Colors.red,
-          Colors.orange,
-          Colors.green,
-        ],
-        stops: [0.2, 0.6, 1.0],
-      );
+    // 2. Smoothly interpolated micro-segments guarantee exact color mapping with zero shader wrap anomalies.
+    // Higher score = greener color, lower score = redder color.
+    Color getColorAt(double t) {
+      if (t <= 0.35) {
+        final double subT = (t / 0.35).clamp(0.0, 1.0);
+        return Color.lerp(const Color(0xFFDC2626), const Color(0xFFEA580C), subT)!;
+      } else if (t <= 0.65) {
+        final double subT = ((t - 0.35) / 0.30).clamp(0.0, 1.0);
+        return Color.lerp(const Color(0xFFEA580C), const Color(0xFFD97706), subT)!;
+      } else if (t <= 0.82) {
+        final double subT = ((t - 0.65) / 0.17).clamp(0.0, 1.0);
+        return Color.lerp(const Color(0xFFD97706), const Color(0xFF16A34A), subT)!;
+      } else {
+        return const Color(0xFF16A34A);
+      }
+    }
 
-      final Paint scorePaint = Paint()
-        ..shader = gradient.createShader(rect)
+    final int totalSteps = 60;
+    final int activeSteps = (totalSteps * normalizedScore).ceil().clamp(1, totalSteps);
+    final double stepAngle = sweepAngle / totalSteps;
+
+    for (int i = 0; i < activeSteps; i++) {
+      final double segStart = startAngle + (i * stepAngle);
+      final double segSweep = (i == activeSteps - 1 && normalizedScore < 1.0)
+          ? (sweepAngle * normalizedScore) - (i * stepAngle)
+          : stepAngle + 0.006;
+
+      if (segSweep <= 0) continue;
+
+      final double t = (i / totalSteps).clamp(0.0, 1.0);
+      final Color segColor = getColorAt(t);
+
+      final Paint segPaint = Paint()
+        ..color = segColor
         ..strokeWidth = strokeWidth
         ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = StrokeCap.butt;
 
-      canvas.drawArc(rect, startAngle, scoreSweepAngle, false, scorePaint);
+      canvas.drawArc(rect, segStart, segSweep, false, segPaint);
     }
+
+    // Rounded start cap (Red at lower safety start)
+    final Offset startPoint = Offset(
+      center.dx + (radius - strokeWidth / 2) * cos(startAngle),
+      center.dy + (radius - strokeWidth / 2) * sin(startAngle),
+    );
+    final Paint startCapPaint = Paint()
+      ..color = const Color(0xFFDC2626)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(startPoint, strokeWidth / 2, startCapPaint);
+
+    // Rounded end cap matching the exact tip color
+    final double endAngle = startAngle + (sweepAngle * normalizedScore);
+    final Offset endPoint = Offset(
+      center.dx + (radius - strokeWidth / 2) * cos(endAngle),
+      center.dy + (radius - strokeWidth / 2) * sin(endAngle),
+    );
+    final Paint endCapPaint = Paint()
+      ..color = getColorAt(normalizedScore)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(endPoint, strokeWidth / 2, endCapPaint);
   }
 
   @override

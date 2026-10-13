@@ -30,6 +30,19 @@ class TravelerReport(BaseModel):
     )
 
 
+class TravelerObservationRequest(BaseModel):
+    user_id: int | None = Field(default=None)
+    latitude: float | None = Field(default=None)
+    longitude: float | None = Field(default=None)
+    route_region: str | None = Field(default=None, max_length=50)
+    rain: str | None = Field(default=None, max_length=100)
+    visibility: str | None = Field(default=None, max_length=100)
+    fog: str | None = Field(default=None, max_length=100)
+    unusual_conditions: str | None = Field(default=None, max_length=500)
+    traffic: str | None = Field(default=None, max_length=100)
+    raw_message: str | None = Field(default=None, max_length=1000)
+
+
 class TripRequest(BaseModel):
     user_id: int = Field(
         ge=1,

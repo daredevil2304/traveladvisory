@@ -612,6 +612,52 @@ class ApiService {
   }
 
   // ============================================================
+  // SUBMIT OBSERVATION
+  // ============================================================
+
+  static Future<Map<String, dynamic>> submitObservation({
+    required int tripId,
+    String? rain,
+    String? visibility,
+    String? fog,
+    String? unusualConditions,
+    String? traffic,
+    String? rawMessage,
+  }) async {
+    final uri = Uri.parse('$baseUrl/trip/$tripId/observation');
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = storedUserId ?? 1;
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'user_id': resolvedUserId,
+              'rain': rain,
+              'visibility': visibility,
+              'fog': fog,
+              'unusual_conditions': unusualConditions,
+              'traffic': traffic,
+              'raw_message': rawMessage ?? 'Live traveler observation',
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      return {'status': 'recorded_locally'};
+    }
+  }
+
+  // ============================================================
   // RESPONSE HANDLER
   // ============================================================
 

@@ -51,6 +51,7 @@ class _ChatbotScreenState
   bool _journeyReady = false;
   bool _isAnalyzing = false;
   bool _analysisComplete = false;
+  bool _isCollectingLiveUpdates = false;
   bool _reportSaved = false;
   bool _isSavingReport = false;
   Map<String, dynamic>? _tripAnalysis;
@@ -252,6 +253,11 @@ class _ChatbotScreenState
      * User can ask follow-up questions instead
      * of being forced onto another screen.
      */
+    if (_isCollectingLiveUpdates) {
+      _handleLiveUpdateMessage(message);
+      return;
+    }
+
     if (_analysisComplete) {
       _handlePostAnalysisMessage(
         message,
@@ -279,7 +285,22 @@ class _ChatbotScreenState
       return;
     }
 
+    if (value.contains('Calendar')) {
+      _pickPlannerDate();
+      return;
+    }
+
+    if (value.contains('Clock')) {
+      _pickPlannerTime();
+      return;
+    }
+
     _addUserMessage(value);
+
+    if (_isCollectingLiveUpdates) {
+      _handleLiveUpdateMessage(value);
+      return;
+    }
 
     if (_analysisComplete) {
       _handlePostAnalysisMessage(
@@ -381,6 +402,16 @@ class _ChatbotScreenState
 
       case _ConversationStep.ready:
         break;
+
+      case _ConversationStep.liveUpdateRain:
+      case _ConversationStep.liveUpdateTraffic:
+      case _ConversationStep.liveUpdateHazards:
+        _handleLiveUpdateMessage(message);
+        break;
+
+      case _ConversationStep.postAnalysis:
+        _handlePostAnalysisMessage(message);
+        break;
     }
   }
 
@@ -480,15 +511,30 @@ class _ChatbotScreenState
         _ConversationStep
             .destination;
 
+    final String src = (_source ?? '').toLowerCase().trim();
+
+    final destinationOptions = _routePoints
+        .where((point) {
+          final pName = point.name.toLowerCase().trim();
+          final pDisplay = point.displayName.toLowerCase().trim();
+          if (src.isEmpty) return true;
+          if (pName == src || pDisplay == src) return false;
+          if (src.contains(pName) || pName.contains(src)) return false;
+          if ((src.contains('mumb') || src.contains('sion')) &&
+              (pName.contains('mumb') || pDisplay.contains('mumb') || pDisplay.contains('sion'))) {
+            return false;
+          }
+          if (src.contains('pun') && (pName.contains('pun') || pDisplay.contains('pun'))) {
+            return false;
+          }
+          return true;
+        })
+        .map((point) => point.displayName)
+        .toList();
+
     _addBotMessage(
       'Great. Where are you heading?',
-      quickReplies:
-          _routePoints
-              .map(
-                (point) =>
-                    point.displayName,
-              )
-              .toList(),
+      quickReplies: destinationOptions,
     );
   }
 
@@ -498,16 +544,30 @@ class _ChatbotScreenState
     final _RoutePoint? point =
         _findRoutePoint(message);
 
+    final String src = (_source ?? '').toLowerCase().trim();
+    final destinationOptions = _routePoints
+        .where((p) {
+          final pName = p.name.toLowerCase().trim();
+          final pDisplay = p.displayName.toLowerCase().trim();
+          if (src.isEmpty) return true;
+          if (pName == src || pDisplay == src) return false;
+          if (src.contains(pName) || pName.contains(src)) return false;
+          if ((src.contains('mumb') || src.contains('sion')) &&
+              (pName.contains('mumb') || pDisplay.contains('mumb') || pDisplay.contains('sion'))) {
+            return false;
+          }
+          if (src.contains('pun') && (pName.contains('pun') || pDisplay.contains('pun'))) {
+            return false;
+          }
+          return true;
+        })
+        .map((p) => p.displayName)
+        .toList();
+
     if (point == null) {
       _addBotMessage(
         'Please choose a supported Mumbai Pune route destination.',
-        quickReplies:
-            _routePoints
-                .map(
-                  (item) =>
-                      item.displayName,
-                )
-                .toList(),
+        quickReplies: destinationOptions,
       );
       return;
     }
@@ -534,35 +594,84 @@ class _ChatbotScreenState
       _addBotMessage(
         'Got it. When are you planning to travel?',
         quickReplies: const [
+          '📅 Choose Date on Calendar',
           'Same Day',
           'Tomorrow',
         ],
       );
 
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _step == _ConversationStep.plannerDate) {
+          _pickPlannerDate();
+        }
+      });
+
       return;
     }
 
-    // Traveler: Ask for route observations or provide immediate analysis
-    _step = _ConversationStep.travelerRain;
-    _addBotMessage(
-      'Got it. Are you experiencing rain along the route?',
-      quickReplies: const [
-        'None',
-        'Light drizzle',
-        'Moderate rain',
-        'Heavy downpour',
-        'Skip to Analysis',
-      ],
-    );
+    // Traveler: Directly trigger journey analysis and show report
+    _analyzeJourney();
   }
 
   // ============================================================
-  // PLANNER DATE
+  // PLANNER DATE & CALENDAR PICKER
   // ============================================================
+
+  Future<void> _pickPlannerDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 60)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.forestGreen,
+              onPrimary: AppTheme.white,
+              onSurface: AppTheme.darkNavy,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final String formattedDate = _formatDate(picked);
+      _addUserMessage(formattedDate);
+      _travelDate = formattedDate;
+
+      _step = _ConversationStep.plannerTime;
+
+      _addBotMessage(
+        'Travel date set to $formattedDate. Roughly what time would you like to depart?',
+        quickReplies: const [
+          '⏰ Pick Time on Clock',
+          'Morning (08:00)',
+          'Afternoon (14:00)',
+          'Evening (18:00)',
+          'Night (21:00)',
+        ],
+      );
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _step == _ConversationStep.plannerTime) {
+          _pickPlannerTime();
+        }
+      });
+    }
+  }
 
   void _handlePlannerDate(
     String message,
   ) {
+    if (message.toLowerCase().contains('calendar')) {
+      _pickPlannerDate();
+      return;
+    }
+
     final String? date =
         _parsePlannerDate(
       message,
@@ -570,8 +679,9 @@ class _ChatbotScreenState
 
     if (date == null) {
       _addBotMessage(
-        'Please specify your travel date, such as Tomorrow, Same Day, alternatively 30/09/2026.',
+        'Please specify your travel date using the calendar or choose Tomorrow / Same Day.',
         quickReplies: const [
+          '📅 Choose Date on Calendar',
           'Same Day',
           'Tomorrow',
         ],
@@ -586,23 +696,66 @@ class _ChatbotScreenState
             .plannerTime;
 
     _addBotMessage(
-      'And roughly what time would you like to leave?',
+      'Travel date set to $date. Roughly what time would you like to depart?',
       quickReplies: const [
-        'Morning',
-        'Afternoon',
-        'Evening',
-        'Night',
+        '⏰ Pick Time on Clock',
+        'Morning (08:00)',
+        'Afternoon (14:00)',
+        'Evening (18:00)',
+        'Night (21:00)',
       ],
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _step == _ConversationStep.plannerTime) {
+        _pickPlannerTime();
+      }
+    });
   }
 
   // ============================================================
-  // PLANNER TIME
+  // PLANNER TIME & CLOCK PICKER
   // ============================================================
+
+  Future<void> _pickPlannerTime() async {
+    final TimeOfDay nowTime = TimeOfDay.now();
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: nowTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.forestGreen,
+              onPrimary: AppTheme.white,
+              onSurface: AppTheme.darkNavy,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final String hour = picked.hour.toString().padLeft(2, '0');
+      final String minute = picked.minute.toString().padLeft(2, '0');
+      final String formattedTime = '$hour:$minute:00';
+      final String displayTime = '$hour:$minute';
+      _addUserMessage(displayTime);
+      _travelTime = formattedTime;
+
+      _analyzeJourney();
+    }
+  }
 
   void _handlePlannerTime(
     String message,
   ) {
+    if (message.toLowerCase().contains('clock')) {
+      _pickPlannerTime();
+      return;
+    }
+
     final String? time =
         _parsePlannerTime(
       message,
@@ -610,12 +763,13 @@ class _ChatbotScreenState
 
     if (time == null) {
       _addBotMessage(
-        'Please choose Morning, Afternoon, Evening, or Night.',
+        'Please pick a departure time on the clock / select one below.',
         quickReplies: const [
-          'Morning',
-          'Afternoon',
-          'Evening',
-          'Night',
+          '⏰ Pick Time on Clock',
+          'Morning (08:00)',
+          'Afternoon (14:00)',
+          'Evening (18:00)',
+          'Night (21:00)',
         ],
       );
       return;
@@ -623,7 +777,7 @@ class _ChatbotScreenState
 
     _travelTime = time;
 
-    _prepareJourneyAnalysis();
+    _analyzeJourney();
   }
 
   // ============================================================
@@ -910,20 +1064,23 @@ final Map<String, dynamic> analysisData =
             'source': _source,
             'destination': _destination,
             'role': _role,
+            'tripId': _tripId,
           },
         );
 
-        if (result is Map && result['action'] == 'live_updates' && mounted) {
-          _step = _ConversationStep.travelerRain;
-          _addBotMessage(
-            'Share your live route observations below. Are you experiencing rain along the highway?',
-            quickReplies: const [
-              'None',
-              'Light drizzle',
-              'Moderate rain',
-              'Heavy downpour',
-            ],
-          );
+        if (mounted) {
+          if (_role == 'traveler') {
+            _startLiveUpdatesQuestionnaire();
+          } else {
+            _addBotMessage(
+              'Your journey analysis has been loaded. Feel welcome to ask questions regarding conditions along your planned corridor.',
+              quickReplies: const [
+                'Why is this score low?',
+                'Which segment needs attention?',
+                'What precautions should I take?',
+              ],
+            );
+          }
         }
       }
     });
@@ -961,64 +1118,114 @@ final Map<String, dynamic> analysisData =
 }
 
   // ============================================================
-  // SAVE REPORT
-// ============================================================
+  // LIVE UPDATES / USER INPUT QUESTIONNAIRE
+  // ============================================================
 
-Future<void> _saveCurrentReport() async {
-  if (_tripId == null) {
-    _showError('No completed journey is available to save.');
-    return;
+  void _startLiveUpdatesQuestionnaire() {
+    _isCollectingLiveUpdates = true;
+    _step = _ConversationStep.liveUpdateRain;
+    _addBotMessage(
+      'Share your live route observations to keep corridor intelligence updated. Are you experiencing rain along the route?',
+      quickReplies: const [
+        'None',
+        'Light drizzle',
+        'Moderate rain',
+        'Heavy downpour',
+        'Skip live updates',
+      ],
+    );
   }
 
-  setState(() {
-    _isSavingReport = true;
-  });
+  void _handleLiveUpdateMessage(String message) {
+    final lower = message.toLowerCase().trim();
 
-  try {
-    final userId = (await ApiService.getStoredUserId()) ?? 1;
-
-    await ApiService.saveReport(
-      userId: userId,
-      tripId: _tripId!,
-      title:
-          '${_source ?? 'Unknown'} → ${_destination ?? 'Unknown'} Travel Report',
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _reportSaved = true;
-      _isSavingReport = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Travel report saved successfully.'),
-        action: SnackBarAction(
-          label: 'VIEW',
-          textColor: AppTheme.white,
-          onPressed: () {
-            Navigator.pushNamed(context, AppRoutes.savedReports);
-          },
-        ),
-      ),
-    );
-  } on ApiException catch (e) {
-    if (mounted) {
-      setState(() {
-        _isSavingReport = false;
-      });
+    if (lower.contains('skip')) {
+      _finishLiveUpdates(skipped: true);
+      return;
     }
-    _showError(e.message);
-  } catch (err) {
-    if (mounted) {
-      setState(() {
-        _isSavingReport = false;
-      });
+
+    switch (_step) {
+      case _ConversationStep.liveUpdateRain:
+        _rain = message.trim();
+        _step = _ConversationStep.liveUpdateTraffic;
+        _addBotMessage(
+          'How is traffic moving along your section?',
+          quickReplies: const [
+            'Free flow',
+            'Moderate delay',
+            'Heavy congestion',
+            'Standstill',
+          ],
+        );
+        break;
+
+      case _ConversationStep.liveUpdateTraffic:
+        _traffic = message.trim();
+        _step = _ConversationStep.liveUpdateHazards;
+        _addBotMessage(
+          'Any road hazards observed along your route?',
+          quickReplies: const [
+            'All clear',
+            'Slippery surface',
+            'Waterlogging',
+            'Potholes',
+            'Landslide / Rockfall',
+            'Debris',
+          ],
+        );
+        break;
+
+      case _ConversationStep.liveUpdateHazards:
+        _unusualConditions = message.trim();
+        _finishLiveUpdates(skipped: false);
+        break;
+
+      default:
+        _finishLiveUpdates(skipped: true);
+        break;
     }
-    _showError('Unable to save the report.');
   }
-}
+
+  Future<void> _finishLiveUpdates({required bool skipped}) async {
+    _isCollectingLiveUpdates = false;
+    _step = _ConversationStep.postAnalysis;
+
+    if (skipped) {
+      _addBotMessage(
+        'Live observations skipped. Feel welcome to ask questions regarding your corridor.',
+        quickReplies: const [
+          'Why is this score low?',
+          'Which segment needs attention?',
+          'What precautions should I take?',
+        ],
+      );
+      return;
+    }
+
+    if (_tripId != null) {
+      try {
+        await ApiService.submitObservation(
+          tripId: _tripId!,
+          rain: _rain,
+          traffic: _traffic,
+          unusualConditions: _unusualConditions,
+          rawMessage: 'Rain: $_rain; Traffic: $_traffic; Hazards: $_unusualConditions',
+        );
+      } catch (_) {}
+    }
+
+    _addBotMessage(
+      'Thank you! Your live observations have been submitted to enhance corridor intelligence.',
+    );
+    _addBotMessage(
+      'Feel welcome to ask questions regarding conditions along your corridor.',
+      quickReplies: const [
+        'Why is this score low?',
+        'Which segment needs attention?',
+        'What precautions should I take?',
+      ],
+    );
+  }
 
   // ============================================================
   // ADVISORY IN CHAT
@@ -1045,6 +1252,53 @@ Future<void> _saveCurrentReport() async {
       'status',
     );
 
+    final bool isPlanner = _role == 'planner';
+
+    if (!isPlanner) {
+      // Concise traveler advisory
+      final double score = safetyScore ?? 80;
+      final String verdict = score >= 80
+          ? 'Safe to travel'
+          : score >= 60
+              ? 'Moderate caution recommended'
+              : 'Caution advised along certain stretches';
+
+      _addBotMessage(
+        'Journey Safety Score: ${_formatNumber(score)}/100 ($verdict)',
+      );
+
+      final dynamic segments = _readProperty(analysis, 'problematicSegments');
+      if (segments is List && segments.isNotEmpty) {
+        final List<String> flaggedNames = [];
+        for (final dynamic seg in segments.take(2)) {
+          final String reg = _readDynamicString(seg, 'region');
+          if (reg.isNotEmpty) flaggedNames.add(reg);
+        }
+        if (flaggedNames.isNotEmpty) {
+          _addBotMessage(
+            'Keep watch near: ${flaggedNames.join(', ')}.',
+          );
+        }
+      } else {
+        _addBotMessage(
+          'All route segments are clear with no major hazards reported.',
+        );
+      }
+
+      final List<String> precautions = _generatePrecautions(analysis);
+      if (precautions.isNotEmpty) {
+        _addBotMessage(
+          'Quick tip: ${precautions.first}',
+        );
+      }
+
+      _addBotMessage(
+        'Feel welcome to ask me questions regarding conditions along your corridor.',
+      );
+      return;
+    }
+
+    // Detailed planner advisory
     if (safetyScore != null) {
       _addBotMessage(
         'Overall Safety Score: ${_formatNumber(safetyScore)}/100',
@@ -1061,16 +1315,15 @@ Future<void> _saveCurrentReport() async {
       );
     }
 
-   if (status != null &&
-    status.isNotEmpty) {
-  if (status == 'safety_score_available' ||
-      status == 'consensus_available' ||
-      status == 'partial_intelligence_available') {
-    _addBotMessage(
-      'The route analysis completed successfully.',
-    );
-  }
-}
+    if (status != null && status.isNotEmpty) {
+      if (status == 'safety_score_available' ||
+          status == 'consensus_available' ||
+          status == 'partial_intelligence_available') {
+        _addBotMessage(
+          'The route analysis completed successfully.',
+        );
+      }
+    }
 
     _addProblematicSegments(
       analysis,
@@ -1622,6 +1875,9 @@ Future<void> _handlePostAnalysisMessage(
 
     if (normalized.contains(
           'mumbai',
+        ) ||
+        normalized.contains(
+          'mumbi',
         ) ||
         normalized.contains(
           'sion',
@@ -2463,6 +2719,16 @@ List<String> _stringList(
         _isTyping ||
             _isAnalyzing;
 
+    String hintText = _analysisComplete
+        ? 'Ask about your journey...'
+        : 'Type your answer...';
+
+    if (_step == _ConversationStep.plannerDate) {
+      hintText = 'Tap calendar icon or type date...';
+    } else if (_step == _ConversationStep.plannerTime) {
+      hintText = 'Tap clock icon or pick departure time...';
+    }
+
     return Container(
       padding:
           const EdgeInsets.fromLTRB(
@@ -2494,12 +2760,43 @@ List<String> _stringList(
               onSubmitted:
                   (_) =>
                       _sendMessage(),
+              onTap: () {
+                if (_step == _ConversationStep.plannerDate) {
+                  _pickPlannerDate();
+                } else if (_step == _ConversationStep.plannerTime) {
+                  _pickPlannerTime();
+                }
+              },
+              style: const TextStyle(
+                fontSize: 15,
+                color: AppTheme.darkNavy,
+                fontWeight: FontWeight.w500,
+              ),
+              cursorColor: AppTheme.forestGreen,
               decoration:
                   InputDecoration(
-                hintText:
-                    _analysisComplete
-                        ? 'Ask about your journey...'
-                        : 'Type your answer...',
+                prefixIcon: (_step == _ConversationStep.plannerDate)
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: AppTheme.forestGreen,
+                          size: 24,
+                        ),
+                        tooltip: 'Select Date on Calendar',
+                        onPressed: disabled ? null : _pickPlannerDate,
+                      )
+                    : (_step == _ConversationStep.plannerTime)
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.access_time_filled_rounded,
+                              color: AppTheme.forestGreen,
+                              size: 24,
+                            ),
+                            tooltip: 'Pick Time on Clock',
+                            onPressed: disabled ? null : _pickPlannerTime,
+                          )
+                        : null,
+                hintText: hintText,
                 filled: true,
                 fillColor:
                     AppTheme.lightMint,
@@ -3113,8 +3410,6 @@ Widget build(
                 },
               ),
             ),
-            if (_analysisComplete)
-              _buildSaveReportButton(),
             if (_journeyReady &&
                 !_analysisComplete)
               _buildAnalyzeButton(),
@@ -3122,45 +3417,6 @@ Widget build(
                 _analysisComplete)
               _buildMessageInput(),
           ],
-        ),
-      ),
-    ),
-  );
-}
-
-  Widget _buildSaveReportButton() {
-  return Padding(
-    padding: const EdgeInsets.fromLTRB(
-      16,
-      8,
-      16,
-      8,
-    ),
-    child: SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _isSavingReport || _reportSaved
-            ? null
-            : _saveCurrentReport,
-        icon: _isSavingReport
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                ),
-              )
-            : Icon(
-                _reportSaved
-                    ? Icons.check_circle_outline
-                    : Icons.bookmark_outline,
-              ),
-        label: Text(
-          _isSavingReport
-              ? 'Saving Report...'
-              : _reportSaved
-                  ? 'Report Saved'
-                  : 'Save Report',
         ),
       ),
     ),
@@ -3226,6 +3482,10 @@ enum _ConversationStep {
   travelerUnusual,
   travelerTraffic,
   ready,
+  liveUpdateRain,
+  liveUpdateTraffic,
+  liveUpdateHazards,
+  postAnalysis,
 }
 
 // ============================================================
