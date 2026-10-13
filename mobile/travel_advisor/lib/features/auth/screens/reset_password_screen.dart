@@ -26,7 +26,6 @@ class _ResetPasswordScreenState
   bool _isResettingPassword = false;
 
   String? _identifier;
-  String? _developmentOtp;
   bool _argumentsLoaded = false;
 
   @override
@@ -44,17 +43,7 @@ class _ResetPasswordScreenState
       _identifier =
           arguments['identifier']?.toString();
 
-      _developmentOtp =
-          arguments['developmentOtp']?.toString();
-
-      if (_developmentOtp != null &&
-          _developmentOtp!.isNotEmpty) {
-        _otpController.text = _developmentOtp!;
-
-        debugPrint(
-          'Password Reset Development OTP: $_developmentOtp',
-        );
-      }
+      _argumentsLoaded = true;
     }
 
     _argumentsLoaded = true;

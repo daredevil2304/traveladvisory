@@ -64,9 +64,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final email = response['email']?.toString() ??
           _emailController.text.trim();
 
-      final developmentOtp =
-          response['development_otp']?.toString();
-
       Navigator.pushNamed(
         context,
         AppRoutes.otp,
@@ -75,7 +72,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'email': email,
           'mobile': _mobileController.text.trim(),
           'isLogin': false,
-          'developmentOtp': developmentOtp,
         },
       );
     } catch (e) {

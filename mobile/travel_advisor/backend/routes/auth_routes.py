@@ -111,7 +111,7 @@ def register(
         email=user.email,
         full_name=user.full_name,
         is_verified=user.is_verified,
-        development_otp=otp,
+        development_otp=None,
     )
 
 
@@ -215,7 +215,7 @@ def resend_verification_otp(
 
     return ResendVerificationOTPResponse(
         message="A new verification OTP has been generated.",
-        development_otp=otp,
+        development_otp=None,
     )
 
 
@@ -295,7 +295,7 @@ def send_login_otp(
     return SendLoginOTPResponse(
         message="A verification code has been sent to your mobile number.",
         mobile=user.mobile,
-        development_otp=otp,
+        development_otp=None,
     )
 
 

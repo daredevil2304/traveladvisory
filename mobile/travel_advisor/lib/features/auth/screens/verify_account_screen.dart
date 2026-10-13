@@ -29,8 +29,6 @@ class _VerifyAccountScreenState
   bool _isVerifying = false;
   bool _otpSent = false;
 
-  String? _developmentOtp;
-
   @override
 void initState() {
   super.initState();
@@ -96,12 +94,6 @@ void didChangeDependencies() {
 
       setState(() {
         _otpSent = true;
-        _developmentOtp = developmentOtp;
-
-        if (developmentOtp != null &&
-            developmentOtp.isNotEmpty) {
-          _otpController.text = developmentOtp;
-        }
       });
 
       if (developmentOtp != null &&
@@ -469,17 +461,6 @@ void didChangeDependencies() {
                     'BACK TO LOGIN',
                   ),
                 ),
-
-                if (_developmentOtp != null)
-                  const SizedBox(height: 8),
-
-                if (_developmentOtp != null)
-                  Text(
-                    'Development OTP is auto-filled.',
-                    textAlign: TextAlign.center,
-                    style:
-                        theme.textTheme.bodySmall,
-                  ),
               ],
             ),
           ),

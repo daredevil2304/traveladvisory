@@ -176,15 +176,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final mobile = _mobileController.text.trim();
 
     try {
-      final response = await ApiService.sendLoginOtp(
+      await ApiService.sendLoginOtp(
         mobile: mobile,
       );
 
       if (!mounted) {
         return;
       }
-
-      final devOtp = response['development_otp']?.toString();
 
       Navigator.pushNamed(
         context,
@@ -193,7 +191,6 @@ class _LoginScreenState extends State<LoginScreen> {
           'mobile': mobile,
           'identifier': mobile,
           'isLogin': true,
-          'developmentOtp': devOtp,
         },
       );
     } on ApiException catch (e) {
