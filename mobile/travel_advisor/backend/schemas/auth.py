@@ -138,3 +138,32 @@ class ResetPasswordRequest(BaseModel):
 
 class ResetPasswordResponse(BaseModel):
     message: str
+
+
+# ============================================================
+# LOGIN VIA OTP
+# ============================================================
+
+class SendLoginOTPRequest(BaseModel):
+    mobile: str = Field(
+        min_length=10,
+        max_length=20,
+    )
+
+
+class SendLoginOTPResponse(BaseModel):
+    message: str
+    mobile: str
+    development_otp: str | None = None
+
+
+class LoginWithOTPRequest(BaseModel):
+    mobile: str = Field(
+        min_length=10,
+        max_length=20,
+    )
+    otp: str = Field(
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+    )

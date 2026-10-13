@@ -198,6 +198,89 @@ class ApiService {
   }
 
   // ============================================================
+  // SEND LOGIN OTP
+  // ============================================================
+
+  static Future<Map<String, dynamic>> sendLoginOtp({
+    required String mobile,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/send-login-otp');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'mobile': mobile.trim(),
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
+  // LOGIN WITH OTP
+  // ============================================================
+
+  static Future<Map<String, dynamic>> loginWithOtp({
+    required String mobile,
+    required String otp,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/login-with-otp');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'mobile': mobile.trim(),
+              'otp': otp.trim(),
+            }),
+          )
+          .timeout(requestTimeout);
+
+      final data = _handleResponse(response);
+
+      final userId = data['user_id'];
+
+      if (userId != null) {
+        await _secureStorage.write(
+          key: _userIdKey,
+          value: userId.toString(),
+        );
+      }
+
+      return data;
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
   // PERSISTENT LOGIN
   // ============================================================
 

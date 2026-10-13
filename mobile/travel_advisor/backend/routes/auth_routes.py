@@ -14,6 +14,9 @@ from schemas.auth import (
     ResetPasswordResponse,
     ResendVerificationOTPRequest,
     ResendVerificationOTPResponse,
+    SendLoginOTPRequest,
+    SendLoginOTPResponse,
+    LoginWithOTPRequest,
     VerifyOTPRequest,
     VerifyOTPResponse,
 )
@@ -28,11 +31,14 @@ from services.auth_service import (
 )
 
 from services.otp_service import (
+    LOGIN_PURPOSE,
     PASSWORD_RESET_PURPOSE,
     REGISTRATION_PURPOSE,
     create_otp,
     verify_otp,
 )
+
+from services.sms_service import sms_service
 
 
 router = APIRouter(
@@ -90,13 +96,10 @@ def register(
         purpose=REGISTRATION_PURPOSE,
     )
 
-    print()
-    print("=" * 50)
-    print("DEVELOPMENT OTP")
-    print(f"Email: {user.email}")
-    print(f"OTP: {otp}")
-    print("=" * 50)
-    print()
+    sms_service.send_otp(
+        mobile=user.mobile,
+        otp=otp,
+    )
 
     return RegisterResponse(
         message=(
@@ -244,6 +247,97 @@ def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is not verified.",
         )
+
+    return LoginResponse(
+        message="Login successful.",
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        is_verified=user.is_verified,
+    )
+
+
+# ============================================================
+# SEND LOGIN OTP
+# ============================================================
+
+@router.post(
+    "/send-login-otp",
+    response_model=SendLoginOTPResponse,
+)
+def send_login_otp(
+    request: SendLoginOTPRequest,
+    db: Session = Depends(get_db),
+):
+    user = get_user_by_mobile(
+        db=db,
+        mobile=request.mobile,
+    )
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this mobile number.",
+        )
+
+    otp = create_otp(
+        db=db,
+        user=user,
+        purpose=LOGIN_PURPOSE,
+    )
+
+    sms_service.send_otp(
+        mobile=user.mobile,
+        otp=otp,
+    )
+
+    return SendLoginOTPResponse(
+        message="A verification code has been sent to your mobile number.",
+        mobile=user.mobile,
+        development_otp=otp,
+    )
+
+
+# ============================================================
+# LOGIN WITH OTP
+# ============================================================
+
+@router.post(
+    "/login-with-otp",
+    response_model=LoginResponse,
+)
+def login_with_otp(
+    request: LoginWithOTPRequest,
+    db: Session = Depends(get_db),
+):
+    user = get_user_by_mobile(
+        db=db,
+        mobile=request.mobile,
+    )
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this mobile number.",
+        )
+
+    verified, message = verify_otp(
+        db=db,
+        user=user,
+        otp=request.otp,
+        purpose=LOGIN_PURPOSE,
+    )
+
+    if not verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message,
+        )
+
+    if not user.is_verified:
+        user.is_verified = True
+        db.commit()
+        db.refresh(user)
 
     return LoginResponse(
         message="Login successful.",

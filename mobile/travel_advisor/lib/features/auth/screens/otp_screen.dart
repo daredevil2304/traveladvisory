@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
+import '../../../../core/services/api_service.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -34,6 +35,88 @@ class _OtpScreenState extends State<OtpScreen> {
 
   int _secondsRemaining = 30;
   bool _isVerifying = false;
+
+  String? _identifier;
+  String? _mobile;
+  bool _isLogin = false;
+  String? _developmentOtp;
+  bool _isAutoFilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _identifier = args['identifier']?.toString() ?? args['email']?.toString();
+      _mobile = args['mobile']?.toString();
+      _isLogin = args['isLogin'] == true;
+      _developmentOtp = args['developmentOtp']?.toString();
+
+      if (_developmentOtp != null &&
+          _developmentOtp!.length == _otpLength &&
+          !_isAutoFilled) {
+        _isAutoFilled = true;
+        _simulateSmsArrival(_developmentOtp!);
+      }
+    }
+  }
+
+  void _simulateSmsArrival(String otpCode) {
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(
+                Icons.mark_chat_unread_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'SMS • Travel Advisory',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Your verification code is $otpCode. Auto-filling now.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+          margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
+        ),
+      );
+
+      for (int i = 0; i < _otpLength && i < otpCode.length; i++) {
+        _controllers[i].text = otpCode[i];
+      }
+      _focusNodes.last.unfocus();
+      setState(() {});
+    });
+  }
 
   @override
   void initState() {
@@ -167,7 +250,7 @@ class _OtpScreenState extends State<OtpScreen> {
         .join();
   }
 
-  void _resendOtp() {
+  Future<void> _resendOtp() async {
     if (_secondsRemaining != 0) {
       return;
     }
@@ -177,16 +260,56 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     _focusNodes.first.requestFocus();
-
     _startTimer();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'A new OTP has been sent.',
-        ),
-      ),
-    );
+    try {
+      String? devOtp;
+      if (_isLogin) {
+        final mobile = _mobile ?? _identifier;
+        if (mobile != null && mobile.isNotEmpty) {
+          final res = await ApiService.sendLoginOtp(mobile: mobile);
+          devOtp = res['development_otp']?.toString();
+        }
+      } else {
+        final id = _identifier ?? _mobile;
+        if (id != null && id.isNotEmpty) {
+          final res = await ApiService.resendVerificationOtp(identifier: id);
+          devOtp = res['development_otp']?.toString();
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'A new verification code has been dispatched.',
+            ),
+          ),
+        );
+
+        if (devOtp != null && devOtp.length == _otpLength) {
+          _simulateSmsArrival(devOtp);
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to resend code. Please try again.'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _verifyOtp() async {
@@ -205,121 +328,153 @@ class _OtpScreenState extends State<OtpScreen> {
 
     final otp = _getOtp();
 
-    debugPrint('Entered OTP: $otp');
-
     setState(() {
       _isVerifying = true;
     });
 
-    // Temporary mock verification.
-    // Real OTP verification will be connected
-    // to the backend later.
-    await Future.delayed(
-      const Duration(milliseconds: 700),
-    );
+    try {
+      if (_isLogin) {
+        final mobile = _mobile ?? _identifier;
+        if (mobile == null || mobile.isEmpty) {
+          throw ApiException('Mobile number is required for OTP verification.');
+        }
 
-    if (!mounted) {
-      return;
-    }
+        await ApiService.loginWithOtp(
+          mobile: mobile,
+          otp: otp,
+        );
+      } else {
+        final id = _identifier ?? _mobile;
+        if (id == null || id.isEmpty) {
+          throw ApiException('Account identifier is required for OTP verification.');
+        }
 
-    setState(() {
-      _isVerifying = false;
-    });
+        await ApiService.verifyOtp(
+          identifier: id,
+          otp: otp,
+        );
+      }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            28,
-            24,
-            28,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isVerifying = false;
+      });
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isDismissible: false,
+        enableDrag: false,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              28,
+              24,
+              28,
             ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 68,
-                  height: 68,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(
-                      alpha: 0.10,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(
+                        alpha: 0.10,
+                      ),
+                      shape: BoxShape.circle,
                     ),
-                    shape: BoxShape.circle,
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: AppTheme.primary,
+                      size: 38,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: AppTheme.primary,
-                    size: 38,
+                  const SizedBox(height: 18),
+                  Text(
+                    _isLogin ? 'Login verified!' : 'Account verified!',
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 18),
-
-                const Text(
-                  'Account verified!',
-                  style: TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
+                  const SizedBox(height: 8),
+                  Text(
+                    _isLogin
+                        ? 'You have successfully signed in. Let’s plan your journey.'
+                        : 'Your account has been successfully verified. Let’s personalise your travel experience.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 8),
-
-                const Text(
-                  'Your account has been successfully verified. '
-                  'Let’s personalise your travel experience.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.roleSelection,
-                      );
-                    },
-                    child: const Text(
-                      'CONTINUE',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.roleSelection,
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        'CONTINUE',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isVerifying = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isVerifying = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Verification failed. Please try again.'),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    }
   }
 
   Widget _buildOtpBox(int index) {
@@ -379,6 +534,9 @@ class _OtpScreenState extends State<OtpScreen> {
               ),
             ),
           ),
+          autofillHints: const [
+            AutofillHints.oneTimeCode,
+          ],
           onChanged: (value) {
             _handleOtpChange(
               index,
@@ -447,11 +605,11 @@ class _OtpScreenState extends State<OtpScreen> {
 
                 const SizedBox(height: 26),
 
-                const Center(
+                Center(
                   child: Text(
-                    'Verify your account',
+                    _isLogin ? 'Sign in with OTP' : 'Verify your account',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.textPrimary,
@@ -461,11 +619,13 @@ class _OtpScreenState extends State<OtpScreen> {
 
                 const SizedBox(height: 10),
 
-                const Center(
+                Center(
                   child: Text(
-                    'Enter the 6-digit verification code sent to your registered mobile number.',
+                    _isLogin
+                        ? 'Enter the 6-digit verification code sent to ${_mobile ?? "your mobile"}.'
+                        : 'Enter the 6-digit verification code sent to your registered mobile number.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       height: 1.5,
                       color: AppTheme.textSecondary,
@@ -475,24 +635,61 @@ class _OtpScreenState extends State<OtpScreen> {
 
                 const SizedBox(height: 36),
 
-                const Text(
-                  'Verification code',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Verification code',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    if (_isAutoFilled)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.forestGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              size: 13,
+                              color: AppTheme.forestGreen,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Auto-filled from SMS',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.forestGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
 
                 const SizedBox(height: 12),
 
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    _otpLength,
-                    (index) {
-                      return _buildOtpBox(index);
-                    },
+                AutofillGroup(
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: List.generate(
+                      _otpLength,
+                      (index) {
+                        return _buildOtpBox(index);
+                      },
+                    ),
                   ),
                 ),
 

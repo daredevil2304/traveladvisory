@@ -25,6 +25,8 @@ class Settings(BaseSettings):
         "https://api.openweathermap.org/data/2.5"
     )
 
+    fast2sms_api_key: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

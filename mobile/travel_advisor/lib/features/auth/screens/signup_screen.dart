@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
@@ -71,7 +71,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         context,
         AppRoutes.otp,
         arguments: {
+          'identifier': email,
           'email': email,
+          'mobile': _mobileController.text.trim(),
+          'isLogin': false,
           'developmentOtp': developmentOtp,
         },
       );

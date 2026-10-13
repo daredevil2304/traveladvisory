@@ -16,14 +16,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _mobileController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoggingIn = false;
+  bool _isOtpLoginMode = false;
+  bool _isSendingOtp = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _mobileController.dispose();
     super.dispose();
   }
 
@@ -153,6 +157,77 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 }
+
+  // ============================================================
+  // SEND LOGIN OTP
+  // ============================================================
+
+  Future<void> _sendLoginOtp() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSendingOtp = true;
+    });
+
+    final mobile = _mobileController.text.trim();
+
+    try {
+      final response = await ApiService.sendLoginOtp(
+        mobile: mobile,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final devOtp = response['development_otp']?.toString();
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.otp,
+        arguments: {
+          'mobile': mobile,
+          'identifier': mobile,
+          'isLogin': true,
+          'developmentOtp': devOtp,
+        },
+      );
+    } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to send verification code. Please try again.',
+          ),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingOtp = false;
+        });
+      }
+    }
+  }
   // ============================================================
   // BUILD
   // ============================================================
@@ -212,152 +287,305 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 28),
 
                     // ======================================================
-                    // EMAIL / MOBILE
+                    // LOGIN METHOD SELECTOR
                     // ======================================================
 
-                    const Text(
-                      'Email or mobile number',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
+                    Container(
+                      height: 48,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.border.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _isLoggingIn || _isSendingOtp
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _isOtpLoginMode = false;
+                                      });
+                                    },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: !_isOtpLoginMode
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: !_isOtpLoginMode
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.06),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Password',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: !_isOtpLoginMode
+                                        ? AppTheme.textPrimary
+                                        : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _isLoggingIn || _isSendingOtp
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _isOtpLoginMode = true;
+                                      });
+                                    },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _isOtpLoginMode
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: _isOtpLoginMode
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.06),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Mobile OTP',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: _isOtpLoginMode
+                                        ? AppTheme.textPrimary
+                                        : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 28),
 
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      enabled: !_isLoggingIn,
-                      decoration: const InputDecoration(
-                        hintText:
-                            'Enter your email or mobile number',
-                        prefixIcon: Icon(
-                          Icons.person_outline_rounded,
+                    if (!_isOtpLoginMode) ...[
+                      // ======================================================
+                      // EMAIL / MOBILE
+                      // ======================================================
+
+                      const Text(
+                        'Email or mobile number',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null ||
-                            value.trim().isEmpty) {
-                          return 'Please enter your email or mobile number';
-                        }
 
-                        return null;
-                      },
-                    ),
+                      const SizedBox(height: 8),
 
-                    const SizedBox(height: 20),
-
-                    // ======================================================
-                    // PASSWORD
-                    // ======================================================
-
-                    const Text(
-                      'Password',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      enabled: !_isLoggingIn,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your password',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline_rounded,
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_isLoggingIn,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter your email or mobile number',
+                          prefixIcon: Icon(
+                            Icons.person_outline_rounded,
+                          ),
                         ),
-                        suffixIcon: IconButton(
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your email or mobile number';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ======================================================
+                      // PASSWORD
+                      // ======================================================
+
+                      const Text(
+                        'Password',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        enabled: !_isLoggingIn,
+                        decoration: InputDecoration(
+                          hintText: 'Enter your password',
+                          prefixIcon: const Icon(
+                            Icons.lock_outline_rounded,
+                          ),
+                          suffixIcon: IconButton(
+                            onPressed: _isLoggingIn
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          if (value.length < 8) {
+                            return 'Password must contain at least 8 characters';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
                           onPressed: _isLoggingIn
                               ? null
                               : () {
-                                  setState(() {
-                                    _obscurePassword =
-                                        !_obscurePassword;
-                                  });
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.forgotPassword,
+                                  );
                                 },
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                          child: const Text('Forgot password?'),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _isLoggingIn ? null : _login,
+                          child: _isLoggingIn
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'LOGIN',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ] else ...[
+                      // ======================================================
+                      // MOBILE NUMBER OTP LOGIN
+                      // ======================================================
+
+                      const Text(
+                        'Mobile number',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      TextFormField(
+                        controller: _mobileController,
+                        keyboardType: TextInputType.phone,
+                        enabled: !_isSendingOtp,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter your 10-digit mobile number',
+                          prefixIcon: Icon(
+                            Icons.phone_android_rounded,
                           ),
                         ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your mobile number';
+                          }
+                          final digits = value.replaceAll(RegExp(r'\D'), '');
+                          if (digits.length < 10) {
+                            return 'Mobile number must be at least 10 digits';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty) {
-                          return 'Please enter your password';
-                        }
 
-                        if (value.length < 8) {
-                          return 'Password must contain at least 8 characters';
-                        }
+                      const SizedBox(height: 12),
 
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ======================================================
-                    // FORGOT PASSWORD
-                    // ======================================================
-
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                       onPressed: _isLoggingIn
-    ? null
-    : () {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.forgotPassword,
-        );
-      },
-                        child: const Text(
-                          'Forgot password?',
+                      const Text(
+                        'A 6-digit verification code will be sent via SMS to your mobile number.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: AppTheme.textSecondary,
                         ),
                       ),
-                    ),
 
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 24),
 
-                    // ======================================================
-                    // LOGIN BUTTON
-                    // ======================================================
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isLoggingIn
-                            ? null
-                            : _login,
-                        child: _isLoggingIn
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _isSendingOtp ? null : _sendLoginOtp,
+                          child: _isSendingOtp
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'SEND VERIFICATION CODE',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                'LOGIN',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                        ),
                       ),
-                    ),
+                    ],
 
                     const SizedBox(height: 28),
 

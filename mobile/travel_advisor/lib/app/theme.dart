@@ -17,6 +17,7 @@ class AppTheme {
   static const Color textPrimary = darkNavy;
   static const Color white = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFDDE7E3);
+  static const Color danger = Color(0xFFDC2626);
 
   static ThemeData get lightTheme {
     return ThemeData(

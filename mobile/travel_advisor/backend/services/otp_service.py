@@ -16,6 +16,7 @@ MAX_OTP_ATTEMPTS = 5
 
 REGISTRATION_PURPOSE = "registration"
 PASSWORD_RESET_PURPOSE = "password_reset"
+LOGIN_PURPOSE = "login"
 
 
 # ============================================================
