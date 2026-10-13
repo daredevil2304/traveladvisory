@@ -39,8 +39,6 @@ class _OtpScreenState extends State<OtpScreen> {
   String? _identifier;
   String? _mobile;
   bool _isLogin = false;
-  String? _developmentOtp;
-  bool _isAutoFilled = false;
 
   @override
   void didChangeDependencies() {
@@ -50,72 +48,7 @@ class _OtpScreenState extends State<OtpScreen> {
       _identifier = args['identifier']?.toString() ?? args['email']?.toString();
       _mobile = args['mobile']?.toString();
       _isLogin = args['isLogin'] == true;
-      _developmentOtp = args['developmentOtp']?.toString();
-
-      if (_developmentOtp != null &&
-          _developmentOtp!.length == _otpLength &&
-          !_isAutoFilled) {
-        _isAutoFilled = true;
-        _simulateSmsArrival(_developmentOtp!);
-      }
     }
-  }
-
-  void _simulateSmsArrival(String otpCode) {
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.mark_chat_unread_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'SMS • Travel Advisory',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Your verification code is $otpCode. Auto-filling now.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF1E293B),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 4),
-          margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
-        ),
-      );
-
-      for (int i = 0; i < _otpLength && i < otpCode.length; i++) {
-        _controllers[i].text = otpCode[i];
-      }
-      _focusNodes.last.unfocus();
-      setState(() {});
-    });
   }
 
   @override
@@ -263,18 +196,15 @@ class _OtpScreenState extends State<OtpScreen> {
     _startTimer();
 
     try {
-      String? devOtp;
       if (_isLogin) {
         final mobile = _mobile ?? _identifier;
         if (mobile != null && mobile.isNotEmpty) {
-          final res = await ApiService.sendLoginOtp(mobile: mobile);
-          devOtp = res['development_otp']?.toString();
+          await ApiService.sendLoginOtp(mobile: mobile);
         }
       } else {
         final id = _identifier ?? _mobile;
         if (id != null && id.isNotEmpty) {
-          final res = await ApiService.resendVerificationOtp(identifier: id);
-          devOtp = res['development_otp']?.toString();
+          await ApiService.resendVerificationOtp(identifier: id);
         }
       }
 
@@ -286,10 +216,6 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
           ),
         );
-
-        if (devOtp != null && devOtp.length == _otpLength) {
-          _simulateSmsArrival(devOtp);
-        }
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -635,47 +561,12 @@ class _OtpScreenState extends State<OtpScreen> {
 
                 const SizedBox(height: 36),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Verification code',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    if (_isAutoFilled)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.forestGreen.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              size: 13,
-                              color: AppTheme.forestGreen,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Auto-filled from SMS',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.forestGreen,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                const Text(
+                  'Verification code',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
 
                 const SizedBox(height: 12),
