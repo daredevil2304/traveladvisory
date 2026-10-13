@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+<rect x="18" y="18" width="764" height="564" rx="120" fill="#0B4F45"/>
+<circle cx="540" cy="170" r="62" fill="#F79316"/>
+<path d="M105 395L255 205L335 305L430 165L625 395Z" fill="#F5F7F1"/>
+<path d="M175 395L275 265L325 325L430 215L575 395Z" fill="#DCE9E2"/>
+<path d="M345 405C400 370 410 340 385 315C360 289 300 290 286 264C274 241 296 218 323 205" fill="none" stroke="#F5F7F1" stroke-width="34" stroke-linecap="round"/>
+<path d="M345 405C400 370 410 340 385 315C360 289 300 290 286 264C274 241 296 218 323 205" fill="none" stroke="#0B4F45" stroke-width="5" stroke-dasharray="18 16" stroke-linecap="round"/>
+<path d="M625 245C625 205 655 178 692 178C729 178 759 205 759 245C759 296 692 346 692 346C692 346 625 296 625 245Z" fill="#F5F7F1"/>
+<circle cx="692" cy="239" r="18" fill="#0B4F45"/>
+<text x="400" y="470" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="48" font-weight="700" letter-spacing="3" fill="#F5F7F1">MUMBAI–PUNE</text>
+<text x="400" y="515" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="600" letter-spacing="7" fill="#BDE5D8">TRAVEL ADVISOR</text>
+</svg>

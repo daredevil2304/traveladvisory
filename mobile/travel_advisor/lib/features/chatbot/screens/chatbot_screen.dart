@@ -1,0 +1,3139 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../../app/routes.dart';
+import '../../../app/theme.dart';
+import '../../../core/services/api_service.dart';
+
+class ChatbotScreen extends StatefulWidget {
+  const ChatbotScreen({super.key});
+
+  @override
+  State<ChatbotScreen> createState() =>
+      _ChatbotScreenState();
+}
+
+class _ChatbotScreenState
+    extends State<ChatbotScreen> {
+  final TextEditingController
+      _messageController =
+      TextEditingController();
+
+  final ScrollController
+      _scrollController =
+      ScrollController();
+
+  final List<_ChatMessage> _messages =
+      [];
+
+  String _role = 'traveler';
+
+  double? _latitude;
+  double? _longitude;
+
+  String? _source;
+  String? _destination;
+
+  String? _travelDate;
+  String? _travelTime;
+
+  String? _rain;
+  String? _visibility;
+  String? _fog;
+  String? _unusualConditions;
+  String? _traffic;
+
+  _ConversationStep _step =
+      _ConversationStep.confirmSource;
+
+  bool _isTyping = false;
+  bool _journeyReady = false;
+  bool _isAnalyzing = false;
+  bool _analysisComplete = false;
+  final bool _reportSaved = false;
+  final bool _isSavingReport = false;
+  Map<String, dynamic>? _tripAnalysis;
+
+  int? _tripId;
+
+  // ============================================================
+  // ROUTE POINTS
+  // ============================================================
+
+  static const List<_RoutePoint>
+      _routePoints = [
+    _RoutePoint(
+      name: 'Mumbai',
+      displayName: 'Mumbai / Sion',
+      latitude: 19.04650,
+      longitude: 72.86330,
+    ),
+    _RoutePoint(
+      name: 'Panvel',
+      displayName: 'Panvel',
+      latitude: 18.98878,
+      longitude: 73.11013,
+    ),
+    _RoutePoint(
+      name: 'Khalapur',
+      displayName: 'Khalapur',
+      latitude: 18.81670,
+      longitude: 73.26670,
+    ),
+    _RoutePoint(
+      name: 'Khopoli',
+      displayName: 'Khopoli',
+      latitude: 18.78770,
+      longitude: 73.34380,
+    ),
+    _RoutePoint(
+      name: 'Khandala',
+      displayName: 'Khandala',
+      latitude: 18.77001,
+      longitude: 73.38300,
+    ),
+    _RoutePoint(
+      name: 'Lonavala',
+      displayName: 'Lonavala',
+      latitude: 18.75460,
+      longitude: 73.40620,
+    ),
+    _RoutePoint(
+      name: 'Kamshet',
+      displayName: 'Kamshet',
+      latitude: 18.76290,
+      longitude: 73.55760,
+    ),
+    _RoutePoint(
+      name: 'Pune',
+      displayName: 'Pune',
+      latitude: 18.52050,
+      longitude: 73.85650,
+    ),
+  ];
+
+  // ============================================================
+  // LIFECYCLE
+  // ============================================================
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_messages.isNotEmpty) {
+      return;
+    }
+
+    final arguments =
+        ModalRoute.of(context)
+            ?.settings
+            .arguments;
+
+    if (arguments
+        is Map<String, dynamic>) {
+      final role =
+          arguments['role'];
+
+      if (role is String &&
+          role.isNotEmpty) {
+        _role = role;
+      }
+
+      final latitude =
+          arguments['latitude'];
+
+      final longitude =
+          arguments['longitude'];
+
+      if (latitude is num) {
+        _latitude =
+            latitude.toDouble();
+      }
+
+      if (longitude is num) {
+        _longitude =
+            longitude.toDouble();
+      }
+    }
+
+    _startConversation();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // ============================================================
+  // START CONVERSATION
+  // ============================================================
+
+  void _startConversation() {
+    final bool isPlanner =
+        _role == 'planner';
+
+    _addBotMessage(
+      'Hi! I am your Mumbai Pune Travel Advisor.',
+    );
+
+    _addBotMessage(
+      isPlanner
+          ? 'I will help you plan your journey using the requested travel time and conditions along the route.'
+          : 'I will help you understand the current conditions along your journey.',
+    );
+
+    if (_latitude == null ||
+        _longitude == null) {
+      _addBotMessage(
+        'I could not determine your current location. Please check your location permission and try again.',
+      );
+      return;
+    }
+
+    final _RoutePoint
+        nearestPoint =
+        _getNearestRoutePoint(
+      _latitude!,
+      _longitude!,
+    );
+
+    /*
+     * IMPORTANT:
+     *
+     * "Current Location" is only conversational
+     * wording. It is NEVER sent to the backend.
+     *
+     * Backend receives canonical route names:
+     * Mumbai, Panvel, Khalapur, etc.
+     */
+    _source =
+        nearestPoint.name;
+
+    _addBotMessage(
+      'I have detected your current location near ${nearestPoint.displayName}.',
+    );
+
+    _addBotMessage(
+      'Would you like to use this as your starting point?',
+      quickReplies: const [
+        'Yes',
+        'Change source',
+      ],
+    );
+  }
+
+  // ============================================================
+  // SEND MESSAGE
+  // ============================================================
+
+  void _sendMessage() {
+    final String message =
+        _messageController.text.trim();
+
+    if (message.isEmpty ||
+        _isTyping ||
+        _isAnalyzing) {
+      return;
+    }
+
+    _messageController.clear();
+
+    _addUserMessage(message);
+
+    /*
+     * After analysis, the chatbot remains active.
+     * User can ask follow-up questions instead
+     * of being forced onto another screen.
+     */
+    if (_analysisComplete) {
+      _handlePostAnalysisMessage(
+        message,
+      );
+      return;
+    }
+
+    if (_journeyReady) {
+      return;
+    }
+
+    _processMessage(message);
+  }
+
+  // ============================================================
+  // QUICK REPLY
+  // ============================================================
+
+  void _selectQuickReply(
+    String value,
+  ) {
+    if (_isTyping ||
+        _isAnalyzing) {
+      return;
+    }
+
+    _addUserMessage(value);
+
+    if (_analysisComplete) {
+      _handlePostAnalysisMessage(
+        value,
+      );
+      return;
+    }
+
+    if (_journeyReady) {
+      return;
+    }
+
+    _processMessage(value);
+  }
+
+  // ============================================================
+  // PROCESS MESSAGE
+  // ============================================================
+
+  void _processMessage(
+    String message,
+  ) {
+    final String normalized =
+        message
+            .toLowerCase()
+            .trim();
+
+    switch (_step) {
+      case _ConversationStep
+          .confirmSource:
+        _handleSourceConfirmation(
+          normalized,
+        );
+        break;
+
+      case _ConversationStep
+          .manualSource:
+        _handleManualSource(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .destination:
+        _handleDestination(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .plannerDate:
+        _handlePlannerDate(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .plannerTime:
+        _handlePlannerTime(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .travelerRain:
+        _handleTravelerRain(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .travelerVisibility:
+        _handleTravelerVisibility(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .travelerFog:
+        _handleTravelerFog(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .travelerUnusual:
+        _handleTravelerUnusual(
+          message,
+        );
+        break;
+
+      case _ConversationStep
+          .travelerTraffic:
+        _handleTravelerTraffic(
+          message,
+        );
+        break;
+
+      case _ConversationStep.ready:
+        break;
+    }
+  }
+
+  // ============================================================
+  // SOURCE CONFIRMATION
+  // ============================================================
+
+  void _handleSourceConfirmation(
+    String message,
+  ) {
+    final bool accepted =
+        message == 'yes' ||
+        message.contains('yes');
+
+    if (accepted) {
+      _askDestination();
+      return;
+    }
+
+    if (message.contains(
+          'change',
+        ) ||
+        message.contains(
+          'different',
+        )) {
+      _addBotMessage(
+        'Sure. Which starting location would you like to use?',
+        quickReplies:
+            _routePoints
+                .map(
+                  (point) =>
+                      point.displayName,
+                )
+                .toList(),
+      );
+
+      _step =
+          _ConversationStep
+              .manualSource;
+
+      return;
+    }
+
+    _addBotMessage(
+      'Would you like to use the detected starting point?',
+      quickReplies: const [
+        'Yes',
+        'Change source',
+      ],
+    );
+  }
+
+  // ============================================================
+  // MANUAL SOURCE
+  // ============================================================
+
+  void _handleManualSource(
+    String message,
+  ) {
+    final _RoutePoint? point =
+        _findRoutePoint(message);
+
+    if (point == null) {
+      _addBotMessage(
+        'Please choose a location on the Mumbai Pune route.',
+        quickReplies:
+            _routePoints
+                .map(
+                  (item) =>
+                      item.displayName,
+                )
+                .toList(),
+      );
+      return;
+    }
+
+    _source =
+        point.name;
+
+    _addBotMessage(
+      'Sure, we will start from ${point.displayName}.',
+    );
+
+    _askDestination();
+  }
+
+  // ============================================================
+  // DESTINATION
+  // ============================================================
+
+  void _askDestination() {
+    _step =
+        _ConversationStep
+            .destination;
+
+    _addBotMessage(
+      'Great. Where are you heading?',
+      quickReplies:
+          _routePoints
+              .map(
+                (point) =>
+                    point.displayName,
+              )
+              .toList(),
+    );
+  }
+
+  void _handleDestination(
+    String message,
+  ) {
+    final _RoutePoint? point =
+        _findRoutePoint(message);
+
+    if (point == null) {
+      _addBotMessage(
+        'Please choose a supported Mumbai Pune route destination.',
+        quickReplies:
+            _routePoints
+                .map(
+                  (item) =>
+                      item.displayName,
+                )
+                .toList(),
+      );
+      return;
+    }
+
+    if (_source ==
+        point.name) {
+      _addBotMessage(
+        'Your source and destination are the same. Please choose another destination.',
+      );
+      return;
+    }
+
+    _destination =
+        point.name;
+
+    final bool isPlanner =
+        _role == 'planner';
+
+    if (isPlanner) {
+      _step =
+          _ConversationStep
+              .plannerDate;
+
+      _addBotMessage(
+        'Got it. When are you planning to travel?',
+        quickReplies: const [
+          'Today',
+          'Tomorrow',
+        ],
+      );
+
+      return;
+    }
+
+    // Traveler: Skip manual inputs and auto-generate report
+    _analyzeJourney();
+  }
+
+  // ============================================================
+  // PLANNER DATE
+  // ============================================================
+
+  void _handlePlannerDate(
+    String message,
+  ) {
+    final String? date =
+        _parsePlannerDate(
+      message,
+    );
+
+    if (date == null) {
+      _addBotMessage(
+        'Please choose Today or Tomorrow, or enter a date such as 30/09/2026.',
+        quickReplies: const [
+          'Today',
+          'Tomorrow',
+        ],
+      );
+      return;
+    }
+
+    _travelDate = date;
+
+    _step =
+        _ConversationStep
+            .plannerTime;
+
+    _addBotMessage(
+      'And roughly what time would you like to leave?',
+      quickReplies: const [
+        'Morning',
+        'Afternoon',
+        'Evening',
+        'Night',
+      ],
+    );
+  }
+
+  // ============================================================
+  // PLANNER TIME
+  // ============================================================
+
+  void _handlePlannerTime(
+    String message,
+  ) {
+    final String? time =
+        _parsePlannerTime(
+      message,
+    );
+
+    if (time == null) {
+      _addBotMessage(
+        'Please choose Morning, Afternoon, Evening, or Night.',
+        quickReplies: const [
+          'Morning',
+          'Afternoon',
+          'Evening',
+          'Night',
+        ],
+      );
+      return;
+    }
+
+    _travelTime = time;
+
+    _prepareJourneyAnalysis();
+  }
+
+  // ============================================================
+  // TRAVELER RAIN
+  // ============================================================
+
+  void _handleTravelerRain(
+    String message,
+  ) {
+    _rain =
+        message.trim();
+
+    _step =
+        _ConversationStep
+            .travelerVisibility;
+
+    _addBotMessage(
+      'And how is the visibility right now?',
+      quickReplies: const [
+        'Very clear',
+        'Clear',
+        'Slightly reduced',
+        'Moderately reduced',
+        'Poor',
+        'Very poor',
+      ],
+    );
+  }
+
+  // ============================================================
+  // TRAVELER VISIBILITY
+  // ============================================================
+
+  void _handleTravelerVisibility(
+    String message,
+  ) {
+    _visibility =
+        message.trim();
+
+    _step =
+        _ConversationStep
+            .travelerFog;
+
+    _addBotMessage(
+      'Are you noticing any fog or mist?',
+      quickReplies: const [
+        'None',
+        'Light mist',
+        'Moderate mist',
+        'Dense fog',
+        'Very dense fog',
+      ],
+    );
+  }
+
+  // ============================================================
+  // TRAVELER FOG
+  // ============================================================
+
+  void _handleTravelerFog(
+    String message,
+  ) {
+    _fog =
+        message.trim();
+
+    _step =
+        _ConversationStep
+            .travelerUnusual;
+
+    _addBotMessage(
+      'Anything unusual on the road right now?',
+      quickReplies: const [
+        'Nothing unusual',
+        'Slippery road',
+        'Waterlogging',
+        'Landslide / Rockfall',
+        'Fallen tree',
+        'Debris',
+        'Road damage',
+        'Construction',
+        'Accident / Incident',
+        'Road closure',
+        'Other',
+      ],
+    );
+  }
+
+  // ============================================================
+  // TRAVELER UNUSUAL CONDITIONS
+  // ============================================================
+
+  void _handleTravelerUnusual(
+    String message,
+  ) {
+    _unusualConditions =
+        _normalizeUnusualCondition(
+      message,
+    );
+
+    _step =
+        _ConversationStep
+            .travelerTraffic;
+
+    _addBotMessage(
+      'And how is the traffic right now?',
+      quickReplies: const [
+        'Free flow',
+        'Light',
+        'Moderate',
+        'Heavy',
+        'Very heavy',
+        'Standstill',
+      ],
+    );
+  }
+
+  // ============================================================
+  // TRAVELER TRAFFIC
+  // ============================================================
+
+  void _handleTravelerTraffic(
+    String message,
+  ) {
+    _traffic =
+        _normalizeTraffic(
+      message,
+    );
+
+    /*
+     * Traffic is collected as traveler evidence.
+     *
+     * It is intentionally NOT part of the Safety Score.
+     */
+    _prepareJourneyAnalysis();
+  }
+
+  // ============================================================
+  // READY
+  // ============================================================
+
+  void _prepareJourneyAnalysis() {
+    _step =
+        _ConversationStep.ready;
+
+    setState(() {
+      _journeyReady = true;
+    });
+
+    _showTypingThen(
+      'Thanks. I have what I need. Tap "Analyze Journey" and I will assess the route using the available intelligence sources.',
+    );
+  }
+
+  // ============================================================
+// ANALYZE JOURNEY
+// ============================================================
+
+Future<void> _analyzeJourney() async {
+  if (_isAnalyzing) {
+    return;
+  }
+
+  if (_latitude == null || _longitude == null) {
+    _showError(
+      'Your location could not be determined. Please go back and allow location access.',
+    );
+    return;
+  }
+
+  if (_source == null || _source!.trim().isEmpty) {
+    _showError('Please provide a starting location.');
+    return;
+  }
+
+  if (_destination == null || _destination!.trim().isEmpty) {
+    _showError('Please provide a destination.');
+    return;
+  }
+
+  final bool isPlanner = _role == 'planner';
+
+  if (isPlanner &&
+      (_travelDate == null || _travelTime == null)) {
+    _showError(
+      'Travel date and time are required for a planned journey.',
+    );
+    return;
+  }
+
+  FocusScope.of(context).unfocus();
+
+  setState(() {
+    _isAnalyzing = true;
+  });
+
+  _addBotMessage(
+    'I’m analyzing your journey now. I’ll check each relevant route segment rather than looking only at your source and destination.',
+  );
+
+  try {
+    final bool hasTravelerData = !isPlanner && (
+        _rain != null || _visibility != null || _fog != null ||
+        _unusualConditions != null || _traffic != null
+    );
+
+    final Map<String, dynamic>? travelerReport = hasTravelerData
+        ? {
+            'rain': _rain,
+            'visibility': _visibility,
+            'fog': _fog,
+            'unusual_conditions': _unusualConditions,
+            'traffic': _traffic,
+          }
+        : null;
+
+    final Map<String, dynamic> response =
+        await ApiService.createTripRequest(
+      role: _role,
+      source: _source!,
+      latitude: _latitude!,
+      longitude: _longitude!,
+      destination: _destination!,
+      travelDate: isPlanner ? _travelDate : null,
+      travelTime: isPlanner ? _travelTime : null,
+      travelerReport: travelerReport,
+    );
+
+    final int? tripId = _parseTripId(
+      response['trip_id'],
+    );
+
+    if (tripId == null) {
+      throw ApiException(
+        'The server did not return a valid trip ID.',
+      );
+    }
+
+    _tripId = tripId;
+final dynamic analysis = await ApiService.analyzeTrip(
+  tripId: tripId,
+);
+
+final Map<String, dynamic> analysisData =
+    analysis is Map<String, dynamic>
+        ? analysis
+        : Map<String, dynamic>.from(analysis as Map);
+
+    setState(() {
+  _tripAnalysis = analysisData;
+  _isAnalyzing = false;
+  _journeyReady = false;
+  _analysisComplete = true;
+});
+
+    _addBotMessage(
+      'Your journey analysis is ready. I am redirecting you to the report...',
+    );
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.journeyAnalysis,
+          arguments: {
+            'analysis': _tripAnalysis,
+            'source': _source,
+            'destination': _destination,
+            'role': _role,
+          },
+        );
+      }
+    });
+  } on ApiException catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = false;
+    });
+
+    _addBotMessage(
+      'I couldn’t complete the journey analysis.',
+    );
+
+    _showError(e.message);
+  } catch (_) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = false;
+    });
+
+    _addBotMessage(
+      'Something went wrong while analyzing your journey. Please try again.',
+    );
+
+    _showError(
+      'Something went wrong while analyzing your journey.',
+    );
+  }
+}
+
+  // ============================================================
+  // SAVE REPORT
+// ============================================================
+
+Future<void> _saveCurrentReport() async {
+  if (_tripId == null) {
+    _showError('No completed journey is available to save.');
+    return;
+  }
+
+  try {
+    final userId = await ApiService.getStoredUserId();
+
+    if (userId == null) {
+      _showError('Please log in again.');
+      return;
+    }
+
+    await ApiService.saveReport(
+      userId: userId,
+      tripId: _tripId!,
+      title:
+          '${_source ?? 'Unknown'} → ${_destination ?? 'Unknown'} Travel Report',
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Travel report saved successfully.'),
+      ),
+    );
+  } on ApiException catch (e) {
+    _showError(e.message);
+  } catch (_) {
+    _showError('Unable to save the report.');
+  }
+}
+
+  // ============================================================
+  // ADVISORY IN CHAT
+  // ============================================================
+
+  void _addAdvisoryToChat(
+    dynamic analysis,
+  ) {
+    final double? safetyScore =
+        _readDouble(
+      analysis,
+      'overallSafetyScore',
+    );
+
+    final double? confidence =
+        _readDouble(
+      analysis,
+      'overallConfidence',
+    );
+
+    final String? status =
+        _readString(
+      analysis,
+      'status',
+    );
+
+    if (safetyScore != null) {
+      _addBotMessage(
+        'Overall Safety Score: ${_formatNumber(safetyScore)}/100',
+      );
+    } else {
+      _addBotMessage(
+        'A final Safety Score is not available from the current evidence.',
+      );
+    }
+
+    if (confidence != null) {
+      _addBotMessage(
+        'Evidence confidence: ${_formatNumber(confidence)}%. This is separate from the Safety Score and reflects how much supporting information was available.',
+      );
+    }
+
+   if (status != null &&
+    status.isNotEmpty) {
+  if (status == 'safety_score_available' ||
+      status == 'consensus_available' ||
+      status == 'partial_intelligence_available') {
+    _addBotMessage(
+      'The route analysis completed successfully.',
+    );
+  }
+}
+
+    _addProblematicSegments(
+      analysis,
+    );
+
+    _addReasons(
+      analysis,
+    );
+
+    _addSourceCoverage(
+      analysis,
+    );
+
+    _addPrecautions(
+      analysis,
+    );
+
+    _addRouteGuidance(
+      analysis,
+    );
+
+    _addBotMessage(
+      'You can continue asking me about this journey. For example: "Why is this score low?", "Which segment needs attention?", or "What precautions should I take?"',
+    );
+  }
+
+  // ============================================================
+  // PROBLEMATIC SEGMENTS
+  // ============================================================
+
+  void _addProblematicSegments(
+    dynamic analysis,
+  ) {
+    final dynamic segments =
+        _readProperty(
+      analysis,
+      'problematicSegments',
+    );
+
+    if (segments is! List ||
+        segments.isEmpty) {
+      _addBotMessage(
+        'I did not receive any specifically flagged route segments from the analysis.',
+      );
+      return;
+    }
+
+    _addBotMessage(
+      'Route segments requiring attention:',
+    );
+
+    int shown = 0;
+
+    for (final dynamic segment
+        in segments) {
+      if (shown >= 5) {
+        break;
+      }
+
+      final String region =
+          _readDynamicString(
+            segment,
+            'region',
+          );
+
+      final double? score =
+          _readDynamicDouble(
+        segment,
+        'safetyScore',
+      );
+
+      final List<String>
+          reasons =
+          _readDynamicStringList(
+        segment,
+        'reasons',
+      );
+
+      String text =
+          region;
+
+      final dynamic
+          details =
+          _readProperty(
+        segment,
+        'segmentDetails',
+      );
+
+      final String start =
+          _readDynamicString(
+        details,
+        'start',
+      );
+
+      final String end =
+          _readDynamicString(
+        details,
+        'end',
+      );
+
+      if (start.isNotEmpty &&
+          end.isNotEmpty) {
+        text +=
+            ' ($start $end)';
+      }
+
+      if (score != null) {
+        text +=
+            '  score ${_formatNumber(score)}/100';
+      }
+
+      if (reasons.isNotEmpty) {
+        text +=
+            '. ${reasons.take(2).join('. ')}';
+      }
+
+      _addBotMessage(
+        text,
+      );
+
+      shown++;
+    }
+  }
+
+  // ============================================================
+  // REASONS
+  // ============================================================
+
+  void _addReasons(
+    dynamic analysis,
+  ) {
+    final dynamic rawReasons =
+        _readProperty(
+      analysis,
+      'reasons',
+    );
+
+    if (rawReasons is! List ||
+        rawReasons.isEmpty) {
+      return;
+    }
+
+    final List<String> reasons =
+        rawReasons
+            .whereType<String>()
+            .where(
+              (reason) =>
+                  reason.trim().isNotEmpty,
+            )
+            .toList();
+
+    if (reasons.isEmpty) {
+      return;
+    }
+
+    _addBotMessage(
+      'Why the result looks this way:',
+    );
+
+    for (final reason
+        in reasons.take(6)) {
+      _addBotMessage(
+        reason,
+      );
+    }
+  }
+
+  // ============================================================
+  // SOURCE COVERAGE
+  // ============================================================
+
+  void _addSourceCoverage(
+    dynamic analysis,
+  ) {
+    final dynamic available =
+        _readProperty(
+      analysis,
+      'availableIntelligenceSources',
+    );
+
+    final dynamic missing =
+        _readProperty(
+      analysis,
+      'missingIntelligenceSources',
+    );
+
+    final List<String>
+        availableSources =
+        _stringList(
+      available,
+    );
+
+    final List<String>
+        missingSources =
+        _stringList(
+      missing,
+    );
+
+    if (availableSources
+            .isEmpty &&
+        missingSources.isEmpty) {
+      return;
+    }
+
+    String message =
+        'Evidence used: ';
+
+    if (availableSources
+        .isNotEmpty) {
+      message +=
+          availableSources.join(
+        ', ',
+      );
+    } else {
+      message +=
+          'limited available data';
+    }
+
+    if (missingSources
+        .isNotEmpty) {
+      message +=
+          '. Missing or unavailable in parts of the analysis: ${missingSources.join(', ')}.';
+    }
+
+    _addBotMessage(
+      message,
+    );
+  }
+
+  // ============================================================
+  // PRECAUTIONS
+  // ============================================================
+
+  void _addPrecautions(
+    dynamic analysis,
+  ) {
+    final List<String>
+        precautions =
+        _generatePrecautions(
+      analysis,
+    );
+
+    if (precautions.isEmpty) {
+      return;
+    }
+
+    _addBotMessage(
+      'Safety precautions:',
+    );
+
+    for (final precaution
+        in precautions) {
+      _addBotMessage(
+        ' $precaution',
+      );
+    }
+  }
+
+  List<String>
+      _generatePrecautions(
+    dynamic analysis,
+  ) {
+    final List<String>
+        precautions = [];
+
+    final List<String>
+        reasons =
+        _stringList(
+      _readProperty(
+        analysis,
+        'reasons',
+      ),
+    );
+
+    final String joined =
+        reasons.join(
+      ' ',
+    ).toLowerCase();
+
+    if (joined.contains(
+          'landslide',
+        ) ||
+        joined.contains(
+          'rockfall',
+        )) {
+      precautions.add(
+        'Stay alert near ghat sections and avoid stopping near unstable slopes.',
+      );
+    }
+
+    if (joined.contains(
+          'slippery',
+        )) {
+      precautions.add(
+        'Reduce speed and maintain extra following distance on wet or slippery road sections.',
+      );
+    }
+
+    if (joined.contains(
+          'flood',
+        ) ||
+        joined.contains(
+          'waterlogging',
+        )) {
+      precautions.add(
+        'Avoid entering waterlogged sections when the road condition or depth cannot be assessed safely.',
+      );
+    }
+
+    if (joined.contains(
+          'visibility',
+        ) ||
+        joined.contains(
+          'fog',
+        )) {
+      precautions.add(
+        'Use appropriate lighting and reduce speed when visibility is reduced.',
+      );
+    }
+
+    if (joined.contains(
+          'heavy rain',
+        ) ||
+        joined.contains(
+          'very heavy rain',
+        )) {
+      precautions.add(
+        'Allow additional travel time and avoid sudden braking or acceleration on wet surfaces.',
+      );
+    }
+
+    if (precautions.isEmpty) {
+      precautions.add(
+        'Follow current road conditions, maintain a safe speed, and reassess conditions if they change during the journey.',
+      );
+    }
+
+    return precautions;
+  }
+
+  // ============================================================
+  // ROUTE GUIDANCE
+  // ============================================================
+
+  void _addRouteGuidance(
+    dynamic analysis,
+  ) {
+    final double? score =
+        _readDouble(
+      analysis,
+      'overallSafetyScore',
+    );
+
+    if (score == null) {
+      return;
+    }
+
+    /*
+     * We deliberately do NOT invent an alternate route.
+     *
+     * Google Maps / Routes API will eventually provide
+     * candidate routes. Our backend intelligence engine
+     * will then evaluate those candidate routes.
+     *
+     * Until that integration exists, the chatbot should
+     * not claim that an alternate road is available.
+     */
+
+    if (score < 60) {
+      _addBotMessage(
+        'The current assessment contains conditions that need attention. If you have flexibility, consider checking another travel time. Alternate-route comparison will be available once route candidates are supplied by the routing service.',
+      );
+      return;
+    }
+
+    if (score < 80) {
+      _addBotMessage(
+        'Some conditions along the journey deserve attention. If your travel time is flexible, you can ask me about choosing a different time.',
+      );
+      return;
+    }
+
+    _addBotMessage(
+      'The available evidence does not currently indicate a major route-level concern. Conditions can still change during travel.',
+    );
+  }
+
+  // ============================================================
+  // POST-ANALYSIS CHAT
+  // ============================================================
+
+// ============================================================
+// POST-ANALYSIS CHAT
+// ============================================================
+
+Future<void> _handlePostAnalysisMessage(
+  String message,
+) async {
+  final int? tripId = _tripId;
+
+  if (tripId == null) {
+    _addBotMessage(
+      'I don’t have a valid trip ID for this journey. Please analyze the journey again.',
+    );
+    return;
+  }
+
+  final String userMessage = message.trim();
+
+  if (userMessage.isEmpty) {
+    return;
+  }
+
+  setState(() {
+    _isTyping = true;
+  });
+
+  _scrollToBottom();
+
+  try {
+    final Map<String, dynamic> response =
+        await ApiService.sendChatbotMessage(
+      tripId: tripId,
+      message: userMessage,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final String answer =
+        response['answer']?.toString().trim() ?? '';
+
+    setState(() {
+      _isTyping = false;
+    });
+
+    if (answer.isEmpty) {
+      _addBotMessage(
+        'I received the request, but the travel assistant did not return an answer. Please try asking again.',
+      );
+      return;
+    }
+
+    _addBotMessage(answer);
+  } on ApiException catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isTyping = false;
+    });
+
+    _addBotMessage(
+      'I couldn’t get a response from the travel assistant right now.',
+    );
+
+    _showError(e.message);
+  } catch (_) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isTyping = false;
+    });
+
+    _addBotMessage(
+      'Something went wrong while contacting the travel assistant. Please try again.',
+    );
+
+    _showError(
+      'Unable to contact the chatbot service.',
+    );
+  }
+}
+
+  // ============================================================
+  // ROUTE RESOLUTION
+  // ============================================================
+
+  _RoutePoint
+      _getNearestRoutePoint(
+    double latitude,
+    double longitude,
+  ) {
+    _RoutePoint nearest =
+        _routePoints.first;
+
+    double smallestDistance =
+        _calculateDistance(
+      latitude,
+      longitude,
+      nearest.latitude,
+      nearest.longitude,
+    );
+
+    for (final point
+        in _routePoints.skip(1)) {
+      final double distance =
+          _calculateDistance(
+        latitude,
+        longitude,
+        point.latitude,
+        point.longitude,
+      );
+
+      if (distance <
+          smallestDistance) {
+        smallestDistance =
+            distance;
+        nearest =
+            point;
+      }
+    }
+
+    return nearest;
+  }
+
+  _RoutePoint? _findRoutePoint(
+    String input,
+  ) {
+    final String normalized =
+        _normalizeLocationText(
+      input,
+    );
+
+    for (final point
+        in _routePoints) {
+      final String name =
+          point.name.toLowerCase();
+
+      final String display =
+          point.displayName
+              .toLowerCase();
+
+      if (normalized == name ||
+          normalized == display ||
+          normalized.contains(
+            name,
+          ) ||
+          name.contains(
+            normalized,
+          )) {
+        return point;
+      }
+    }
+
+    if (normalized.contains(
+          'mumbai',
+        ) ||
+        normalized.contains(
+          'sion',
+        )) {
+      return _routePoints[0];
+    }
+
+    if (normalized.contains(
+      'panvel',
+    )) {
+      return _routePoints[1];
+    }
+
+    if (normalized.contains(
+      'khalapur',
+    )) {
+      return _routePoints[2];
+    }
+
+    if (normalized.contains(
+      'khopoli',
+    )) {
+      return _routePoints[3];
+    }
+
+    if (normalized.contains(
+      'khandala',
+    )) {
+      return _routePoints[4];
+    }
+
+    if (normalized.contains(
+      'lonavala',
+    )) {
+      return _routePoints[5];
+    }
+
+    if (normalized.contains(
+      'kamshet',
+    )) {
+      return _routePoints[6];
+    }
+
+    if (normalized.contains(
+      'pune',
+    )) {
+      return _routePoints[7];
+    }
+
+    return null;
+  }
+
+  String _normalizeLocationText(
+    String value,
+  ) {
+    return value
+        .toLowerCase()
+        .replaceAll(
+          '/',
+          ' ',
+        )
+        .replaceAll(
+          '-',
+          ' ',
+        )
+        .replaceAll(
+          RegExp(r'\s+'),
+          ' ',
+        )
+        .trim();
+  }
+
+  // ============================================================
+  // DISTANCE
+  // ============================================================
+
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double earthRadius =
+        6371;
+
+    final double dLat =
+        (lat2 - lat1) *
+            math.pi /
+            180;
+
+    final double dLon =
+        (lon2 - lon1) *
+            math.pi /
+            180;
+
+    final double lat1Rad =
+        lat1 *
+            math.pi /
+            180;
+
+    final double lat2Rad =
+        lat2 *
+            math.pi /
+            180;
+
+    final double a =
+        math.sin(dLat / 2) *
+                math.sin(dLat / 2) +
+            math.cos(lat1Rad) *
+                math.cos(lat2Rad) *
+                math.sin(dLon / 2) *
+                math.sin(dLon / 2);
+
+    final double c =
+        2 *
+        math.atan2(
+          math.sqrt(a),
+          math.sqrt(1 - a),
+        );
+
+    return earthRadius * c;
+  }
+
+  // ============================================================
+  // DATE
+  // ============================================================
+
+  String? _parsePlannerDate(
+    String input,
+  ) {
+    final String normalized =
+        input.toLowerCase().trim();
+
+    final DateTime now =
+        DateTime.now();
+
+    if (normalized ==
+        'today') {
+      return _formatDate(
+        now,
+      );
+    }
+
+    if (normalized ==
+        'tomorrow') {
+      return _formatDate(
+        now.add(
+          const Duration(
+            days: 1,
+          ),
+        ),
+      );
+    }
+
+    final RegExp pattern =
+        RegExp(
+      r'^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$',
+    );
+
+    final Match? match =
+        pattern.firstMatch(
+      normalized,
+    );
+
+    if (match == null) {
+      return null;
+    }
+
+    final int? day =
+        int.tryParse(
+      match.group(1)!,
+    );
+
+    final int? month =
+        int.tryParse(
+      match.group(2)!,
+    );
+
+    final int? year =
+        int.tryParse(
+      match.group(3)!,
+    );
+
+    if (day == null ||
+        month == null ||
+        year == null) {
+      return null;
+    }
+
+    try {
+      final DateTime date =
+          DateTime(
+        year,
+        month,
+        day,
+      );
+
+      if (date.year != year ||
+          date.month != month ||
+          date.day != day) {
+        return null;
+      }
+
+      return _formatDate(
+        date,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatDate(
+    DateTime date,
+  ) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // ============================================================
+  // TIME
+  // ============================================================
+
+  String? _parsePlannerTime(
+    String input,
+  ) {
+    final String normalized =
+        input.toLowerCase().trim();
+
+    if (normalized ==
+        'morning') {
+      return '09:00:00';
+    }
+
+    if (normalized ==
+        'afternoon') {
+      return '14:00:00';
+    }
+
+    if (normalized ==
+        'evening') {
+      return '18:00:00';
+    }
+
+    if (normalized ==
+        'night') {
+      return '21:00:00';
+    }
+
+    final RegExp pattern =
+        RegExp(
+      r'^(\d{1,2}):(\d{2})(?:\s*(am|pm))?$',
+    );
+
+    final Match? match =
+        pattern.firstMatch(
+      normalized,
+    );
+
+    if (match == null) {
+      return null;
+    }
+
+    int? hour =
+        int.tryParse(
+      match.group(1)!,
+    );
+
+    final int? minute =
+        int.tryParse(
+      match.group(2)!,
+    );
+
+    final String? period =
+        match.group(3);
+
+    if (hour == null ||
+        minute == null ||
+        minute > 59) {
+      return null;
+    }
+
+    if (period != null) {
+      if (hour < 1 ||
+          hour > 12) {
+        return null;
+      }
+
+      if (period == 'pm' &&
+          hour != 12) {
+        hour += 12;
+      }
+
+      if (period == 'am' &&
+          hour == 12) {
+        hour = 0;
+      }
+    }
+
+    if (hour < 0 ||
+        hour > 23) {
+      return null;
+    }
+
+    return '${hour.toString().padLeft(2, '0')}:'
+        '${minute.toString().padLeft(2, '0')}:00';
+  }
+
+  // ============================================================
+  // TRAVELER NORMALIZATION
+  // ============================================================
+
+  String _normalizeUnusualCondition(
+    String value,
+  ) {
+    final String normalized =
+        value.toLowerCase().trim();
+
+    if (normalized.contains(
+          'nothing',
+        ) ||
+        normalized == 'none') {
+      return 'None';
+    }
+
+    if (normalized.contains(
+      'slippery',
+    )) {
+      return 'Slippery road';
+    }
+
+    if (normalized.contains(
+          'waterlogging',
+        ) ||
+        normalized.contains(
+          'flood',
+        )) {
+      return 'Flooding';
+    }
+
+    if (normalized.contains(
+          'landslide',
+        ) ||
+        normalized.contains(
+          'rockfall',
+        ) ||
+        normalized.contains(
+          'rock fall',
+        )) {
+      return 'Landslide/Rockfall';
+    }
+
+    if (normalized.contains(
+      'fallen tree',
+    )) {
+      return 'Fallen Tree';
+    }
+
+    if (normalized.contains(
+      'debris',
+    )) {
+      return 'Debris on Road';
+    }
+
+    if (normalized.contains(
+          'road damage',
+        ) ||
+        normalized.contains(
+          'damaged road',
+        )) {
+      return 'Road Damage';
+    }
+
+    if (normalized.contains(
+          'construction',
+        ) ||
+        normalized.contains(
+          'road work',
+        )) {
+      return 'Construction Activity';
+    }
+
+    if (normalized.contains(
+          'accident',
+        ) ||
+        normalized.contains(
+          'incident',
+        )) {
+      return 'Accident/Incident';
+    }
+
+    if (normalized.contains(
+          'closure',
+        ) ||
+        normalized.contains(
+          'closed',
+        )) {
+      return 'Road Closure';
+    }
+
+    return value.trim();
+  }
+
+  String _normalizeTraffic(
+    String value,
+  ) {
+    final String normalized =
+        value.toLowerCase().trim();
+
+    if (normalized.contains(
+      'free',
+    )) {
+      return 'Free Flow';
+    }
+
+    if (normalized ==
+        'light') {
+      return 'Light';
+    }
+
+    if (normalized.contains(
+      'moderate',
+    )) {
+      return 'Moderate';
+    }
+
+    if (normalized.contains(
+      'very heavy',
+    )) {
+      return 'Very Heavy';
+    }
+
+    if (normalized.contains(
+      'heavy',
+    )) {
+      return 'Heavy';
+    }
+
+    if (normalized.contains(
+      'standstill',
+    )) {
+      return 'Standstill';
+    }
+
+    return value.trim();
+  }
+
+  // ============================================================
+  // ANALYSIS PROPERTY HELPERS
+  // ============================================================
+
+  dynamic _readProperty(
+    dynamic object,
+    String property,
+  ) {
+    if (object == null) {
+      return null;
+    }
+
+    // ----------------------------------------------------------
+    // API response is a Map<String, dynamic>.
+    // Support both backend snake_case and UI camelCase names.
+    // ----------------------------------------------------------
+    if (object is Map) {
+      switch (property) {
+        case 'overallSafetyScore':
+          return object['overallSafetyScore'] ??
+              object['overall_safety_score'];
+
+        case 'overallConfidence':
+          return object['overallConfidence'] ??
+              object['overall_confidence'];
+
+        case 'status':
+          return object['status'];
+
+        case 'problematicSegments':
+          return object['problematicSegments'] ??
+              object['problematic_segments'];
+
+        case 'reasons':
+          return object['reasons'];
+
+        case 'availableIntelligenceSources':
+          return object['availableIntelligenceSources'] ??
+              object['available_intelligence_sources'];
+
+        case 'missingIntelligenceSources':
+          return object['missingIntelligenceSources'] ??
+              object['missing_intelligence_sources'];
+
+        case 'segmentDetails':
+          return object['segmentDetails'] ??
+              object['segment_details'];
+
+        case 'region':
+          return object['region'];
+
+        case 'safetyScore':
+          return object['safetyScore'] ??
+              object['safety_score'];
+
+        case 'confidence':
+          return object['confidence'];
+
+        case 'start':
+          return object['start'];
+
+        case 'end':
+          return object['end'];
+
+        default:
+          return object[property];
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Backward compatibility if an older Dart model is ever
+    // passed instead of a Map.
+    // ----------------------------------------------------------
+    try {
+      switch (property) {
+        case 'overallSafetyScore':
+          return object.overallSafetyScore;
+
+        case 'overallConfidence':
+          return object.overallConfidence;
+
+        case 'status':
+          return object.status;
+
+        case 'problematicSegments':
+          return object.problematicSegments;
+
+        case 'reasons':
+          return object.reasons;
+
+        case 'availableIntelligenceSources':
+          return object.availableIntelligenceSources;
+
+        case 'missingIntelligenceSources':
+          return object.missingIntelligenceSources;
+
+        case 'segmentDetails':
+          return object.segmentDetails;
+
+        case 'region':
+          return object.region;
+
+        case 'safetyScore':
+          return object.safetyScore;
+
+        case 'confidence':
+          return object.confidence;
+
+        case 'start':
+          return object.start;
+
+        case 'end':
+          return object.end;
+
+        default:
+          return null;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  double? _readDouble(
+    dynamic object,
+    String property,
+  ) {
+    final dynamic value = _readProperty(
+      object,
+      property,
+    );
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(
+      value?.toString() ?? '',
+    );
+  }
+
+  String? _readString(
+    dynamic object,
+    String property,
+  ) {
+    final dynamic value = _readProperty(
+      object,
+      property,
+    );
+
+    if (value is String) {
+      return value;
+    }
+
+    return value?.toString();
+  }
+
+  String _readDynamicString(
+    dynamic object,
+    String property,
+  ) {
+    final dynamic value = _readProperty(
+      object,
+      property,
+    );
+
+    return value?.toString() ?? '';
+  }
+
+double? _readDynamicDouble(
+  dynamic object,
+  String property,
+) {
+  final dynamic value = _readProperty(
+    object,
+    property,
+  );
+
+  if (value is num) {
+    return value.toDouble();
+  }
+
+  return double.tryParse(
+    value?.toString() ?? '',
+  );
+}
+
+List<String> _readDynamicStringList(
+  dynamic object,
+  String property,
+) {
+  final dynamic value = _readProperty(
+    object,
+    property,
+  );
+
+  return _stringList(value);
+}
+
+List<String> _stringList(
+  dynamic value,
+) {
+  if (value is! List) {
+    return [];
+  }
+
+  return value
+      .map(
+        (item) => item.toString(),
+      )
+      .toList();
+}
+
+  String _formatNumber(
+    double value,
+  ) {
+    if (value ==
+        value.roundToDouble()) {
+      return value
+          .toInt()
+          .toString();
+    }
+
+    return value
+        .toStringAsFixed(1);
+  }
+
+  int? _parseTripId(
+    dynamic value,
+  ) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value == null) {
+      return null;
+    }
+
+    return int.tryParse(
+      value.toString(),
+    );
+  }
+
+  // ============================================================
+  // BACK BUTTON
+  // ============================================================
+
+  Future<bool>
+      _handleBackNavigation() async {
+    if (_isAnalyzing) {
+      return false;
+    }
+
+    if (_analysisComplete) {
+      final bool? leave =
+          await showDialog<bool>(
+        context: context,
+        builder:
+            (context) {
+          return AlertDialog(
+            title: const Text(
+              'Leave journey analysis?',
+            ),
+            content:
+                const Text(
+              'Your completed analysis will remain stored with this trip, but the current chat conversation will close.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(
+                  context,
+                  false,
+                ),
+                child:
+                    const Text(
+                  'STAY',
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () =>
+                    Navigator.pop(
+                  context,
+                  true,
+                ),
+                child:
+                    const Text(
+                  'LEAVE',
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      return leave ?? false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // TYPING
+  // ============================================================
+
+  void _showTypingThen(
+    String message,
+  ) {
+    setState(() {
+      _isTyping = true;
+    });
+
+    _scrollToBottom();
+
+    Future.delayed(
+      const Duration(
+        milliseconds: 650,
+      ),
+      () {
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _isTyping = false;
+
+          _messages.add(
+            _ChatMessage(
+              text: message,
+              isUser: false,
+            ),
+          );
+        });
+
+        _scrollToBottom();
+      },
+    );
+  }
+
+  // ============================================================
+  // MESSAGE HELPERS
+  // ============================================================
+
+  void _addBotMessage(
+    String message, {
+    List<String>
+        quickReplies =
+        const [],
+  }) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: message,
+          isUser: false,
+          quickReplies:
+              quickReplies,
+        ),
+      );
+    });
+
+    _scrollToBottom();
+  }
+
+  void _addUserMessage(
+    String message,
+  ) {
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: message,
+          isUser: true,
+        ),
+      );
+    });
+
+    _scrollToBottom();
+  }
+
+  // ============================================================
+  // INPUT
+  // ============================================================
+
+  Widget _buildMessageInput() {
+    final bool disabled =
+        _isTyping ||
+            _isAnalyzing;
+
+    return Container(
+      padding:
+          const EdgeInsets.fromLTRB(
+        12,
+        10,
+        12,
+        12,
+      ),
+      decoration:
+          BoxDecoration(
+        color: AppTheme.white,
+        border: Border(
+          top: BorderSide(
+            color: AppTheme.border,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller:
+                  _messageController,
+              enabled:
+                  !disabled,
+              textInputAction:
+                  TextInputAction
+                      .send,
+              onSubmitted:
+                  (_) =>
+                      _sendMessage(),
+              decoration:
+                  InputDecoration(
+                hintText:
+                    _analysisComplete
+                        ? 'Ask about your journey...'
+                        : 'Type your answer...',
+                filled: true,
+                fillColor:
+                    AppTheme.lightMint,
+                border:
+                    OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    16,
+                  ),
+                  borderSide:
+                      BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets
+                        .symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(
+            width: 8,
+          ),
+          Material(
+            color: disabled
+                ? AppTheme.border
+                : AppTheme.forestGreen,
+            borderRadius:
+                BorderRadius.circular(
+              15,
+            ),
+            child: InkWell(
+              onTap: disabled
+                  ? null
+                  : _sendMessage,
+              borderRadius:
+                  BorderRadius.circular(
+                15,
+              ),
+              child:
+                  const SizedBox(
+                width: 50,
+                height: 50,
+                child: Icon(
+                  Icons
+                      .send_rounded,
+                  color:
+                      AppTheme.white,
+                  size: 21,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ANALYZE BUTTON
+  // ============================================================
+
+  Widget _buildAnalyzeButton() {
+    return Container(
+      width:
+          double.infinity,
+      padding:
+          const EdgeInsets.fromLTRB(
+        16,
+        10,
+        16,
+        14,
+      ),
+      decoration:
+          BoxDecoration(
+        color:
+            AppTheme.white,
+        border: Border(
+          top: BorderSide(
+            color:
+                AppTheme.border,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        height: 54,
+        child:
+            ElevatedButton.icon(
+          onPressed:
+              _isAnalyzing
+                  ? null
+                  : _analyzeJourney,
+          icon:
+              _isAnalyzing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child:
+                          CircularProgressIndicator(
+                        strokeWidth:
+                            2,
+                      ),
+                    )
+                  : const Icon(
+                      Icons
+                          .analytics_rounded,
+                    ),
+          label:
+              Text(
+            _isAnalyzing
+                ? 'ANALYZING...'
+                : 'ANALYZE JOURNEY',
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // TYPING INDICATOR
+  // ============================================================
+
+  Widget _buildTypingIndicator() {
+    return Align(
+      alignment:
+          Alignment.centerLeft,
+      child: Container(
+        margin:
+            const EdgeInsets.only(
+          bottom: 12,
+        ),
+        padding:
+            const EdgeInsets.symmetric(
+          horizontal: 17,
+          vertical: 14,
+        ),
+        decoration:
+            BoxDecoration(
+          color:
+              AppTheme.white,
+          borderRadius:
+              BorderRadius.circular(
+            18,
+          ),
+          border: Border.all(
+            color:
+                AppTheme.border,
+          ),
+        ),
+        child:
+            const Row(
+          mainAxisSize:
+              MainAxisSize.min,
+          children: [
+            _TypingDot(),
+            SizedBox(
+              width: 4,
+            ),
+            _TypingDot(),
+            SizedBox(
+              width: 4,
+            ),
+            _TypingDot(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // MESSAGE BUBBLE
+  // ============================================================
+
+  Widget _buildMessageBubble(
+    _ChatMessage message,
+  ) {
+    return Column(
+      crossAxisAlignment:
+          message.isUser
+              ? CrossAxisAlignment
+                  .end
+              : CrossAxisAlignment
+                  .start,
+      children: [
+        Align(
+          alignment:
+              message.isUser
+                  ? Alignment
+                      .centerRight
+                  : Alignment
+                      .centerLeft,
+          child:
+              Container(
+            constraints:
+                const BoxConstraints(
+              maxWidth: 330,
+            ),
+            margin:
+                const EdgeInsets
+                    .only(
+              bottom: 8,
+            ),
+            padding:
+                const EdgeInsets
+                    .symmetric(
+              horizontal: 16,
+              vertical: 13,
+            ),
+            decoration:
+                BoxDecoration(
+              color: message
+                      .isUser
+                  ? AppTheme
+                      .forestGreen
+                  : AppTheme.white,
+              borderRadius:
+                  BorderRadius.only(
+                topLeft:
+                    const Radius
+                        .circular(
+                  18,
+                ),
+                topRight:
+                    const Radius
+                        .circular(
+                  18,
+                ),
+                bottomLeft:
+                    Radius.circular(
+                  message.isUser
+                      ? 18
+                      : 5,
+                ),
+                bottomRight:
+                    Radius.circular(
+                  message.isUser
+                      ? 5
+                      : 18,
+                ),
+              ),
+              border:
+                  message.isUser
+                      ? null
+                      : Border.all(
+                          color:
+                              AppTheme
+                                  .border,
+                        ),
+            ),
+            child:
+                Text(
+              message.text,
+              style:
+                  TextStyle(
+                fontSize:
+                    14,
+                height:
+                    1.45,
+                color: message
+                        .isUser
+                    ? AppTheme
+                        .white
+                    : AppTheme
+                        .textPrimary,
+              ),
+            ),
+          ),
+        ),
+        if (!message.isUser &&
+            message.quickReplies
+                .isNotEmpty)
+          _buildQuickReplies(
+            message
+                .quickReplies,
+          ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // QUICK REPLIES
+  // ============================================================
+
+  Widget _buildQuickReplies(
+    List<String> replies,
+  ) {
+    return Padding(
+      padding:
+          const EdgeInsets
+              .only(
+        bottom: 12,
+      ),
+      child:
+          Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children:
+            replies.map(
+          (reply) {
+            return OutlinedButton(
+              onPressed:
+                  () =>
+                      _selectQuickReply(
+                reply,
+              ),
+              style:
+                  OutlinedButton
+                      .styleFrom(
+                foregroundColor:
+                    AppTheme
+                        .forestGreen,
+                side:
+                    BorderSide(
+                  color:
+                      AppTheme
+                          .forestGreen,
+                ),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    18,
+                  ),
+                ),
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  horizontal:
+                      14,
+                  vertical:
+                      9,
+                ),
+              ),
+              child:
+                  Text(
+                reply,
+                style:
+                    const TextStyle(
+                  fontSize:
+                      12.5,
+                  fontWeight:
+                      FontWeight
+                          .w700,
+                ),
+              ),
+            );
+          },
+        ).toList(),
+      ),
+    );
+  }
+
+  // ============================================================
+  // SCROLL
+  // ============================================================
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) {
+        if (!_scrollController.hasClients) {
+          return;
+        }
+
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      },
+    );
+  }
+  // ============================================================
+  // BUILD
+  // ============================================================
+
+ @override
+Widget build(
+  BuildContext context,
+) {
+  final bool isPlanner =
+      _role == 'planner';
+
+ return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (didPop, result) async {
+    if (didPop) {
+      return;
+    }
+
+    final shouldLeave = await _handleBackNavigation();
+
+    if (shouldLeave && context.mounted) {
+      Navigator.of(context).pop(result);
+    }
+  },
+ 
+  child: Scaffold(
+        
+      backgroundColor:
+          AppTheme.lightMint,
+      appBar:
+          AppBar(
+        backgroundColor:
+            AppTheme.lightMint,
+        elevation: 0,
+        automaticallyImplyLeading:
+            false,
+        titleSpacing: 8,
+        leading:
+            IconButton(
+          onPressed:
+              _isAnalyzing
+                  ? null
+                  : () async {
+                      final bool
+                          shouldLeave =
+                          await _handleBackNavigation();
+
+                      if (shouldLeave &&
+                          context.mounted) {
+                        Navigator.pop(
+                          context,
+                        );
+                      }
+                    },
+          icon:
+              const Icon(
+            Icons
+                .arrow_back_rounded,
+            color:
+                AppTheme.darkNavy,
+          ),
+        ),
+        title:
+            Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration:
+                  BoxDecoration(
+                color:
+                    AppTheme
+                        .forestGreen,
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  13,
+                ),
+              ),
+              child:
+                  const Icon(
+                Icons
+                    .auto_awesome_rounded,
+                color:
+                    AppTheme.white,
+                size:
+                    22,
+              ),
+            ),
+            const SizedBox(
+              width: 12,
+            ),
+            Expanded(
+              child:
+                  Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
+                children: [
+                  const Text(
+                    'Travel Advisor',
+                    style:
+                        TextStyle(
+                      fontSize:
+                          17,
+                      fontWeight:
+                          FontWeight
+                              .w800,
+                      color:
+                          AppTheme
+                              .darkNavy,
+                    ),
+                  ),
+                  Text(
+                    isPlanner
+                        ? 'Journey Planner'
+                        : 'Traveler',
+                    style:
+                        const TextStyle(
+                      fontSize:
+                          12,
+                      color:
+                          AppTheme
+                              .textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body:
+          SafeArea(
+        top: false,
+        child:
+            Column(
+          children: [
+            Expanded(
+              child:
+                  ListView
+                      .builder(
+                controller:
+                    _scrollController,
+                padding:
+                    const EdgeInsets
+                        .fromLTRB(
+                  16,
+                  12,
+                  16,
+                  20,
+                ),
+                itemCount:
+                    _messages.length +
+                        (_isTyping
+                            ? 1
+                            : 0),
+                itemBuilder:
+                    (
+                  context,
+                  index,
+                ) {
+                  if (_isTyping &&
+                      index ==
+                          _messages
+                              .length) {
+                    return _buildTypingIndicator();
+                  }
+
+                  return _buildMessageBubble(
+                    _messages[
+                        index],
+                  );
+                },
+              ),
+            ),
+            if (_analysisComplete)
+              _buildSaveReportButton(),
+            if (_journeyReady &&
+                !_analysisComplete)
+              _buildAnalyzeButton(),
+            if (!_journeyReady ||
+                _analysisComplete)
+              _buildMessageInput(),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildSaveReportButton() {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(
+      16,
+      8,
+      16,
+      8,
+    ),
+    child: SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isSavingReport || _reportSaved
+            ? null
+            : _saveCurrentReport,
+        icon: _isSavingReport
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              )
+            : Icon(
+                _reportSaved
+                    ? Icons.check_circle_outline
+                    : Icons.bookmark_outline,
+              ),
+        label: Text(
+          _isSavingReport
+              ? 'Saving Report...'
+              : _reportSaved
+                  ? 'Report Saved'
+                  : 'Save Report',
+        ),
+      ),
+    ),
+  );
+}
+
+  // ============================================================
+  // ERROR
+  // ============================================================
+
+  void _showError(
+    String message,
+  ) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      SnackBar(
+        content:
+            Text(message),
+        behavior:
+            SnackBarBehavior
+                .floating,
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ROUTE POINT
+// ============================================================
+
+class _RoutePoint {
+  final String name;
+  final String displayName;
+  final double latitude;
+  final double longitude;
+
+  const _RoutePoint({
+    required this.name,
+    required this.displayName,
+    required this.latitude,
+    required this.longitude,
+  });
+}
+
+// ============================================================
+// CONVERSATION STEP
+// ============================================================
+
+enum _ConversationStep {
+  confirmSource,
+  manualSource,
+  destination,
+  plannerDate,
+  plannerTime,
+  travelerRain,
+  travelerVisibility,
+  travelerFog,
+  travelerUnusual,
+  travelerTraffic,
+  ready,
+}
+
+// ============================================================
+// CHAT MESSAGE
+// ============================================================
+
+class _ChatMessage {
+  final String text;
+  final bool isUser;
+  final List<String> quickReplies;
+
+  const _ChatMessage({
+    required this.text,
+    required this.isUser,
+    this.quickReplies =
+        const [],
+  });
+}
+
+// ============================================================
+// TYPING DOT
+// ============================================================
+
+class _TypingDot
+    extends StatelessWidget {
+  const _TypingDot();
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration:
+          const BoxDecoration(
+        color:
+            AppTheme.textSecondary,
+        shape:
+            BoxShape.circle,
+      ),
+    );
+  }
+}
+
+

@@ -1,0 +1,366 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
+
+import requests
+
+from config import settings
+
+
+@dataclass(frozen=True)
+class WeatherData:
+    """
+    Standardized weather information used by the
+    travel-intelligence system.
+
+    This structure is provider-independent.
+    """
+
+    latitude: float
+    longitude: float
+    observed_at: datetime
+
+    temperature_c: float | None = None
+    humidity_percent: float | None = None
+    rainfall_mm: float | None = None
+    wind_speed_kmh: float | None = None
+    visibility_km: float | None = None
+
+    weather_condition: str | None = None
+    source: str = "openweather"
+
+    def to_dict(self) -> dict:
+        return {
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "observed_at": self.observed_at.isoformat(),
+            "temperature_c": self.temperature_c,
+            "humidity_percent": self.humidity_percent,
+            "rainfall_mm": self.rainfall_mm,
+            "wind_speed_kmh": self.wind_speed_kmh,
+            "visibility_km": self.visibility_km,
+            "weather_condition": self.weather_condition,
+            "source": self.source,
+        }
+
+
+class WeatherServiceError(Exception):
+    """
+    Raised when OpenWeather cannot provide valid weather data.
+    """
+
+    pass
+
+
+class WeatherService:
+    """
+    OpenWeather-backed weather service.
+
+    Responsibilities:
+    - Validate coordinates.
+    - Call OpenWeather current-weather API.
+    - Convert provider response into WeatherData.
+    - Keep provider-specific response handling inside this layer.
+
+    This service does NOT:
+    - calculate Safety Score
+    - perform 2-of-3 consensus
+    - interpret whether weather is safe
+    - access traveler reports
+    - run ML models
+    """
+
+    REQUEST_TIMEOUT_SECONDS = 10
+
+    def __init__(self) -> None:
+        self.provider_name = "openweather"
+
+    def validate_coordinates(
+        self,
+        latitude: float,
+        longitude: float,
+    ) -> None:
+        """
+        Validate geographic coordinates.
+        """
+
+        if not -90 <= latitude <= 90:
+            raise ValueError(
+                f"Invalid latitude: {latitude}"
+            )
+
+        if not -180 <= longitude <= 180:
+            raise ValueError(
+                f"Invalid longitude: {longitude}"
+            )
+
+    def create_weather_data(
+        self,
+        latitude: float,
+        longitude: float,
+        observed_at: datetime,
+        temperature_c: float | None = None,
+        humidity_percent: float | None = None,
+        rainfall_mm: float | None = None,
+        wind_speed_kmh: float | None = None,
+        visibility_km: float | None = None,
+        weather_condition: str | None = None,
+    ) -> WeatherData:
+        """
+        Create standardized WeatherData.
+
+        Useful for tests and as the normalization boundary
+        for provider responses.
+        """
+
+        self.validate_coordinates(
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+        return WeatherData(
+            latitude=latitude,
+            longitude=longitude,
+            observed_at=observed_at,
+            temperature_c=temperature_c,
+            humidity_percent=humidity_percent,
+            rainfall_mm=rainfall_mm,
+            wind_speed_kmh=wind_speed_kmh,
+            visibility_km=visibility_km,
+            weather_condition=weather_condition,
+            source=self.provider_name,
+        )
+
+    def get_current_weather(
+        self,
+        latitude: float,
+        longitude: float,
+    ) -> WeatherData:
+        """
+        Retrieve current weather from OpenWeather.
+        """
+
+        self.validate_coordinates(
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+        api_key = settings.openweather_api_key.strip()
+
+        if not api_key:
+            raise WeatherServiceError(
+                "OPENWEATHER_API_KEY is not configured."
+            )
+
+        url = (
+            f"{settings.openweather_base_url.rstrip('/')}"
+            "/weather"
+        )
+
+        params = {
+            "lat": latitude,
+            "lon": longitude,
+            "appid": api_key,
+            "units": "metric",
+        }
+
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=self.REQUEST_TIMEOUT_SECONDS,
+            )
+        except requests.RequestException as exc:
+            raise WeatherServiceError(
+                f"OpenWeather request failed: {exc}"
+            ) from exc
+
+        if response.status_code != 200:
+            error_message = self._extract_error_message(
+                response
+            )
+
+            raise WeatherServiceError(
+                "OpenWeather returned HTTP "
+                f"{response.status_code}: {error_message}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise WeatherServiceError(
+                "OpenWeather returned invalid JSON."
+            ) from exc
+
+        return self._parse_openweather_response(
+            payload=payload,
+            requested_latitude=latitude,
+            requested_longitude=longitude,
+        )
+
+    def _parse_openweather_response(
+        self,
+        payload: dict[str, Any],
+        requested_latitude: float,
+        requested_longitude: float,
+    ) -> WeatherData:
+        """
+        Convert the OpenWeather response into our
+        provider-independent WeatherData structure.
+        """
+
+        main = payload.get("main") or {}
+        weather = payload.get("weather") or []
+        wind = payload.get("wind") or {}
+        rain = payload.get("rain") or {}
+
+        temperature_c = self._to_float(
+            main.get("temp")
+        )
+
+        humidity_percent = self._to_float(
+            main.get("humidity")
+        )
+
+        visibility_meters = self._to_float(
+            payload.get("visibility")
+        )
+
+        visibility_km = (
+            visibility_meters / 1000.0
+            if visibility_meters is not None
+            else None
+        )
+
+        wind_speed_mps = self._to_float(
+            wind.get("speed")
+        )
+
+        wind_speed_kmh = (
+            wind_speed_mps * 3.6
+            if wind_speed_mps is not None
+            else None
+        )
+
+        rainfall_mm = self._extract_rainfall(rain)
+
+        weather_condition = None
+
+        if weather:
+            first_weather = weather[0]
+
+            if isinstance(first_weather, dict):
+                weather_condition = (
+                    first_weather.get("main")
+                    or first_weather.get("description")
+                )
+
+        observed_at = self._parse_observed_time(
+            payload.get("dt")
+        )
+
+        latitude = requested_latitude
+        longitude = requested_longitude
+
+        coordinates = payload.get("coord")
+
+        if isinstance(coordinates, dict):
+            latitude = self._to_float(
+                coordinates.get("lat")
+            ) or requested_latitude
+
+            longitude = self._to_float(
+                coordinates.get("lon")
+            ) or requested_longitude
+
+        return self.create_weather_data(
+            latitude=latitude,
+            longitude=longitude,
+            observed_at=observed_at,
+            temperature_c=temperature_c,
+            humidity_percent=humidity_percent,
+            rainfall_mm=rainfall_mm,
+            wind_speed_kmh=wind_speed_kmh,
+            visibility_km=visibility_km,
+            weather_condition=weather_condition,
+        )
+
+    @staticmethod
+    def _extract_rainfall(
+        rain: dict[str, Any],
+    ) -> float | None:
+        """
+        Extract rainfall in mm from OpenWeather.
+
+        OpenWeather's current-weather response may provide
+        rain.1h as precipitation in mm/h.
+        """
+
+        value = rain.get("1h")
+
+        return WeatherService._to_float(value)
+
+    @staticmethod
+    def _parse_observed_time(
+        unix_timestamp: Any,
+    ) -> datetime:
+        """
+        Convert OpenWeather's UTC Unix timestamp to an
+        aware UTC datetime.
+        """
+
+        timestamp = WeatherService._to_float(
+            unix_timestamp
+        )
+
+        if timestamp is None:
+            return datetime.now(timezone.utc)
+
+        return datetime.fromtimestamp(
+            timestamp,
+            tz=timezone.utc,
+        )
+
+    @staticmethod
+    def _to_float(
+        value: Any,
+    ) -> float | None:
+        """
+        Safely convert a value to float.
+        """
+
+        if value is None:
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _extract_error_message(
+        response: requests.Response,
+    ) -> str:
+        """
+        Extract a useful provider error message.
+        """
+
+        try:
+            payload = response.json()
+
+            if isinstance(payload, dict):
+                message = payload.get("message")
+
+                if message:
+                    return str(message)
+
+            return str(payload)
+
+        except ValueError:
+            return response.text.strip() or "Unknown error"
+
+
+# Shared service instance.
+weather_service = WeatherService()

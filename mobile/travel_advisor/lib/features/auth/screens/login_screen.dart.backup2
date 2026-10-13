@@ -1,0 +1,382 @@
+import 'package:flutter/material.dart';
+
+import '../../../app/routes.dart';
+import '../../../app/theme.dart';
+import '../../../../core/services/api_service.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _obscurePassword = true;
+  bool _isLoggingIn = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
+  Future<void> _login() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoggingIn = true;
+    });
+
+    try {
+      final response = await ApiService.login(
+        identifier: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response['message']?.toString() ??
+                'Login successful.',
+          ),
+        ),
+      );
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.roleSelection,
+        (route) => false,
+      );
+    } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Something went wrong. Please try again.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingIn = false;
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 32,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 460,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ======================================================
+                    // APP ICON
+                    // ======================================================
+
+                    const Icon(
+                      Icons.route_rounded,
+                      size: 46,
+                      color: AppTheme.primary,
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ======================================================
+                    // HEADER
+                    // ======================================================
+
+                    const Text(
+                      'Welcome back',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'Sign in to check your Mumbai–Pune travel risk and plan your journey safely.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // ======================================================
+                    // EMAIL / MOBILE
+                    // ======================================================
+
+                    const Text(
+                      'Email or mobile number',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      enabled: !_isLoggingIn,
+                      decoration: const InputDecoration(
+                        hintText:
+                            'Enter your email or mobile number',
+                        prefixIcon: Icon(
+                          Icons.person_outline_rounded,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.trim().isEmpty) {
+                          return 'Please enter your email or mobile number';
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ======================================================
+                    // PASSWORD
+                    // ======================================================
+
+                    const Text(
+                      'Password',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      enabled: !_isLoggingIn,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your password',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: _isLoggingIn
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _obscurePassword =
+                                        !_obscurePassword;
+                                  });
+                                },
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+
+                        if (value.length < 8) {
+                          return 'Password must contain at least 8 characters';
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ======================================================
+                    // FORGOT PASSWORD
+                    // ======================================================
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoggingIn
+                            ? null
+                            : () {
+                                // Forgot password will be implemented next.
+                              },
+                        child: const Text(
+                          'Forgot password?',
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ======================================================
+                    // LOGIN BUTTON
+                    // ======================================================
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _isLoggingIn
+                            ? null
+                            : _login,
+                        child: _isLoggingIn
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'LOGIN',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ======================================================
+                    // DIVIDER
+                    // ======================================================
+
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Divider(),
+                        ),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(
+                            horizontal: 14,
+                          ),
+                          child: Text(
+                            'New to the app?',
+                            style: TextStyle(
+                              color:
+                                  AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          child: Divider(),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // ======================================================
+                    // CREATE ACCOUNT BUTTON
+                    // ======================================================
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: OutlinedButton(
+                        onPressed: _isLoggingIn
+                            ? null
+                            : () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.signup,
+                                );
+                              },
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(
+                            double.infinity,
+                            54,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                          side: const BorderSide(
+                            color: AppTheme.border,
+                          ),
+                        ),
+                        child: const Text(
+                          'CREATE ACCOUNT',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

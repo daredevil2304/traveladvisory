@@ -1,0 +1,1098 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class SafetyScoreResult:
+    """
+    Safety assessment for one route segment.
+
+    safety_score:
+        0-100, where higher means safer conditions.
+
+    confidence:
+        0-100 evidence/coverage confidence. This is deliberately
+        separate from the Safety Score.
+
+    The service does not treat missing information as unsafe.
+    """
+
+    safety_score: float | None
+    confidence: float
+    status: str
+
+    ml_score: float | None
+    weather_score: float | None
+    traveler_score: float | None
+    evidence_score: float | None
+
+    available_sources: list[str]
+    missing_sources: list[str]
+
+    dimension_scores: dict[str, float]
+    reasons: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "safety_score": self.safety_score,
+            "confidence": self.confidence,
+            "status": self.status,
+            "components": {
+                "ml_score": self.ml_score,
+                "weather_score": self.weather_score,
+                "traveler_score": self.traveler_score,
+                "evidence_score": self.evidence_score,
+            },
+            "available_sources": self.available_sources,
+            "missing_sources": self.missing_sources,
+            "dimension_scores": self.dimension_scores,
+            "reasons": self.reasons,
+        }
+
+
+class SafetyScoreService:
+    """
+    Calculates a transparent segment-level Safety Score.
+
+    Design principles:
+
+    1. Higher score = safer conditions.
+    2. Missing data is NOT treated as zero safety.
+    3. Safety Score and confidence are separate.
+    4. Traffic is deliberately excluded.
+    5. Dimension-level conditions are evaluated independently.
+    6. ML output is accepted only when it can be interpreted
+       without inventing semantics.
+    7. All scoring rules are centralized here so they can later
+       be calibrated using validation data.
+    """
+
+    # -------------------------------------------------------------
+    # Source weights
+    # -------------------------------------------------------------
+    #
+    # These are INITIAL RESEARCH WEIGHTS.
+    #
+    # They are configuration hypotheses, not scientifically
+    # validated final weights.
+    #
+    # ML        = 40%
+    # Weather   = 30%
+    # Traveler  = 20%
+    # Evidence  = 10%
+    #
+    # The weights are normalized automatically whenever a source
+    # is unavailable.
+    # -------------------------------------------------------------
+
+    SOURCE_WEIGHTS = {
+        "ml": 0.40,
+        "weather": 0.30,
+        "traveler": 0.20,
+        "evidence": 0.10,
+    }
+
+    # -------------------------------------------------------------
+    # Weather condition safety values
+    # -------------------------------------------------------------
+
+    RAIN_SCORES = {
+        "no rain": 100.0,
+        "drizzle": 95.0,
+        "light rain": 85.0,
+        "moderate rain": 70.0,
+        "heavy rain": 45.0,
+        "very heavy rain": 20.0,
+    }
+
+    VISIBILITY_SCORES = {
+        "very clear": 100.0,
+        "clear": 95.0,
+        "slightly reduced": 85.0,
+        "moderately reduced": 70.0,
+        "poor": 45.0,
+        "very poor": 20.0,
+    }
+
+    FOG_SCORES = {
+        "none": 100.0,
+        "light mist": 90.0,
+        "moderate mist": 75.0,
+        "dense fog": 40.0,
+        "very dense fog": 15.0,
+    }
+
+    # -------------------------------------------------------------
+    # Traveler-reported unusual conditions
+    # -------------------------------------------------------------
+    #
+    # These represent safety impact, not traffic impact.
+    # -------------------------------------------------------------
+
+    UNUSUAL_CONDITION_SCORES = {
+    "none": 100.0,
+    "slippery_road": 65.0,
+    "slippery road": 65.0,
+    "debris on road": 45.0,
+    "debris_on_road": 45.0,
+    "road damage": 50.0,
+    "road_damage": 50.0,
+    "construction activity": 70.0,
+    "construction_activity": 70.0,
+    "fallen tree": 40.0,
+    "fallen_tree": 40.0,
+    "accident/incident": 40.0,
+    "accident_incident": 40.0,
+    "landslide/rockfall": 25.0,
+    "landslide_rockfall": 25.0,
+    "flooding": 20.0,
+    "road closure": 0.0,
+    "road_closure": 0.0,
+    "other": 60.0,
+}
+
+    # -------------------------------------------------------------
+    # Public API
+    # -------------------------------------------------------------
+
+    def calculate_segment_score(
+        self,
+        *,
+        historical_result: dict[str, Any] | None = None,
+        weather_result: dict[str, Any] | None = None,
+        traveler_result: dict[str, Any] | None = None,
+        fusion_result: dict[str, Any] | None = None,
+    ) -> SafetyScoreResult:
+        """
+        Calculate a Safety Score for one route segment.
+
+        Parameters:
+
+            historical_result:
+                Output from the regional ML service.
+
+            weather_result:
+                Dimension-level normalized weather information.
+
+            traveler_result:
+                Aggregated traveler dimensions.
+
+            fusion_result:
+                Dimension-aware fusion output.
+
+        Traffic is intentionally ignored.
+        """
+
+        # ---------------------------------------------------------
+        # 1. Calculate source-level components
+        # ---------------------------------------------------------
+
+        ml_score = self._calculate_ml_score(
+            historical_result
+        )
+
+        weather_score, weather_dimensions = (
+            self._calculate_weather_score(
+                weather_result
+            )
+        )
+
+        traveler_score, traveler_dimensions = (
+            self._calculate_traveler_score(
+                traveler_result
+            )
+        )
+
+        evidence_score = self._calculate_evidence_score(
+            fusion_result
+        )
+
+        # ---------------------------------------------------------
+        # 2. Determine source availability
+        # ---------------------------------------------------------
+
+        source_scores = {
+            "ml": ml_score,
+            "weather": weather_score,
+            "traveler": traveler_score,
+            "evidence": evidence_score,
+        }
+
+        available_sources = [
+            source
+            for source, score in source_scores.items()
+            if score is not None
+        ]
+
+        missing_sources = [
+            source
+            for source, score in source_scores.items()
+            if score is None
+        ]
+
+        # ---------------------------------------------------------
+        # 3. Calculate weighted score
+        # ---------------------------------------------------------
+
+        safety_score = self._weighted_score(
+            source_scores
+        )
+
+        # ---------------------------------------------------------
+        # 4. Dimension-level information
+        # ---------------------------------------------------------
+
+        dimension_scores = {}
+
+        dimension_scores.update(
+            weather_dimensions
+        )
+
+        dimension_scores.update(
+            traveler_dimensions
+        )
+
+        # ---------------------------------------------------------
+        # 5. Generate human-readable reasons
+        # ---------------------------------------------------------
+
+        reasons = self._generate_reasons(
+            weather_result=weather_result,
+            traveler_result=traveler_result,
+            dimension_scores=dimension_scores,
+        )
+
+        # ---------------------------------------------------------
+        # 6. Confidence
+        # ---------------------------------------------------------
+
+        confidence = self._calculate_confidence(
+            source_scores=source_scores,
+            fusion_result=fusion_result,
+        )
+
+        # ---------------------------------------------------------
+        # 7. Status
+        # ---------------------------------------------------------
+
+        status = self._determine_status(
+            safety_score=safety_score,
+            available_sources=available_sources,
+            confidence=confidence,
+        )
+
+        return SafetyScoreResult(
+            safety_score=safety_score,
+            confidence=confidence,
+            status=status,
+            ml_score=ml_score,
+            weather_score=weather_score,
+            traveler_score=traveler_score,
+            evidence_score=evidence_score,
+            available_sources=available_sources,
+            missing_sources=missing_sources,
+            dimension_scores=dimension_scores,
+            reasons=reasons,
+        )
+
+    # =============================================================
+    # WEATHER
+    # =============================================================
+
+    def _calculate_weather_score(
+        self,
+        weather_result: dict[str, Any] | None,
+    ) -> tuple[
+        float | None,
+        dict[str, float],
+    ]:
+        """
+        Calculate the weather component.
+
+        Rain, visibility and fog are scored independently.
+
+        The resulting weather score is the average of available
+        dimensions. Missing dimensions are not treated as unsafe.
+        """
+
+        if not isinstance(weather_result, dict):
+            return None, {}
+
+        dimensions: dict[str, float] = {}
+
+        rain = weather_result.get("rain")
+
+        if isinstance(rain, str):
+            score = self._lookup_score(
+                rain,
+                self.RAIN_SCORES,
+            )
+
+            if score is not None:
+                dimensions["rain"] = score
+
+        visibility = weather_result.get("visibility")
+
+        if isinstance(visibility, str):
+            score = self._lookup_score(
+                visibility,
+                self.VISIBILITY_SCORES,
+            )
+
+            if score is not None:
+                dimensions["visibility"] = score
+
+        fog = weather_result.get("fog")
+
+        if isinstance(fog, str):
+            score = self._lookup_score(
+                fog,
+                self.FOG_SCORES,
+            )
+
+            if score is not None:
+                dimensions["fog"] = score
+
+        if not dimensions:
+            return None, {}
+
+        return (
+            self._average(
+                list(dimensions.values())
+            ),
+            dimensions,
+        )
+
+    # =============================================================
+    # TRAVELER REPORTS
+    # =============================================================
+
+    def _calculate_traveler_score(
+        self,
+        traveler_result: dict[str, Any] | None,
+    ) -> tuple[
+        float | None,
+        dict[str, float],
+    ]:
+        """
+        Calculate the traveler-observation component.
+
+        Traffic is explicitly ignored.
+
+        Traveler dimensions:
+
+            rain
+            visibility
+            fog
+            unusual_conditions
+
+        Traffic is stored elsewhere but must not affect Safety Score.
+        """
+
+        if not isinstance(traveler_result, dict):
+            return None, {}
+
+        dimensions: dict[str, float] = {}
+
+        rain = traveler_result.get("rain")
+
+        if isinstance(rain, str):
+            score = self._lookup_score(
+                rain,
+                self.RAIN_SCORES,
+            )
+
+            if score is not None:
+                dimensions["traveler_rain"] = score
+
+        visibility = traveler_result.get("visibility")
+
+        if isinstance(visibility, str):
+            score = self._lookup_score(
+                visibility,
+                self.VISIBILITY_SCORES,
+            )
+
+            if score is not None:
+                dimensions["traveler_visibility"] = score
+
+        fog = traveler_result.get("fog")
+
+        if isinstance(fog, str):
+            score = self._lookup_score(
+                fog,
+                self.FOG_SCORES,
+            )
+
+            if score is not None:
+                dimensions["traveler_fog"] = score
+
+        unusual = traveler_result.get(
+            "unusual_conditions"
+        )
+
+        if isinstance(unusual, str):
+            score = self._lookup_score(
+                unusual,
+                self.UNUSUAL_CONDITION_SCORES,
+            )
+
+            if score is not None:
+                dimensions[
+                    "unusual_conditions"
+                ] = score
+
+        # Deliberately DO NOT read traveler_result["traffic"].
+
+        if not dimensions:
+            return None, {}
+
+        return (
+            self._average(
+                list(dimensions.values())
+            ),
+            dimensions,
+        )
+
+    # =============================================================
+    # ML
+    # =============================================================
+
+    def _calculate_ml_score(
+        self,
+        historical_result: dict[str, Any] | None,
+    ) -> float | None:
+        """
+        Interpret a regional ML prediction only when its output is
+        already expressed in a recognized safety/risk representation.
+
+        We do NOT assume that an arbitrary numeric prediction means
+        safety, probability, rainfall, or risk.
+
+        Supported explicit fields:
+
+            safety_score
+            safety
+            safety_level
+            risk_score
+            risk_level
+            predicted_safety
+
+        If the model exposes another schema, this method returns
+        None until that model contract is explicitly mapped.
+        """
+
+        if not isinstance(
+            historical_result,
+            dict,
+        ):
+            return None
+
+        prediction = historical_result.get(
+            "prediction"
+        )
+
+        if prediction is None:
+            return None
+
+        if isinstance(prediction, dict):
+            return self._interpret_ml_dict(
+                prediction
+            )
+
+        # A bare numeric model output has ambiguous semantics.
+        # Do not invent an interpretation.
+        return None
+
+    def _interpret_ml_dict(
+        self,
+        prediction: dict[str, Any],
+    ) -> float | None:
+        """
+        Interpret an explicitly named ML safety/risk field.
+        """
+
+        # ---------------------------------------------------------
+        # Direct safety score
+        # ---------------------------------------------------------
+
+        for key in (
+            "safety_score",
+            "predicted_safety",
+        ):
+            value = prediction.get(key)
+
+            score = self._numeric_0_100(
+                value
+            )
+
+            if score is not None:
+                return score
+
+        # ---------------------------------------------------------
+        # Explicit safety level
+        # ---------------------------------------------------------
+
+        for key in (
+            "safety",
+            "safety_level",
+        ):
+            value = prediction.get(key)
+
+            score = self._safety_level_to_score(
+                value
+            )
+
+            if score is not None:
+                return score
+
+        # ---------------------------------------------------------
+        # Explicit risk score
+        #
+        # Higher risk means lower safety.
+        # ---------------------------------------------------------
+
+        value = prediction.get(
+            "risk_score"
+        )
+
+        risk_score = self._numeric_0_100(
+            value
+        )
+
+        if risk_score is not None:
+            return 100.0 - risk_score
+
+        # ---------------------------------------------------------
+        # Explicit risk level
+        # ---------------------------------------------------------
+
+        value = prediction.get(
+            "risk_level"
+        )
+
+        risk_score = self._risk_level_to_score(
+            value
+        )
+
+        if risk_score is not None:
+            return 100.0 - risk_score
+
+        return None
+
+    # =============================================================
+    # EVIDENCE / CONSENSUS
+    # =============================================================
+
+    def _calculate_evidence_score(
+        self,
+        fusion_result: dict[str, Any] | None,
+    ) -> float | None:
+        """
+        Calculate evidence-strength score from the dimension-aware
+        fusion result.
+
+        This is NOT the same thing as Safety Score.
+
+        The purpose is to represent how strongly available sources
+        agree.
+
+        Agreement is separated from source coverage where possible.
+        """
+
+        if not isinstance(
+            fusion_result,
+            dict,
+        ):
+            return None
+
+        consensus = fusion_result.get(
+            "dimension_consensus"
+        )
+
+        if not isinstance(
+            consensus,
+            dict,
+        ):
+            return None
+
+        scores: list[float] = []
+
+        for value in consensus.values():
+
+            if not isinstance(
+                value,
+                dict,
+            ):
+                continue
+
+            # Prefer explicit agreement_ratio.
+            agreement_ratio = value.get(
+                "agreement_ratio"
+            )
+
+            if isinstance(
+                agreement_ratio,
+                (int, float),
+            ):
+                ratio = float(
+                    agreement_ratio
+                )
+
+                if 0.0 <= ratio <= 1.0:
+                    scores.append(
+                        ratio * 100.0
+                    )
+                    continue
+
+            # Fall back to the existing confidence field.
+            confidence = value.get(
+                "confidence"
+            )
+
+            if isinstance(
+                confidence,
+                (int, float),
+            ):
+                value_float = float(
+                    confidence
+                )
+
+                if 0.0 <= value_float <= 1.0:
+                    scores.append(
+                        value_float * 100.0
+                    )
+                elif 0.0 <= value_float <= 100.0:
+                    scores.append(
+                        value_float
+                    )
+
+        if not scores:
+            return None
+
+        return self._average(
+            scores
+        )
+
+    # =============================================================
+    # WEIGHTED SAFETY SCORE
+    # =============================================================
+
+    def _weighted_score(
+        self,
+        source_scores: dict[str, float | None],
+    ) -> float | None:
+        """
+        Calculate weighted Safety Score using only available sources.
+
+        Missing sources are excluded and the remaining weights are
+        normalized.
+
+        Example:
+
+            ML unavailable
+            Weather available
+            Traveler available
+            Evidence available
+
+        The weather/traveler/evidence weights are automatically
+        renormalized instead of treating ML as zero.
+        """
+
+        available = {
+            source: score
+            for source, score in source_scores.items()
+            if score is not None
+        }
+
+        if not available:
+            return None
+
+        total_weight = sum(
+            self.SOURCE_WEIGHTS[source]
+            for source in available
+        )
+
+        if total_weight <= 0:
+            return None
+
+        weighted_total = 0.0
+
+        for source, score in available.items():
+
+            normalized_weight = (
+                self.SOURCE_WEIGHTS[source]
+                / total_weight
+            )
+
+            weighted_total += (
+                float(score)
+                * normalized_weight
+            )
+
+        return round(
+            max(
+                0.0,
+                min(
+                    100.0,
+                    weighted_total,
+                ),
+            ),
+            2,
+        )
+
+    # =============================================================
+    # CONFIDENCE
+    # =============================================================
+
+    def _calculate_confidence(
+        self,
+        source_scores: dict[str, float | None],
+        fusion_result: dict[str, Any] | None,
+    ) -> float:
+        """
+        Calculate evidence/coverage confidence separately from
+        Safety Score.
+
+        Confidence considers:
+
+            1. Source coverage
+            2. Dimension agreement
+
+        It does NOT increase merely because the Safety Score is high.
+        """
+
+        available_count = sum(
+            score is not None
+            for score in source_scores.values()
+        )
+
+        source_coverage = (
+            available_count
+            / len(source_scores)
+        )
+
+        agreement_score = (
+            self._calculate_evidence_score(
+                fusion_result
+            )
+        )
+
+        if agreement_score is None:
+            # No fusion evidence available.
+            # Confidence reflects only source coverage.
+            return round(
+                source_coverage * 100.0,
+                2,
+            )
+
+        # ---------------------------------------------------------
+        # Coverage contributes 50%.
+        # Agreement contributes 50%.
+        # ---------------------------------------------------------
+
+        confidence = (
+            (source_coverage * 100.0 * 0.50)
+            + (agreement_score * 0.50)
+        )
+
+        return round(
+            max(
+                0.0,
+                min(
+                    100.0,
+                    confidence,
+                ),
+            ),
+            2,
+        )
+
+    # =============================================================
+    # REASONS
+    # =============================================================
+
+    def _generate_reasons(
+        self,
+        *,
+        weather_result: dict[str, Any] | None,
+        traveler_result: dict[str, Any] | None,
+        dimension_scores: dict[str, float],
+    ) -> list[str]:
+        """
+        Generate deterministic reasons from observed conditions.
+
+        These reasons are descriptive. They do not replace the
+        Safety Score calculation and should not be generated by the
+        LLM.
+        """
+
+        reasons: list[str] = []
+
+        # ---------------------------------------------------------
+        # Weather reasons
+        # ---------------------------------------------------------
+
+        if isinstance(
+            weather_result,
+            dict,
+        ):
+
+            rain = weather_result.get(
+                "rain"
+            )
+
+            if isinstance(
+                rain,
+                str,
+            ) and rain.casefold() not in {
+                "no rain",
+            }:
+                reasons.append(
+                    f"Weather indicates {rain}."
+                )
+
+            visibility = weather_result.get(
+                "visibility"
+            )
+
+            if isinstance(
+                visibility,
+                str,
+            ) and visibility.casefold() in {
+                "poor",
+                "very poor",
+                "moderately reduced",
+            }:
+                reasons.append(
+                    f"Weather visibility is {visibility}."
+                )
+
+            fog = weather_result.get(
+                "fog"
+            )
+
+            if isinstance(
+                fog,
+                str,
+            ) and fog.casefold() not in {
+                "none",
+            }:
+                reasons.append(
+                    f"Fog/mist condition is {fog}."
+                )
+
+        # ---------------------------------------------------------
+        # Traveler reasons
+        # ---------------------------------------------------------
+
+        if isinstance(
+            traveler_result,
+            dict,
+        ):
+
+            unusual = traveler_result.get(
+                "unusual_conditions"
+            )
+
+            if isinstance(
+                unusual,
+                str,
+            ) and unusual.casefold() not in {
+                "none",
+            }:
+                reasons.append(
+                    "Traveler reports indicate "
+                    f"{unusual}."
+                )
+
+            visibility = traveler_result.get(
+                "visibility"
+            )
+
+            if isinstance(
+                visibility,
+                str,
+            ) and visibility.casefold() in {
+                "poor",
+                "very poor",
+                "moderately reduced",
+            }:
+                reasons.append(
+                    "Traveler reports indicate "
+                    f"{visibility} visibility."
+                )
+
+        # ---------------------------------------------------------
+        # Score-based fallback
+        # ---------------------------------------------------------
+
+        if not reasons and dimension_scores:
+            reasons.append(
+                "Available weather and traveler "
+                "observations were incorporated into "
+                "the segment assessment."
+            )
+
+        return reasons
+
+    # =============================================================
+    # STATUS
+    # =============================================================
+
+    @staticmethod
+    def _determine_status(
+        *,
+        safety_score: float | None,
+        available_sources: list[str],
+        confidence: float,
+    ) -> str:
+        """
+        Operational status of the score.
+
+        This does not classify a trip as safe/unsafe by itself.
+        """
+
+        if safety_score is None:
+            return "score_unavailable"
+
+        if not available_sources:
+            return "score_unavailable"
+
+        if confidence < 30.0:
+            return "low_evidence"
+
+        if confidence < 60.0:
+            return "moderate_evidence"
+
+        return "score_available"
+
+    # =============================================================
+    # LOOKUPS / HELPERS
+    # =============================================================
+
+    @staticmethod
+    def _lookup_score(
+        value: str,
+        mapping: dict[str, float],
+    ) -> float | None:
+        """
+        Case-insensitive score lookup.
+        """
+
+        normalized = (
+            value.strip()
+            .casefold()
+        )
+
+        return mapping.get(
+            normalized
+        )
+
+    @staticmethod
+    def _numeric_0_100(
+        value: Any,
+    ) -> float | None:
+        """
+        Return a numeric value only when it is explicitly within
+        the 0-100 range.
+        """
+
+        if not isinstance(
+            value,
+            (int, float),
+        ):
+            return None
+
+        numeric = float(value)
+
+        if not 0.0 <= numeric <= 100.0:
+            return None
+
+        return numeric
+
+    @staticmethod
+    def _safety_level_to_score(
+        value: Any,
+    ) -> float | None:
+        """
+        Convert an explicitly named safety level into a score.
+
+        These are configurable baseline mappings.
+        """
+
+        if not isinstance(
+            value,
+            str,
+        ):
+            return None
+
+        mapping = {
+            "very safe": 95.0,
+            "safe": 85.0,
+            "moderate": 65.0,
+            "unsafe": 35.0,
+            "very unsafe": 15.0,
+        }
+
+        return mapping.get(
+            value.strip().casefold()
+        )
+
+    @staticmethod
+    def _risk_level_to_score(
+        value: Any,
+    ) -> float | None:
+        """
+        Convert an explicitly named risk level into a 0-100
+        risk score.
+
+        Higher risk = lower safety.
+        """
+
+        if not isinstance(
+            value,
+            str,
+        ):
+            return None
+
+        mapping = {
+            "very low": 5.0,
+            "low": 20.0,
+            "moderate": 50.0,
+            "high": 75.0,
+            "very high": 95.0,
+            "critical": 100.0,
+        }
+
+        return mapping.get(
+            value.strip().casefold()
+        )
+
+    @staticmethod
+    def _average(
+        values: list[float],
+    ) -> float:
+        """
+        Calculate a bounded arithmetic mean.
+        """
+
+        if not values:
+            return 0.0
+
+        return round(
+            max(
+                0.0,
+                min(
+                    100.0,
+                    sum(values)
+                    / len(values),
+                ),
+            ),
+            2,
+        )
+
+
+# Shared service instance.
+safety_score_service = SafetyScoreService()

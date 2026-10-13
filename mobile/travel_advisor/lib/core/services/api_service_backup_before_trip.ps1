@@ -1,0 +1,309 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+class ApiService {
+  static const String baseUrl = 'http://10.0.2.2:8000';
+
+  static const Duration requestTimeout = Duration(seconds: 15);
+
+  // ============================================================
+  // REGISTER
+  // ============================================================
+
+  static Future<Map<String, dynamic>> register({
+    required String fullName,
+    required String email,
+    required String mobile,
+    required String password,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/register');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'full_name': fullName.trim(),
+              'email': email.trim(),
+              'mobile': mobile.trim(),
+              'password': password,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+   // ============================================================
+  // VERIFY REGISTRATION OTP
+  // ============================================================
+
+  static Future<Map<String, dynamic>> verifyOtp({
+    required String identifier,
+    required String otp,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/verify-otp');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'identifier': identifier.trim(),
+              'otp': otp.trim(),
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+    // ============================================================
+  // RESEND VERIFICATION OTP
+  // ============================================================
+
+  static Future<Map<String, dynamic>> resendVerificationOtp({
+    required String identifier,
+  }) async {
+    final uri =
+        Uri.parse('$baseUrl/auth/resend-verification-otp');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'identifier': identifier.trim(),
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
+  static Future<Map<String, dynamic>> login({
+    required String identifier,
+    required String password,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/login');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'identifier': identifier.trim(),
+              'password': password,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
+  // FORGOT PASSWORD
+  // ============================================================
+
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String identifier,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/forgot-password');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'identifier': identifier.trim(),
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
+  // RESET PASSWORD
+  // ============================================================
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String identifier,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final uri = Uri.parse('$baseUrl/auth/reset-password');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'identifier': identifier.trim(),
+              'otp': otp.trim(),
+              'new_password': newPassword,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+
+      throw ApiException(
+        'Unable to connect to the server. Please make sure the backend is running.',
+      );
+    }
+  }
+
+  // ============================================================
+  // RESPONSE HANDLER
+  // ============================================================
+
+  static Map<String, dynamic> _handleResponse(
+    http.Response response,
+  ) {
+    dynamic decodedBody;
+
+    try {
+      decodedBody = jsonDecode(response.body);
+    } catch (_) {
+      decodedBody = null;
+    }
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      if (decodedBody is Map<String, dynamic>) {
+        return decodedBody;
+      }
+
+      return {
+        'message': 'Request completed successfully.',
+      };
+    }
+
+    String message = 'Something went wrong.';
+
+    if (decodedBody is Map<String, dynamic>) {
+      final detail = decodedBody['detail'];
+
+      if (detail is String && detail.isNotEmpty) {
+        message = detail;
+      } else if (detail is List && detail.isNotEmpty) {
+        message = detail
+            .map((item) {
+              if (item is Map<String, dynamic>) {
+                return item['msg']?.toString() ??
+                    'Invalid request.';
+              }
+
+              return item.toString();
+            })
+            .join('\n');
+      } else if (decodedBody['message'] is String) {
+        message = decodedBody['message'].toString();
+      }
+    }
+
+    throw ApiException(
+      message,
+      statusCode: response.statusCode,
+    );
+  }
+}
+
+// ============================================================
+// API EXCEPTION
+// ============================================================
+
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  ApiException(
+    this.message, {
+    this.statusCode,
+  });
+
+  @override
+  String toString() {
+    return message;
+  }
+}
