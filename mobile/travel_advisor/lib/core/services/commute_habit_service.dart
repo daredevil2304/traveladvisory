@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'notification_service.dart';
 
 class CommuteHabitService {
   static final CommuteHabitService _instance = CommuteHabitService._internal();
@@ -158,6 +159,31 @@ class CommuteHabitService {
         activeAlertNotifier.value = alertData;
         hasUnreadAlertNotifier.value = true;
         isLoadingNotifier.value = false;
+
+        // Dispatch real system notification to Android notification drawer
+        try {
+          final String title = alertData['title']?.toString() ??
+              'Mumbai–Pune Commute Safety Alert';
+          final String body = alertData['body']?.toString() ??
+              'Corridor conditions evaluated.';
+          final int score = alertData['safety_score'] is int
+              ? alertData['safety_score'] as int
+              : int.tryParse(alertData['safety_score']?.toString() ?? '70') ?? 70;
+          final List<String> warnings = (alertData['regional_warnings'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
+
+          NotificationService().showCommuteNotification(
+            title: title,
+            body: body,
+            score: score,
+            warnings: warnings,
+          );
+        } catch (_) {
+          // Graceful fallback
+        }
+
         return alertData;
       }
     } catch (_) {

@@ -3,25 +3,37 @@ import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/commute_habit_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  State<RoleSelectionScreen> createState() =>
-      _RoleSelectionScreenState();
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState
-    extends State<RoleSelectionScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final CommuteHabitService _habitService = CommuteHabitService();
 
   String? _selectedRole;
   bool _isLoggingOut = false;
   bool _isLoadingReports = false;
   bool _isTestingAlert = false;
+  bool _isSavingSchedule = false;
+  bool _isSliderExpanded = false;
+
   List<Map<String, dynamic>> _liveReportsPreview = [];
+
+  // Controllers for direct schedule configuration inside the slider
+  final TextEditingController _sourceCtrl =
+      TextEditingController(text: 'Panvel');
+  final TextEditingController _destCtrl = TextEditingController(text: 'Pune');
+  final TextEditingController _depTimeCtrl =
+      TextEditingController(text: '08:00');
+  final TextEditingController _alertTimeCtrl =
+      TextEditingController(text: '07:45');
+  String _travelDays = 'Mon-Fri';
+  bool _notificationsEnabled = true;
 
   static const Map<String, String> _corridorSegmentMap = {
     'R1': 'Mumbai to Panvel',
@@ -37,17 +49,36 @@ class _RoleSelectionScreenState
   @override
   void initState() {
     super.initState();
-    _loadDrawerData();
+    _loadSliderData();
   }
 
-  Future<void> _loadDrawerData() async {
+  @override
+  void dispose() {
+    _sourceCtrl.dispose();
+    _destCtrl.dispose();
+    _depTimeCtrl.dispose();
+    _alertTimeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSliderData() async {
     setState(() => _isLoadingReports = true);
     try {
-      await _habitService.loadHabit();
+      final habit = await _habitService.loadHabit();
+      if (habit != null) {
+        _sourceCtrl.text = habit['source'] ?? 'Panvel';
+        _destCtrl.text = habit['destination'] ?? 'Pune';
+        _depTimeCtrl.text = habit['departure_time'] ?? '08:00';
+        _alertTimeCtrl.text = habit['alert_time'] ?? '07:45';
+        _travelDays = habit['travel_days'] ?? 'Mon-Fri';
+        _notificationsEnabled = habit['is_enabled'] ?? true;
+      }
+
       final res = await ApiService.getLiveCommunityReports(hours: 6);
       final list = (res['reports'] as List?)
-          ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [];
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
       if (mounted) {
         setState(() {
           _liveReportsPreview = list.take(3).toList();
@@ -57,6 +88,90 @@ class _RoleSelectionScreenState
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingReports = false);
+      }
+    }
+  }
+
+  // ============================================================
+  // SCHEDULE SAVE
+  // ============================================================
+
+  Future<void> _saveCommuteSchedule() async {
+    setState(() => _isSavingSchedule = true);
+    if (_notificationsEnabled) {
+      await NotificationService().requestPermission();
+    }
+    final success = await _habitService.saveHabit(
+      source: _sourceCtrl.text.trim(),
+      destination: _destCtrl.text.trim(),
+      departureTime: _depTimeCtrl.text.trim(),
+      alertTime: _alertTimeCtrl.text.trim(),
+      travelDays: _travelDays,
+      isEnabled: _notificationsEnabled,
+    );
+    setState(() => _isSavingSchedule = false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Commute schedule saved successfully!'
+                : 'Failed to save commute schedule.',
+          ),
+          backgroundColor:
+              success ? AppTheme.forestGreen : AppTheme.crimsonRed,
+        ),
+      );
+    }
+  }
+
+  // ============================================================
+  // NOTIFICATION TEST TRIGGER
+  // ============================================================
+
+  Future<void> _triggerNotificationTest() async {
+    setState(() => _isTestingAlert = true);
+    await NotificationService().requestPermission();
+
+    try {
+      final alert = await _habitService.triggerTestAlert();
+      setState(() => _isTestingAlert = false);
+
+      if (!mounted) return;
+
+      if (alert != null) {
+        final title = alert['title']?.toString() ??
+            'Mumbai–Pune Commute Safety Alert';
+        final body = alert['body']?.toString() ??
+            'Corridor conditions evaluated.';
+        final score = alert['safety_score'] is int
+            ? alert['safety_score'] as int
+            : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
+        final warnings = (alert['regional_warnings'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+
+        await NotificationService().showCommuteNotification(
+          title: title,
+          body: body,
+          score: score,
+          warnings: warnings,
+        );
+
+        _showNotificationTestDialog(alert);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Failed to evaluate commute notification alert. Please try again.'),
+            backgroundColor: AppTheme.crimsonRed,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isTestingAlert = false);
       }
     }
   }
@@ -75,7 +190,6 @@ class _RoleSelectionScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
-
       return;
     }
 
@@ -93,19 +207,15 @@ class _RoleSelectionScreenState
   // ============================================================
 
   Future<void> _showLogoutConfirmation() async {
-    if (_isLoggingOut) {
-      return;
-    }
+    if (_isLoggingOut) return;
 
-    final bool? shouldLogout =
-        await showDialog<bool>(
+    final bool? shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: AppTheme.white,
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
             'Logout',
@@ -123,26 +233,12 @@ class _RoleSelectionScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child: const Text(
-                'CANCEL',
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('CANCEL'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              child: const Text(
-                'LOGOUT',
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('LOGOUT'),
             ),
           ],
         );
@@ -154,49 +250,22 @@ class _RoleSelectionScreenState
     }
   }
 
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-
   Future<void> _logout() async {
-    setState(() {
-      _isLoggingOut = true;
-    });
-
+    setState(() => _isLoggingOut = true);
     try {
-      // Clear the locally stored login session.
       await ApiService.clearStoredSession();
-
-      if (!mounted) {
-        return;
-      }
-
-      /*
-       * Remove every previous route from the navigation stack.
-       *
-       * This is important because after logout the user
-       * must not be able to press Back and return to the
-       * authenticated part of the application.
-       */
+      if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.login,
         (route) => false,
       );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoggingOut = false;
-      });
-
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoggingOut = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Unable to logout. Please try again.',
-          ),
+          content: Text('Unable to logout. Please try again.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -209,47 +278,30 @@ class _RoleSelectionScreenState
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sliderWidth = screenWidth * 0.88;
+
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: AppTheme.lightMint,
-
-      drawer: _buildDrawer(context),
-
       appBar: AppBar(
         backgroundColor: AppTheme.lightMint,
         elevation: 0,
         automaticallyImplyLeading: false,
-
-        leading: Builder(
-          builder: (scaffoldContext) => IconButton(
-            tooltip: 'Menu',
-            icon: const Icon(
-              Icons.menu_rounded,
-              color: AppTheme.darkNavy,
-              size: 26,
-            ),
-            onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+        leading: IconButton(
+          tooltip: 'Toggle Corridor Hub Slider',
+          icon: Icon(
+            _isSliderExpanded ? Icons.close_rounded : Icons.menu_rounded,
+            color: AppTheme.darkNavy,
+            size: 26,
           ),
+          onPressed: () {
+            setState(() {
+              _isSliderExpanded = !_isSliderExpanded;
+            });
+          },
         ),
-
-        title: const Text(
-          'Travel Advisor',
-        ),
-
+        title: const Text('Travel Advisor'),
         actions: [
-          IconButton(
-            tooltip: 'Live Road Updates',
-            icon: const Icon(
-              Icons.campaign_outlined,
-              color: AppTheme.darkNavy,
-            ),
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.liveRoadUpdates,
-              );
-            },
-          ),
           IconButton(
             tooltip: 'Saved Reports',
             icon: const Icon(
@@ -257,163 +309,156 @@ class _RoleSelectionScreenState
               color: AppTheme.darkNavy,
             ),
             onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.savedReports,
-              );
+              Navigator.pushNamed(context, AppRoutes.savedReports);
             },
           ),
           Padding(
-            padding:
-                const EdgeInsets.only(right: 12),
-
+            padding: const EdgeInsets.only(right: 12),
             child: _isLoggingOut
                 ? const Center(
                     child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      child:
-                          SizedBox(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
                         width: 22,
                         height: 22,
-                        child:
-                            CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
                       ),
                     ),
                   )
                 : IconButton(
                     tooltip: 'Logout',
-                    onPressed:
-                        _showLogoutConfirmation,
-                    icon: const Icon(
-                      Icons.logout_rounded,
-                    ),
+                    onPressed: _showLogoutConfirmation,
+                    icon: const Icon(Icons.logout_rounded),
                   ),
           ),
         ],
       ),
+      body: Stack(
+        children: [
+          // MAIN PROFILE SELECTION BODY
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  Text(
+                    'Choose your profile.',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Choose how you are travelling so we can personalize your journey experience.',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 32),
 
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
+                  // TRAVELER
+                  _buildRoleCard(
+                    role: 'traveler',
+                    icon: Icons.directions_car_rounded,
+                    title: 'Traveler',
+                    description:
+                        'Travelling immediately along the corridor.',
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // PLANNER
+                  _buildRoleCard(
+                    role: 'planner',
+                    icon: Icons.event_note_rounded,
+                    title: 'Planner',
+                    description:
+                        'I am planning a journey for a future date.',
+                  ),
+
+                  const Spacer(),
+
+                  // CONTINUE
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoggingOut ? null : _continue,
+                      child: const Text('CONTINUE'),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
+            ),
+          ),
+
+          // TRANSLUCENT BACKDROP WHEN SLIDER IS OPEN
+          if (_isSliderExpanded)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _isSliderExpanded = false);
+                },
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.35),
                 ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+              ),
+            ),
+
+          // COLLAPSED EDGE ICON HANDLE
+          if (!_isSliderExpanded)
+            Positioned(
+              right: 0,
+              top: MediaQuery.of(context).size.height * 0.36,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _isSliderExpanded = true);
+                },
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 14, 6, 14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.forestGreen,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(16),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 10,
+                        offset: const Offset(-2, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(
-                        height: 20,
+                      Icon(
+                        Icons.campaign_rounded,
+                        color: Colors.white,
+                        size: 24,
                       ),
-
-                      Text(
-                        'Choose your profile.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium,
-                      ),
-
-                      const SizedBox(
-                        height: 10,
-                      ),
-
-                      Text(
-                        'Choose how you are travelling so we can personalize your journey experience.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge,
-                      ),
-
-                      const SizedBox(
-                        height: 24,
-                      ),
-
-                      // ==================================================
-                      // TRAVELER
-                      // ==================================================
-
-                      _buildRoleCard(
-                        role: 'traveler',
-                        icon:
-                            Icons.directions_car_rounded,
-                        title: 'Traveler',
-                        description:
-                            'Travelling immediately along the corridor.',
-                      ),
-
-                      const SizedBox(
-                        height: 14,
-                      ),
-
-                      // ==================================================
-                      // PLANNER
-                      // ==================================================
-
-                      _buildRoleCard(
-                        role: 'planner',
-                        icon:
-                            Icons.event_note_rounded,
-                        title: 'Planner',
-                        description:
-                            'I am planning a journey for a future date.',
-                      ),
-
-                      const SizedBox(
-                        height: 16,
-                      ),
-
-                      // ==================================================
-                      // SIDEBAR DRAWER TRIGGER
-                      // ==================================================
-
-                      _buildSidebarTriggerCard(),
-
-                      const Spacer(),
-
-                      const SizedBox(
-                        height: 16,
-                      ),
-
-                      // ==================================================
-                      // CONTINUE
-                      // ==================================================
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-
-                        child: ElevatedButton(
-                          onPressed: _isLoggingOut
-                              ? null
-                              : _continue,
-
-                          child: const Text(
-                            'CONTINUE',
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 20,
+                      SizedBox(height: 6),
+                      Icon(
+                        Icons.chevron_left_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+
+          // EXPANDABLE SLIDER PANEL
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            right: _isSliderExpanded ? 0 : -sliderWidth,
+            top: 0,
+            bottom: 0,
+            width: sliderWidth,
+            child: _buildExpandableSliderPanel(context),
+          ),
+        ],
       ),
     );
   }
@@ -428,8 +473,7 @@ class _RoleSelectionScreenState
     required String title,
     required String description,
   }) {
-    final bool selected =
-        _selectedRole == role;
+    final bool selected = _selectedRole == role;
 
     return GestureDetector(
       onTap: _isLoggingOut
@@ -439,117 +483,62 @@ class _RoleSelectionScreenState
                 _selectedRole = role;
               });
             },
-
       child: AnimatedContainer(
-        duration:
-            const Duration(milliseconds: 200),
-
+        duration: const Duration(milliseconds: 200),
         width: double.infinity,
-
-        padding:
-            const EdgeInsets.all(20),
-
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppTheme.white,
-
-          borderRadius:
-              BorderRadius.circular(18),
-
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected
-                ? AppTheme.forestGreen
-                : AppTheme.border,
-
+            color: selected ? AppTheme.forestGreen : AppTheme.border,
             width: selected ? 2 : 1,
           ),
         ),
-
         child: Row(
           children: [
-            // ==================================================
-            // ICON
-            // ==================================================
-
             Container(
               width: 52,
               height: 52,
-
-              decoration:
-                  BoxDecoration(
-                color: selected
-                    ? AppTheme.forestGreen
-                    : AppTheme.mint,
-
-                borderRadius:
-                    BorderRadius.circular(15),
+              decoration: BoxDecoration(
+                color: selected ? AppTheme.forestGreen : AppTheme.mint,
+                borderRadius: BorderRadius.circular(15),
               ),
-
               child: Icon(
                 icon,
-
-                color: selected
-                    ? AppTheme.white
-                    : AppTheme.forestGreen,
-
+                color: selected ? AppTheme.white : AppTheme.forestGreen,
                 size: 27,
               ),
             ),
-
-            const SizedBox(
-              width: 16,
-            ),
-
-            // ==================================================
-            // TEXT
-            // ==================================================
-
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       fontSize: 17,
-                      fontWeight:
-                          FontWeight.w800,
-                      color:
-                          AppTheme.darkNavy,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.darkNavy,
                     ),
                   ),
-
-                  const SizedBox(
-                    height: 5,
-                  ),
-
+                  const SizedBox(height: 5),
                   Text(
                     description,
-
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      color:
-                          AppTheme.textSecondary,
+                      color: AppTheme.textSecondary,
                       height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ==================================================
-            // SELECTED CHECK
-            // ==================================================
-
             if (selected)
               const Icon(
                 Icons.check_circle_rounded,
-                color:
-                    AppTheme.forestGreen,
+                color: AppTheme.forestGreen,
                 size: 26,
               ),
           ],
@@ -559,217 +548,101 @@ class _RoleSelectionScreenState
   }
 
   // ============================================================
-  // SIDEBAR DRAWER TRIGGER CARD
+  // EXPANDABLE SLIDER PANEL
   // ============================================================
 
-  Widget _buildSidebarTriggerCard() {
+  Widget _buildExpandableSliderPanel(BuildContext context) {
     return Container(
-      width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppTheme.forestGreen.withOpacity(0.35),
-          width: 1.5,
+        color: Colors.white,
+        borderRadius: const BorderRadius.horizontal(
+          left: Radius.circular(22),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.forestGreen.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 18,
+            offset: const Offset(-4, 0),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: AppTheme.mint,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: const Icon(
-                    Icons.menu_open_rounded,
-                    color: AppTheme.forestGreen,
-                    size: 25,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'Corridor Hub & Live Feeds',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.darkNavy,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE65100),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'FEED',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        'Slide open sidebar for live crowd updates, saved reports & commute alerts',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.forestGreen,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Slide',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 3),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // SIDEBAR DRAWER
-  // ============================================================
-
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
-            // TOP HEADER with close button
+            // SLIDER HEADER
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
+              padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
               decoration: const BoxDecoration(
                 color: AppTheme.lightMint,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(22),
+                ),
                 border: Border(
                   bottom: BorderSide(color: AppTheme.border, width: 1),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: AppTheme.forestGreen,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.alt_route_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Close Sidebar',
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: AppTheme.darkNavy,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppTheme.forestGreen,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.alt_route_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Corridor Intelligence Hub',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Corridor Hub & Live Feeds',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Live road reports & daily commute scheduler',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Collapse Slider',
+                    icon: const Icon(
+                      Icons.chevron_right_rounded,
                       color: AppTheme.darkNavy,
+                      size: 28,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Live crowd reports, saved records & alerts',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    onPressed: () {
+                      setState(() => _isSliderExpanded = false);
+                    },
                   ),
                 ],
               ),
             ),
 
-            // SCROLLABLE DRAWER BODY
+            // SCROLLABLE SLIDER CONTENT
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 children: [
-                  // ==========================================
                   // SECTION 1: LIVE ROAD UPDATES FEED
-                  // ==========================================
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -794,11 +667,13 @@ class _RoleSelectionScreenState
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+                          setState(() => _isSliderExpanded = false);
+                          Navigator.pushNamed(
+                              context, AppRoutes.liveRoadUpdates);
                         },
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
@@ -836,27 +711,35 @@ class _RoleSelectionScreenState
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
+                          Icon(Icons.info_outline,
+                              size: 18, color: Colors.grey.shade600),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'No crowd reports in past 6 hours. Corridor clear.',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade700),
                             ),
                           ),
                         ],
                       ),
                     )
                   else
-                    ..._liveReportsPreview.map((rep) => _buildLiveReportItem(rep)),
+                    ..._liveReportsPreview
+                        .map((rep) => _buildLiveReportItem(rep)),
+
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 14),
+
+                  // SECTION 2: CORRIDOR HUB SCHEDULE SETTINGS
+                  _buildScheduleEditor(),
 
                   const SizedBox(height: 16),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
 
-                  // ==========================================
-                  // SECTION 2: SAVED REPORTS TILE
-                  // ==========================================
+                  // SECTION 3: SAVED REPORTS
                   _buildDrawerTile(
                     icon: Icons.bookmark_rounded,
                     iconColor: AppTheme.forestGreen,
@@ -864,45 +747,14 @@ class _RoleSelectionScreenState
                     title: 'Saved Reports',
                     subtitle: 'Inspect your saved journey assessments',
                     onTap: () {
-                      Navigator.pop(context);
+                      setState(() => _isSliderExpanded = false);
                       Navigator.pushNamed(context, AppRoutes.savedReports);
                     },
                   ),
 
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-
-                  // ==========================================
-                  // SECTION 3: DAILY COMMUTE ROUTE & ALERTS
-                  // ==========================================
-                  _buildCommuteScheduleSection(context),
-
                   const SizedBox(height: 16),
                 ],
               ),
-            ),
-
-            // LOGOUT AT BOTTOM
-            const Divider(height: 1),
-            ListTile(
-              dense: true,
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: AppTheme.crimsonRed,
-              ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.crimsonRed,
-                  fontSize: 14,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showLogoutConfirmation();
-              },
             ),
           ],
         ),
@@ -911,7 +763,7 @@ class _RoleSelectionScreenState
   }
 
   // ============================================================
-  // LIVE REPORT ITEM IN DRAWER
+  // LIVE REPORT ITEM IN SLIDER
   // ============================================================
 
   Widget _buildLiveReportItem(Map<String, dynamic> rep) {
@@ -1009,216 +861,306 @@ class _RoleSelectionScreenState
   }
 
   // ============================================================
-  // COMMUTE SCHEDULE SECTION IN DRAWER
+  // DIRECT COMMUTE SCHEDULE EDITOR INSIDE SLIDER
   // ============================================================
 
-  Widget _buildCommuteScheduleSection(BuildContext context) {
-    return ValueListenableBuilder<Map<String, dynamic>?>(
-      valueListenable: _habitService.commuteHabitNotifier,
-      builder: (context, habit, child) {
-        final src = habit?['source'] ?? 'Panvel';
-        final dst = habit?['destination'] ?? 'Pune';
-        final depTime = habit?['departure_time'] ?? '08:00';
-        final alertTime = habit?['alert_time'] ?? '07:45';
-        final travelDays = habit?['travel_days'] ?? 'Mon-Fri';
-
-        String daysText = 'Monday to Friday';
-        if (travelDays == 'Daily') daysText = 'Daily (All Days)';
-        if (travelDays == 'Sat-Sun') daysText = 'Weekends';
-
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F9FF),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFBAE6FD)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildScheduleEditor() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0284C7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.alarm_on_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'DAILY COMMUTE ROUTE',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0369A1),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          'Proactive Safety Alerts',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkNavy,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF0284C7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: const Icon(
+                  Icons.alarm_on_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Route & Days:',
-                          style: TextStyle(
-                              fontSize: 11.5, color: AppTheme.textSecondary),
-                        ),
-                        Text(
-                          '$src → $dst • $daysText',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkNavy,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'CORRIDOR HUB: COMMUTE SCHEDULE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0369A1),
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Schedule (IST):',
-                          style: TextStyle(
-                              fontSize: 11.5, color: AppTheme.textSecondary),
-                        ),
-                        Text(
-                          'Leaves $depTime IST • Alert $alertTime IST',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0284C7),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Proactive Route & Notification Setup',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkNavy,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0369A1),
-                        side: const BorderSide(color: Color(0xFF7DD3FC)),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.commuteAlerts);
-                      },
-                      child: const Text(
-                        'Edit Schedule',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ROUTE INPUTS
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _sourceCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Starting Point',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    prefixIcon: const Icon(Icons.trip_origin,
+                        size: 16, color: AppTheme.forestGreen),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0284C7),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _isTestingAlert
-                          ? null
-                          : () => _triggerNotificationTest(context),
-                      child: _isTestingAlert
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Test Alert Now',
-                              style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _destCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Destination',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    prefixIcon: const Icon(Icons.location_on,
+                        size: 16, color: AppTheme.crimsonRed),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 10),
+
+          // COMMUTE DAYS CHIPS
+          const Text(
+            'Active Commute Days:',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.darkNavy,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              ChoiceChip(
+                label: const Text('Monday to Friday',
+                    style: TextStyle(fontSize: 11)),
+                selected: _travelDays == 'Mon-Fri',
+                selectedColor: AppTheme.mint,
+                onSelected: (val) {
+                  if (val) setState(() => _travelDays = 'Mon-Fri');
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Daily', style: TextStyle(fontSize: 11)),
+                selected: _travelDays == 'Daily',
+                selectedColor: AppTheme.mint,
+                onSelected: (val) {
+                  if (val) setState(() => _travelDays = 'Daily');
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Weekends', style: TextStyle(fontSize: 11)),
+                selected: _travelDays == 'Sat-Sun',
+                selectedColor: AppTheme.mint,
+                onSelected: (val) {
+                  if (val) setState(() => _travelDays = 'Sat-Sun');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // SCHEDULE TIMES (IST)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _depTimeCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Departure (IST)',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    prefixIcon: const Icon(Icons.schedule,
+                        size: 16, color: Color(0xFF0284C7)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _alertTimeCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Alert Notice (IST)',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    prefixIcon: const Icon(Icons.alarm,
+                        size: 16, color: Color(0xFF0284C7)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // NOTIFICATIONS PERMISSION SWITCH
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Device Push Notifications',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Prompts system notification permission',
+                        style: TextStyle(
+                            fontSize: 10.5, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _notificationsEnabled,
+                  activeThumbColor: AppTheme.forestGreen,
+                  onChanged: (val) async {
+                    setState(() => _notificationsEnabled = val);
+                    if (val) {
+                      await NotificationService().requestPermission();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ACTION BUTTONS
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0369A1),
+                    side: const BorderSide(color: Color(0xFF7DD3FC)),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: _isSavingSchedule ? null : _saveCommuteSchedule,
+                  child: _isSavingSchedule
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Save Schedule',
+                          style: TextStyle(
+                              fontSize: 11.5, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: _isTestingAlert ? null : _triggerNotificationTest,
+                  child: _isTestingAlert
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Test Real Notification',
+                          style: TextStyle(
+                              fontSize: 11.5, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   // ============================================================
-  // NOTIFICATION TEST TRIGGER & MODAL
+  // NOTIFICATION EVALUATION DIALOG
   // ============================================================
-
-  Future<void> _triggerNotificationTest(BuildContext drawerContext) async {
-    setState(() => _isTestingAlert = true);
-    try {
-      final alert = await _habitService.triggerTestAlert();
-      setState(() => _isTestingAlert = false);
-
-      if (!mounted) return;
-
-      if (alert != null) {
-        _showNotificationTestDialog(alert);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Failed to evaluate commute notification alert. Please try again.'),
-            backgroundColor: AppTheme.crimsonRed,
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isTestingAlert = false);
-      }
-    }
-  }
 
   Color _getScoreColor(int score) {
     if (score < 40) return AppTheme.crimsonRed;
@@ -1251,7 +1193,7 @@ class _RoleSelectionScreenState
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
+                  color: Colors.black.withValues(alpha: 0.18),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -1264,11 +1206,12 @@ class _RoleSelectionScreenState
                 Container(
                   padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
                   decoration: BoxDecoration(
-                    color: scoreColor.withOpacity(0.12),
+                    color: scoreColor.withValues(alpha: 0.12),
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(24)),
                     border: Border(
-                      bottom: BorderSide(color: scoreColor.withOpacity(0.25)),
+                      bottom:
+                          BorderSide(color: scoreColor.withValues(alpha: 0.25)),
                     ),
                   ),
                   child: Row(
@@ -1291,7 +1234,7 @@ class _RoleSelectionScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'PROACTIVE COMMUTE ALERT',
+                              'REAL DEVICE NOTIFICATION SENT',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -1323,7 +1266,6 @@ class _RoleSelectionScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // SCORE ROW
                       Row(
                         children: [
                           Container(
@@ -1331,7 +1273,7 @@ class _RoleSelectionScreenState
                             height: 60,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: scoreColor.withOpacity(0.14),
+                              color: scoreColor.withValues(alpha: 0.14),
                               border: Border.all(color: scoreColor, width: 3),
                             ),
                             child: Center(
@@ -1454,48 +1396,23 @@ class _RoleSelectionScreenState
                       ],
 
                       const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.darkNavy,
-                                side: BorderSide(color: Colors.grey.shade300),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Dismiss'),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.forestGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.forestGreen,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                Navigator.pushNamed(
-                                    context, AppRoutes.commuteAlerts);
-                              },
-                              child: const Text(
-                                'Manage Schedule',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text(
+                            'Dismiss',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -1509,7 +1426,7 @@ class _RoleSelectionScreenState
   }
 
   // ============================================================
-  // DRAWER NAVIGATION TILE HELPER
+  // NAVIGATION TILE HELPER
   // ============================================================
 
   Widget _buildDrawerTile({
