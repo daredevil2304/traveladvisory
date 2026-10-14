@@ -7,6 +7,7 @@ from models.travel_report import TravelReport
 
 from routes import auth_router, trip_router
 from routes.chatbot_routes import router as chatbot_router
+from routes.community_routes import router as community_router
 from routes.report_routes import router as report_router
 
 
@@ -40,6 +41,10 @@ app.include_router(
 
 app.include_router(
     chatbot_router,
+)
+
+app.include_router(
+    community_router,
 )
 
 app.include_router(

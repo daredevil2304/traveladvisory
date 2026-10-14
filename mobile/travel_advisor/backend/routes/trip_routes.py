@@ -477,6 +477,16 @@ def submit_trip_observation(
     lat = request.latitude if request.latitude is not None else trip.source_latitude
     lon = request.longitude if request.longitude is not None else trip.source_longitude
 
+    resolved_region = request.route_region
+    if not resolved_region:
+        try:
+            segments = resolve_route_segments(trip.source, trip.destination)
+            if segments:
+                # Default to ghat crest segment if full corridor, or first segment
+                resolved_region = "R5" if "R5" in segments else segments[0]
+        except Exception:
+            resolved_region = "R5"
+
     parts = []
     if request.rain:
         parts.append(f"Rain: {request.rain}")
@@ -493,19 +503,26 @@ def submit_trip_observation(
 
     msg = "; ".join(parts) if parts else "Traveler highway live update"
 
-    report, observation = traveler_report_service.create_report_from_message(
+    report = traveler_report_service.create_report(
         db=db,
         user_id=user_id,
         trip_id=trip.id,
         latitude=lat,
         longitude=lon,
         raw_message=msg,
-        route_region=request.route_region,
+        route_region=resolved_region,
+        rain=request.rain,
+        visibility=request.visibility,
+        fog=request.fog,
+        unusual_conditions=request.unusual_conditions,
+        traffic=request.traffic,
+        extraction_confidence=1.0,
     )
 
     return {
         "status": "success",
         "trip_id": trip_id,
         "report_id": report.id,
+        "route_region": resolved_region,
         "message": "Observation recorded successfully.",
     }
