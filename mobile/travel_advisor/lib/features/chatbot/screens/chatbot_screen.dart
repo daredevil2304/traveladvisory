@@ -1475,7 +1475,7 @@ Future<void> _handlePostAnalysisMessage(
       return;
     }
 
-    _addBotMessage(answer);
+    _addBotMessage(_resolveSegmentName(answer));
   } on ApiException catch (e) {
     if (!mounted) {
       return;
@@ -2977,42 +2977,6 @@ Widget build(
           ],
         ),
         actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: CommuteHabitService().hasUnreadAlertNotifier,
-            builder: (context, hasAlert, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications_outlined,
-                      color: AppTheme.darkNavy,
-                    ),
-                    tooltip: 'Commute Alerts',
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.commuteAlerts,
-                      );
-                    },
-                  ),
-                  if (hasAlert)
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.crimsonRed,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(
               Icons.bookmark_outline_rounded,

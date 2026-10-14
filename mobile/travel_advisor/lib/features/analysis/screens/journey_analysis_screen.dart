@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
-import '../../../core/services/commute_habit_service.dart';
 
 class JourneyAnalysisScreen extends StatefulWidget {
   const JourneyAnalysisScreen({super.key});
@@ -17,6 +16,37 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   bool _showAllDetails = false;
   bool _isSavingReport = false;
   bool _reportSaved = false;
+
+  static const Map<String, String> _corridorSegmentMap = {
+    'R1': 'Mumbai to Panvel',
+    'R2': 'Panvel to Khalapur',
+    'R3': 'Khalapur to Khopoli',
+    'R4': 'Khopoli to Khandala (Bhor Ghat)',
+    'R5': 'Khandala to Lonavala',
+    'R6': 'Lonavala to Kamshet',
+    'R7': 'Kamshet to Pune',
+    'R8': 'Pune Urban Corridor',
+  };
+
+  String _resolveSegmentTitle(dynamic segment, {bool betweenPrefix = false}) {
+    if (segment is! Map) return 'Corridor Segment';
+    final details = segment['segment_details'];
+    if (details is Map && details['start'] != null && details['end'] != null) {
+      if (betweenPrefix) {
+        return 'Between ${details['start']} and ${details['end']}';
+      }
+      return '${details['start']} → ${details['end']}';
+    }
+    final rawRegion = segment['region']?.toString().trim().toUpperCase() ?? '';
+    if (_corridorSegmentMap.containsKey(rawRegion)) {
+      final mapped = _corridorSegmentMap[rawRegion]!;
+      if (betweenPrefix) {
+        return 'Between $mapped';
+      }
+      return mapped;
+    }
+    return segment['region']?.toString() ?? 'Corridor Segment';
+  }
 
   Future<void> _handleSaveReport(int? tripId, String source, String destination) async {
     if (tripId == null) {
@@ -122,49 +152,6 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         ),
         centerTitle: true,
         actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: CommuteHabitService().hasUnreadAlertNotifier,
-            builder: (context, hasAlert, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications_outlined,
-                      color: AppTheme.darkNavy,
-                    ),
-                    tooltip: 'Commute Alerts',
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.commuteAlerts,
-                      );
-                    },
-                  ),
-                  if (hasAlert)
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.crimsonRed,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.campaign_outlined, color: AppTheme.darkNavy),
-            tooltip: 'Live Road Updates',
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
             tooltip: 'Saved Reports',
@@ -497,11 +484,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
           final segment = segments[index];
           if (segment is! Map) return const SizedBox.shrink();
 
-          final details = segment['segment_details'];
-          String title = segment['region'] ?? 'Corridor Segment';
-          if (details is Map && details['start'] != null && details['end'] != null) {
-            title = '${details['start']} → ${details['end']}';
-          }
+          final String title = _resolveSegmentTitle(segment);
 
           final safetyResult = segment['safety_score_result'];
           final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
@@ -595,12 +578,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   Widget _buildProblematicRegionCard(dynamic segment) {
     if (segment is! Map) return const SizedBox.shrink();
 
-    final details = segment['segment_details'];
-    String title = segment['region'] ?? 'Flagged Region';
-
-    if (details is Map && details['start'] != null && details['end'] != null) {
-      title = 'Between ${details['start']} and ${details['end']}';
-    }
+    final String title = _resolveSegmentTitle(segment, betweenPrefix: true);
 
     final dynamic rawScore = segment['safety_score'];
     final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
@@ -696,12 +674,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   Widget _buildSegmentCard(dynamic segment) {
     if (segment is! Map) return const SizedBox.shrink();
 
-    final details = segment['segment_details'];
-    String title = segment['region'] ?? 'Corridor Segment';
-
-    if (details is Map && details['start'] != null && details['end'] != null) {
-      title = '${details['start']} to ${details['end']}';
-    }
+    final String title = _resolveSegmentTitle(segment);
 
     final safetyResult = segment['safety_score_result'];
     final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;

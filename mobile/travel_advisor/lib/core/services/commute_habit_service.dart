@@ -200,10 +200,17 @@ class CommuteHabitService {
   }
 
   /// Manually trigger a test notification alert for verification
-  Future<Map<String, dynamic>?> triggerTestAlert() async {
+  Future<Map<String, dynamic>?> triggerTestAlert({
+    String? source,
+    String? destination,
+  }) async {
     final habit = commuteHabitNotifier.value ?? await loadHabit();
-    final src = habit?['source'] ?? 'Panvel';
-    final dst = habit?['destination'] ?? 'Pune';
+    final String src = (source != null && source.trim().isNotEmpty)
+        ? source.trim()
+        : (habit?['source'] ?? 'Panvel');
+    final String dst = (destination != null && destination.trim().isNotEmpty)
+        ? destination.trim()
+        : (habit?['destination'] ?? 'Pune');
     return await fetchAlert(source: src, destination: dst);
   }
 }

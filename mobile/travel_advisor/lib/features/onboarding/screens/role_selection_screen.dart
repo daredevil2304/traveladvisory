@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
@@ -21,6 +22,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _isTestingAlert = false;
   bool _isSavingSchedule = false;
   bool _isSliderExpanded = false;
+  bool _showTutorialCoachmark = true;
 
   List<Map<String, dynamic>> _liveReportsPreview = [];
 
@@ -64,6 +66,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Future<void> _loadSliderData() async {
     setState(() => _isLoadingReports = true);
     try {
+      final seen = await const FlutterSecureStorage()
+          .read(key: 'has_seen_slider_tutorial');
+      if (seen == 'true' && mounted) {
+        setState(() => _showTutorialCoachmark = false);
+      }
+
       final habit = await _habitService.loadHabit();
       if (habit != null) {
         _sourceCtrl.text = habit['source'] ?? 'Panvel';
@@ -90,6 +98,37 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         setState(() => _isLoadingReports = false);
       }
     }
+  }
+
+  Future<void> _refreshLiveReports() async {
+    setState(() => _isLoadingReports = true);
+    try {
+      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final list = (res['reports'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      if (mounted) {
+        setState(() {
+          _liveReportsPreview = list.take(3).toList();
+          _isLoadingReports = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingReports = false);
+      }
+    }
+  }
+
+  Future<void> _dismissTutorialCoachmark() async {
+    setState(() => _showTutorialCoachmark = false);
+    try {
+      await const FlutterSecureStorage().write(
+        key: 'has_seen_slider_tutorial',
+        value: 'true',
+      );
+    } catch (_) {}
   }
 
   // ============================================================
@@ -134,7 +173,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     await NotificationService().requestPermission();
 
     try {
-      final alert = await _habitService.triggerTestAlert();
+      final dynamicSrc = _sourceCtrl.text.trim();
+      final dynamicDst = _destCtrl.text.trim();
+      final alert = await _habitService.triggerTestAlert(
+        source: dynamicSrc.isNotEmpty ? dynamicSrc : 'Panvel',
+        destination: dynamicDst.isNotEmpty ? dynamicDst : 'Pune',
+      );
       setState(() => _isTestingAlert = false);
 
       if (!mounted) return;
@@ -273,6 +317,198 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   // ============================================================
+  // APP OVERVIEW & GUIDE DIALOG
+  // ============================================================
+
+  void _showAppOverviewGuide() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.mint,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.forestGreen,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.lightbulb_outline_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Travel Advisor Guide',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.darkNavy,
+                              ),
+                            ),
+                            Text(
+                              'Overview of features & navigation',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _buildGuideFeatureItem(
+                        icon: Icons.directions_car_rounded,
+                        color: AppTheme.forestGreen,
+                        title: '1. Traveler & Planner Profiles',
+                        desc:
+                            'Select Traveler for immediate route risk assessment with live radar, and Planner for scheduling future journey forecasts.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildGuideFeatureItem(
+                        icon: Icons.sensors_rounded,
+                        color: const Color(0xFFEF4444),
+                        title: '2. Live Road Feeds',
+                        desc:
+                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments in IST, active for 6 hours.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildGuideFeatureItem(
+                        icon: Icons.alt_route_rounded,
+                        color: const Color(0xFF0284C7),
+                        title: '3. Corridor Hub & Commute Alerts',
+                        desc:
+                            'Set your recurring commute route, departure time, and alert notice in IST. Receive proactive notifications with safety scores before you depart.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildGuideFeatureItem(
+                        icon: Icons.swipe_left_rounded,
+                        color: const Color(0xFF7C3AED),
+                        title: '4. Expandable Side Drawer',
+                        desc:
+                            'Tap the green edge tab on the right side of the screen anytime to quickly access Live Feeds and your Corridor Hub scheduler.',
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.forestGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text(
+                        'Got It',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGuideFeatureItem({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
   // BUILD
   // ============================================================
 
@@ -302,6 +538,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
         title: const Text('Travel Advisor'),
         actions: [
+          IconButton(
+            tooltip: 'App Overview & Guide',
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: AppTheme.darkNavy,
+            ),
+            onPressed: _showAppOverviewGuide,
+          ),
           IconButton(
             tooltip: 'Saved Reports',
             icon: const Icon(
@@ -404,47 +648,215 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
             ),
 
-          // COLLAPSED EDGE ICON HANDLE
+          // COLLAPSED EDGE ICON HANDLE WITH BOTH ICONS & TUTORIAL COACHMARK
           if (!_isSliderExpanded)
             Positioned(
               right: 0,
-              top: MediaQuery.of(context).size.height * 0.36,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _isSliderExpanded = true);
-                },
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(10, 14, 6, 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.forestGreen,
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(16),
+              top: MediaQuery.of(context).size.height * 0.30,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // NEW USER TUTORIAL COACHMARK (Points to side slider)
+                  if (_showTutorialCoachmark)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      constraints: const BoxConstraints(maxWidth: 210),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkNavy,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.28),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.touch_app_rounded,
+                                color: Color(0xFF6EE7B7),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              const Expanded(
+                                child: Text(
+                                  'Explore Side Hub',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _dismissTutorialCoachmark,
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Tap the tab to inspect Live Road Feeds and configure daily commute alerts.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10.5,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: _dismissTutorialCoachmark,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.forestGreen,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Got it',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 10,
-                        offset: const Offset(-2, 3),
+
+                  // DUAL-ICON SLIDER HANDLE (LIVE FEEDS + CORRIDOR HUB)
+                  GestureDetector(
+                    onTap: () {
+                      if (_showTutorialCoachmark) {
+                        _dismissTutorialCoachmark();
+                      }
+                      setState(() => _isSliderExpanded = true);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 14, 6, 14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.forestGreen,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(18),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.28),
+                            blurRadius: 14,
+                            offset: const Offset(-3, 3),
+                          ),
+                        ],
                       ),
-                    ],
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. LIVE ROAD FEEDS ICON WITH LIVE DOT
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.sensors_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              Positioned(
+                                top: -1,
+                                right: -1,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 1.5),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'LIVE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // SEPARATOR
+                          Container(
+                            width: 22,
+                            height: 1.5,
+                            color: Colors.white.withValues(alpha: 0.35),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // 2. CORRIDOR HUB ICON
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.alt_route_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'HUB',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // CHEVRON EXPAND INDICATOR
+                          const Icon(
+                            Icons.chevron_left_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.campaign_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      SizedBox(height: 6),
-                      Icon(
-                        Icons.chevron_left_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
             ),
 
@@ -569,9 +981,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            // SLIDER HEADER
+            // SLIDER HEADER WITH BOTH ICONS
             Container(
-              padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
               decoration: const BoxDecoration(
                 color: AppTheme.lightMint,
                 borderRadius: BorderRadius.only(
@@ -584,34 +996,48 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: AppTheme.forestGreen,
+                      color: const Color(0xFFEF4444),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.sensors_rounded,
+                      color: Colors.white,
+                      size: 19,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.alt_route_rounded,
                       color: Colors.white,
-                      size: 22,
+                      size: 19,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Corridor Hub & Live Feeds',
+                          'Live Feeds & Corridor Hub',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: AppTheme.darkNavy,
                           ),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Live road reports & daily commute scheduler',
+                          'Real-time hazards & commute alerts',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppTheme.textSecondary,
@@ -646,15 +1072,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
-                            Icons.campaign_rounded,
-                            size: 18,
-                            color: Color(0xFFE65100),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444)
+                                  .withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.sensors_rounded,
+                              size: 15,
+                              color: Color(0xFFEF4444),
+                            ),
                           ),
-                          SizedBox(width: 6),
-                          Text(
+                          const SizedBox(width: 6),
+                          const Text(
                             'LIVE ROAD UPDATES FEED',
                             style: TextStyle(
                               fontSize: 11,
@@ -665,26 +1099,48 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           ),
                         ],
                       ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() => _isSliderExpanded = false);
-                          Navigator.pushNamed(
-                              context, AppRoutes.liveRoadUpdates);
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'View All >',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.forestGreen,
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Refresh Feed',
+                            icon: _isLoadingReports
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                    color: AppTheme.darkNavy,
+                                  ),
+                            onPressed: _isLoadingReports
+                                ? null
+                                : _refreshLiveReports,
                           ),
-                        ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _isSliderExpanded = false);
+                              Navigator.pushNamed(
+                                  context, AppRoutes.liveRoadUpdates);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'View All >',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.forestGreen,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
