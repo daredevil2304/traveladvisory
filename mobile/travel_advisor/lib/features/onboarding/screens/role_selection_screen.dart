@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/commute_habit_service.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -14,9 +14,52 @@ class RoleSelectionScreen extends StatefulWidget {
 
 class _RoleSelectionScreenState
     extends State<RoleSelectionScreen> {
-  String? _selectedRole;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final CommuteHabitService _habitService = CommuteHabitService();
 
+  String? _selectedRole;
   bool _isLoggingOut = false;
+  bool _isLoadingReports = false;
+  bool _isTestingAlert = false;
+  List<Map<String, dynamic>> _liveReportsPreview = [];
+
+  static const Map<String, String> _corridorSegmentMap = {
+    'R1': 'Mumbai to Panvel',
+    'R2': 'Panvel to Khalapur',
+    'R3': 'Khalapur to Khopoli',
+    'R4': 'Khopoli to Khandala (Bhor Ghat)',
+    'R5': 'Khandala to Lonavala',
+    'R6': 'Lonavala to Kamshet',
+    'R7': 'Kamshet to Pune',
+    'R8': 'Pune Urban Corridor',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDrawerData();
+  }
+
+  Future<void> _loadDrawerData() async {
+    setState(() => _isLoadingReports = true);
+    try {
+      await _habitService.loadHabit();
+      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final list = (res['reports'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList() ?? [];
+      if (mounted) {
+        setState(() {
+          _liveReportsPreview = list.take(3).toList();
+          _isLoadingReports = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingReports = false);
+      }
+    }
+  }
 
   // ============================================================
   // CONTINUE
@@ -167,6 +210,7 @@ class _RoleSelectionScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppTheme.lightMint,
 
       drawer: _buildDrawer(context),
@@ -254,99 +298,121 @@ class _RoleSelectionScreenState
       ),
 
       body: SafeArea(
-        child: Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 24,
-          ),
-
-          child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-
-            children: [
-              const SizedBox(
-                height: 20,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
               ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(
+                        height: 20,
+                      ),
 
-              Text(
-                'Choose your profile.',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium,
-              ),
+                      Text(
+                        'Choose your profile.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium,
+                      ),
 
-              const SizedBox(
-                height: 10,
-              ),
+                      const SizedBox(
+                        height: 10,
+                      ),
 
-              Text(
-                'Choose how you are travelling so we can personalize your journey experience.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge,
-              ),
+                      Text(
+                        'Choose how you are travelling so we can personalize your journey experience.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge,
+                      ),
 
-              const SizedBox(
-                height: 32,
-              ),
+                      const SizedBox(
+                        height: 24,
+                      ),
 
-              // ==================================================
-              // TRAVELER
-              // ==================================================
+                      // ==================================================
+                      // TRAVELER
+                      // ==================================================
 
-              _buildRoleCard(
-                role: 'traveler',
-                icon:
-                    Icons.directions_car_rounded,
-                title: 'Traveler',
-                description:
-                    'Travelling immediately along the corridor.',
-              ),
+                      _buildRoleCard(
+                        role: 'traveler',
+                        icon:
+                            Icons.directions_car_rounded,
+                        title: 'Traveler',
+                        description:
+                            'Travelling immediately along the corridor.',
+                      ),
 
-              const SizedBox(
-                height: 16,
-              ),
+                      const SizedBox(
+                        height: 14,
+                      ),
 
-              // ==================================================
-              // PLANNER
-              // ==================================================
+                      // ==================================================
+                      // PLANNER
+                      // ==================================================
 
-              _buildRoleCard(
-                role: 'planner',
-                icon:
-                    Icons.event_note_rounded,
-                title: 'Planner',
-                description:
-                    'I am planning a journey for a future date.',
-              ),
+                      _buildRoleCard(
+                        role: 'planner',
+                        icon:
+                            Icons.event_note_rounded,
+                        title: 'Planner',
+                        description:
+                            'I am planning a journey for a future date.',
+                      ),
 
-              const Spacer(),
+                      const SizedBox(
+                        height: 16,
+                      ),
 
-              // ==================================================
-              // CONTINUE
-              // ==================================================
+                      // ==================================================
+                      // SIDEBAR DRAWER TRIGGER
+                      // ==================================================
 
-              SizedBox(
-                width: double.infinity,
-                height: 56,
+                      _buildSidebarTriggerCard(),
 
-                child: ElevatedButton(
-                  onPressed: _isLoggingOut
-                      ? null
-                      : _continue,
+                      const Spacer(),
 
-                  child: const Text(
-                    'CONTINUE',
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      // ==================================================
+                      // CONTINUE
+                      // ==================================================
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+
+                        child: ElevatedButton(
+                          onPressed: _isLoggingOut
+                              ? null
+                              : _continue,
+
+                          child: const Text(
+                            'CONTINUE',
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 20,
+                      ),
+                    ],
                   ),
                 ),
               ),
-
-              const SizedBox(
-                height: 20,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -493,6 +559,139 @@ class _RoleSelectionScreenState
   }
 
   // ============================================================
+  // SIDEBAR DRAWER TRIGGER CARD
+  // ============================================================
+
+  Widget _buildSidebarTriggerCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppTheme.forestGreen.withOpacity(0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.forestGreen.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppTheme.mint,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.menu_open_rounded,
+                    color: AppTheme.forestGreen,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Corridor Hub & Live Feeds',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.darkNavy,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE65100),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'FEED',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'Slide open sidebar for live crowd updates, saved reports & commute alerts',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.forestGreen,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Slide',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 3),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // SIDEBAR DRAWER
   // ============================================================
 
@@ -501,12 +700,11 @@ class _RoleSelectionScreenState
       backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // DRAWER HEADER
+            // TOP HEADER with close button
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
               decoration: const BoxDecoration(
                 color: AppTheme.lightMint,
                 border: Border(
@@ -516,33 +714,46 @@ class _RoleSelectionScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppTheme.forestGreen,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.alt_route_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppTheme.forestGreen,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.alt_route_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close Sidebar',
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.darkNavy,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   const Text(
-                    'Travel Advisor',
+                    'Corridor Intelligence Hub',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.darkNavy,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   const Text(
-                    'Mumbai–Pune Corridor Hub',
+                    'Live crowd reports, saved records & alerts',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w500,
                     ),
@@ -551,71 +762,131 @@ class _RoleSelectionScreenState
               ),
             ),
 
-            const SizedBox(height: 12),
+            // SCROLLABLE DRAWER BODY
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                children: [
+                  // ==========================================
+                  // SECTION 1: LIVE ROAD UPDATES FEED
+                  // ==========================================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.campaign_rounded,
+                            size: 18,
+                            color: Color(0xFFE65100),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'LIVE ROAD UPDATES FEED',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.darkNavy,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'View All >',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.forestGreen,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text(
-                'CORRIDOR FEEDS & RECORDS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade500,
-                  letterSpacing: 0.8,
-                ),
+                  if (_isLoadingReports)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (_liveReportsPreview.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'No crowd reports in past 6 hours. Corridor clear.',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._liveReportsPreview.map((rep) => _buildLiveReportItem(rep)),
+
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+
+                  // ==========================================
+                  // SECTION 2: SAVED REPORTS TILE
+                  // ==========================================
+                  _buildDrawerTile(
+                    icon: Icons.bookmark_rounded,
+                    iconColor: AppTheme.forestGreen,
+                    iconBg: AppTheme.mint,
+                    title: 'Saved Reports',
+                    subtitle: 'Inspect your saved journey assessments',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.savedReports);
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+
+                  // ==========================================
+                  // SECTION 3: DAILY COMMUTE ROUTE & ALERTS
+                  // ==========================================
+                  _buildCommuteScheduleSection(context),
+
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
 
-            // LIVE ROAD UPDATES TILE
-            _buildDrawerTile(
-              icon: Icons.campaign_rounded,
-              iconColor: const Color(0xFFE65100),
-              iconBg: const Color(0xFFFFF3E0),
-              title: 'Live Road Updates',
-              subtitle: 'Active hazard reports and weather observations',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
-              },
-            ),
-
-            const SizedBox(height: 6),
-
-            // SAVED REPORTS TILE
-            _buildDrawerTile(
-              icon: Icons.bookmark_rounded,
-              iconColor: AppTheme.forestGreen,
-              iconBg: AppTheme.mint,
-              title: 'Saved Reports',
-              subtitle: 'Inspect your saved journey assessments',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, AppRoutes.savedReports);
-              },
-            ),
-
-            const SizedBox(height: 6),
-
-            // DAILY COMMUTE ALERTS TILE
-            _buildDrawerTile(
-              icon: Icons.notifications_active_rounded,
-              iconColor: const Color(0xFF0284C7),
-              iconBg: const Color(0xFFE0F2FE),
-              title: 'Daily Commute Alerts',
-              subtitle: 'Configure daily travel route and alert notifications',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, AppRoutes.commuteAlerts);
-              },
-            ),
-
-            const Spacer(),
-
+            // LOGOUT AT BOTTOM
             const Divider(height: 1),
-
-            // LOGOUT TILE
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              dense: true,
               leading: const Icon(
                 Icons.logout_rounded,
                 color: AppTheme.crimsonRed,
@@ -625,7 +896,7 @@ class _RoleSelectionScreenState
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppTheme.crimsonRed,
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
               onTap: () {
@@ -633,12 +904,613 @@ class _RoleSelectionScreenState
                 _showLogoutConfirmation();
               },
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),
     );
   }
+
+  // ============================================================
+  // LIVE REPORT ITEM IN DRAWER
+  // ============================================================
+
+  Widget _buildLiveReportItem(Map<String, dynamic> rep) {
+    final regionName = rep['region_name']?.toString() ??
+        _corridorSegmentMap[rep['route_region']] ??
+        'Corridor Segment';
+    final isRisky = rep['is_risky'] == true;
+    final ageMinutes = rep['age_minutes'] ?? 0;
+
+    String timeStr = '$ageMinutes min ago';
+    final rawCreated = rep['created_at']?.toString() ?? '';
+    if (rawCreated.contains('T')) {
+      final timePart = rawCreated.split('T')[1].substring(0, 5);
+      timeStr = '$timePart IST ($ageMinutes min ago)';
+    }
+
+    final hazards =
+        (rep['hazards'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isRisky ? const Color(0xFFFFF8F1) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRisky ? const Color(0xFFFFD8A8) : const Color(0xFFBBF7D0),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isRisky
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline,
+                size: 16,
+                color: isRisky ? const Color(0xFFE65100) : AppTheme.forestGreen,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  regionName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkNavy,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                timeStr,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          if (hazards.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: hazards.take(3).map((h) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isRisky ? const Color(0xFFFFE8D6) : AppTheme.mint,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    h,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isRisky
+                          ? const Color(0xFFC05621)
+                          : AppTheme.forestGreen,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // COMMUTE SCHEDULE SECTION IN DRAWER
+  // ============================================================
+
+  Widget _buildCommuteScheduleSection(BuildContext context) {
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _habitService.commuteHabitNotifier,
+      builder: (context, habit, child) {
+        final src = habit?['source'] ?? 'Panvel';
+        final dst = habit?['destination'] ?? 'Pune';
+        final depTime = habit?['departure_time'] ?? '08:00';
+        final alertTime = habit?['alert_time'] ?? '07:45';
+        final travelDays = habit?['travel_days'] ?? 'Mon-Fri';
+
+        String daysText = 'Monday to Friday';
+        if (travelDays == 'Daily') daysText = 'Daily (All Days)';
+        if (travelDays == 'Sat-Sun') daysText = 'Weekends';
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F9FF),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFBAE6FD)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.alarm_on_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'DAILY COMMUTE ROUTE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0369A1),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          'Proactive Safety Alerts',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Route & Days:',
+                          style: TextStyle(
+                              fontSize: 11.5, color: AppTheme.textSecondary),
+                        ),
+                        Text(
+                          '$src → $dst • $daysText',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Schedule (IST):',
+                          style: TextStyle(
+                              fontSize: 11.5, color: AppTheme.textSecondary),
+                        ),
+                        Text(
+                          'Leaves $depTime IST • Alert $alertTime IST',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0284C7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0369A1),
+                        side: const BorderSide(color: Color(0xFF7DD3FC)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.commuteAlerts);
+                      },
+                      child: const Text(
+                        'Edit Schedule',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _isTestingAlert
+                          ? null
+                          : () => _triggerNotificationTest(context),
+                      child: _isTestingAlert
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Test Alert Now',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // NOTIFICATION TEST TRIGGER & MODAL
+  // ============================================================
+
+  Future<void> _triggerNotificationTest(BuildContext drawerContext) async {
+    setState(() => _isTestingAlert = true);
+    try {
+      final alert = await _habitService.triggerTestAlert();
+      setState(() => _isTestingAlert = false);
+
+      if (!mounted) return;
+
+      if (alert != null) {
+        _showNotificationTestDialog(alert);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Failed to evaluate commute notification alert. Please try again.'),
+            backgroundColor: AppTheme.crimsonRed,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isTestingAlert = false);
+      }
+    }
+  }
+
+  Color _getScoreColor(int score) {
+    if (score < 40) return AppTheme.crimsonRed;
+    if (score < 60) return AppTheme.alertAmber;
+    if (score < 75) return const Color(0xFFF59E0B);
+    return AppTheme.forestGreen;
+  }
+
+  void _showNotificationTestDialog(Map<String, dynamic> alert) {
+    final int score = alert['safety_score'] is int
+        ? alert['safety_score'] as int
+        : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
+    final Color scoreColor = _getScoreColor(score);
+    final String title = alert['title']?.toString() ?? 'Commute Alert';
+    final String body = alert['body']?.toString() ?? 'Corridor evaluated';
+    final List warnings = (alert['regional_warnings'] as List?) ?? [];
+    final String advice = alert['departure_advice']?.toString() ?? '';
+    final String alertTime = alert['alert_time']?.toString() ?? '07:45';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // NOTIFICATION BANNER HEADER
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withOpacity(0.12),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: Border(
+                      bottom: BorderSide(color: scoreColor.withOpacity(0.25)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: scoreColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'PROACTIVE COMMUTE ALERT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                                color: AppTheme.darkNavy,
+                              ),
+                            ),
+                            Text(
+                              'Evaluation Timestamp: $alertTime IST',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // BODY CONTENT
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // SCORE ROW
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: scoreColor.withOpacity(0.14),
+                              border: Border.all(color: scoreColor, width: 3),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$score',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: scoreColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.darkNavy,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  alert['risk_level']?.toString() ??
+                                      'Evaluated',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: scoreColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        body,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+
+                      if (warnings.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Route Hazards (Model + Community):',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...warnings.map((w) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 16,
+                                  color: scoreColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    w.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: AppTheme.darkNavy,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+
+                      if (advice.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.lightbulb_outline_rounded,
+                                size: 18,
+                                color: Color(0xFF0369A1),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  advice,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF0369A1),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.darkNavy,
+                                side: BorderSide(color: Colors.grey.shade300),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Dismiss'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.forestGreen,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Navigator.pushNamed(
+                                    context, AppRoutes.commuteAlerts);
+                              },
+                              child: const Text(
+                                'Manage Schedule',
+                                style:
+                                    TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // DRAWER NAVIGATION TILE HELPER
+  // ============================================================
 
   Widget _buildDrawerTile({
     required IconData icon,
@@ -649,7 +1521,7 @@ class _RoleSelectionScreenState
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
@@ -657,7 +1529,7 @@ class _RoleSelectionScreenState
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
                 Container(
