@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../analysis/screens/journey_analysis_screen.dart';
 
 class SavedReportsScreen extends StatefulWidget {
   const SavedReportsScreen({super.key});
@@ -49,9 +50,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
   }
 
   Color _getScoreColor(int score) {
-    if (score >= 80) return const Color(0xFF16A34A);
-    if (score >= 60) return const Color(0xFFD97706);
-    return const Color(0xFFDC2626);
+    return SafetyMeterPainter.getScoreColor(score);
   }
 
   Future<void> _openReport(Map<String, dynamic> summary) async {

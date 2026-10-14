@@ -45,7 +45,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
             label: 'VIEW',
             textColor: AppTheme.white,
             onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.savedReports);
+              if (mounted) {
+                Navigator.pushNamed(context, AppRoutes.savedReports);
+              }
             },
           ),
         ),
@@ -762,9 +764,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   }
 
   Color _getScoreColor(int score) {
-    if (score >= 80) return const Color(0xFF16A34A);
-    if (score >= 60) return const Color(0xFFD97706);
-    return const Color(0xFFDC2626);
+    return SafetyMeterPainter.getScoreColor(score);
   }
 }
 
@@ -772,6 +772,27 @@ class SafetyMeterPainter extends CustomPainter {
   final int score;
 
   SafetyMeterPainter({required this.score});
+
+  /// Computes the uniform color for the score meter circle and score text.
+  /// If score is below 40, returns full red. As score increases,
+  /// smoothly changes the color of the whole meter circle towards green.
+  static Color getScoreColor(int score) {
+    if (score < 40) {
+      return const Color(0xFFDC2626); // Full Red below 40
+    } else if (score < 60) {
+      final double t = (score - 40) / 20.0;
+      return Color.lerp(const Color(0xFFDC2626), const Color(0xFFEA580C), t)!;
+    } else if (score < 75) {
+      final double t = (score - 60) / 15.0;
+      return Color.lerp(const Color(0xFFEA580C), const Color(0xFFD97706), t)!;
+    } else if (score < 85) {
+      final double t = (score - 75) / 10.0;
+      return Color.lerp(const Color(0xFFD97706), const Color(0xFF22C55E), t)!;
+    } else {
+      final double t = ((score - 85) / 15.0).clamp(0.0, 1.0);
+      return Color.lerp(const Color(0xFF22C55E), const Color(0xFF16A34A), t)!;
+    }
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -784,81 +805,33 @@ class SafetyMeterPainter extends CustomPainter {
     const double startAngle = 2.61799;
     const double sweepAngle = 4.18879;
 
+    final Color meterColor = getScoreColor(score);
+
+    // 1. Draw the background gauge track with subtle score tint
     final Paint trackPaint = Paint()
-      ..color = Colors.grey.shade200
+      ..color = Color.lerp(Colors.grey.shade200, meterColor, 0.12)!
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final Rect rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
-
-    // 1. Draw the background grey track
     canvas.drawArc(rect, startAngle, sweepAngle, false, trackPaint);
 
     final double normalizedScore = (score / 100.0).clamp(0.0, 1.0);
     if (normalizedScore <= 0.0) return;
 
-    // 2. Smoothly interpolated micro-segments guarantee exact color mapping with zero shader wrap anomalies.
-    // Higher score = greener color, lower score = redder color.
-    Color getColorAt(double t) {
-      if (t <= 0.35) {
-        final double subT = (t / 0.35).clamp(0.0, 1.0);
-        return Color.lerp(const Color(0xFFDC2626), const Color(0xFFEA580C), subT)!;
-      } else if (t <= 0.65) {
-        final double subT = ((t - 0.35) / 0.30).clamp(0.0, 1.0);
-        return Color.lerp(const Color(0xFFEA580C), const Color(0xFFD97706), subT)!;
-      } else if (t <= 0.82) {
-        final double subT = ((t - 0.65) / 0.17).clamp(0.0, 1.0);
-        return Color.lerp(const Color(0xFFD97706), const Color(0xFF16A34A), subT)!;
-      } else {
-        return const Color(0xFF16A34A);
-      }
-    }
-
-    final int totalSteps = 60;
-    final int activeSteps = (totalSteps * normalizedScore).ceil().clamp(1, totalSteps);
-    final double stepAngle = sweepAngle / totalSteps;
-
-    for (int i = 0; i < activeSteps; i++) {
-      final double segStart = startAngle + (i * stepAngle);
-      final double segSweep = (i == activeSteps - 1 && normalizedScore < 1.0)
-          ? (sweepAngle * normalizedScore) - (i * stepAngle)
-          : stepAngle + 0.006;
-
-      if (segSweep <= 0) continue;
-
-      final double t = (i / totalSteps).clamp(0.0, 1.0);
-      final Color segColor = getColorAt(t);
-
-      final Paint segPaint = Paint()
-        ..color = segColor
+    // 2. Solid active meter arc without gradient along the path.
+    // The entire active sweep, caps, and score number share the exact same meterColor.
+    final double activeSweep = sweepAngle * normalizedScore;
+    if (activeSweep > 0.0) {
+      final Paint activePaint = Paint()
+        ..color = meterColor
         ..strokeWidth = strokeWidth
         ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.butt;
+        ..strokeCap = StrokeCap.round;
 
-      canvas.drawArc(rect, segStart, segSweep, false, segPaint);
+      canvas.drawArc(rect, startAngle, activeSweep, false, activePaint);
     }
-
-    // Rounded start cap (Red at lower safety start)
-    final Offset startPoint = Offset(
-      center.dx + (radius - strokeWidth / 2) * cos(startAngle),
-      center.dy + (radius - strokeWidth / 2) * sin(startAngle),
-    );
-    final Paint startCapPaint = Paint()
-      ..color = const Color(0xFFDC2626)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(startPoint, strokeWidth / 2, startCapPaint);
-
-    // Rounded end cap matching the exact tip color
-    final double endAngle = startAngle + (sweepAngle * normalizedScore);
-    final Offset endPoint = Offset(
-      center.dx + (radius - strokeWidth / 2) * cos(endAngle),
-      center.dy + (radius - strokeWidth / 2) * sin(endAngle),
-    );
-    final Paint endCapPaint = Paint()
-      ..color = getColorAt(normalizedScore)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(endPoint, strokeWidth / 2, endCapPaint);
   }
 
   @override
