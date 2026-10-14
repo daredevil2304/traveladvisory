@@ -1203,7 +1203,6 @@ final Map<String, dynamic> analysisData =
       _addBotMessage(
         'Live observations skipped. Feel welcome to ask questions regarding your corridor.',
         quickReplies: const [
-          'Live Road Updates',
           'Why is this score low?',
           'Which segment needs attention?',
           'What precautions should I take?',
@@ -1226,12 +1225,11 @@ final Map<String, dynamic> analysisData =
     }
 
     _addBotMessage(
-      'Thank you! Your live road update has been posted to Live Road Updates (active for 6 hours).',
+      'Thank you! Your road condition observation has been recorded successfully.',
     );
     _addBotMessage(
-      'Feel welcome to ask questions or view real-time community road reports along the corridor.',
+      'Feel welcome to ask questions regarding your corridor assessment.',
       quickReplies: const [
-        'Live Road Updates',
         'Why is this score low?',
         'Which segment needs attention?',
         'What precautions should I take?',
@@ -1746,15 +1744,6 @@ Future<void> _handlePostAnalysisMessage(
   final String userMessage = message.trim();
 
   if (userMessage.isEmpty) {
-    return;
-  }
-
-  if (userMessage.toLowerCase().contains('live road update') ||
-      userMessage.toLowerCase().contains('view live road update')) {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.liveRoadUpdates,
-    );
     return;
   }
 
@@ -3367,19 +3356,6 @@ Widget build(
                       ),
                     ),
                 ],
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.campaign_outlined,
-              color: AppTheme.darkNavy,
-            ),
-            tooltip: 'Live Road Updates',
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.liveRoadUpdates,
               );
             },
           ),

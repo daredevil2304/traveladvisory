@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+from services.timezone_service import get_ist_now
 
 
 class CommuteHabit(Base):
@@ -63,14 +64,14 @@ class CommuteHabit(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=get_ist_now,
         nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=get_ist_now,
+        onupdate=get_ist_now,
         nullable=False,
     )
 
@@ -116,7 +117,7 @@ class CommuteCheckLog(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=get_ist_now,
         nullable=False,
         index=True,
     )

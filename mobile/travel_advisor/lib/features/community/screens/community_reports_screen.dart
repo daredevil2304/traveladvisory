@@ -107,12 +107,33 @@ class _CommunityReportsScreenState
   String _formatAge(dynamic minutes) {
     if (minutes == null) return 'recently';
     final int m = (minutes as num).toInt();
-    if (m < 1) return 'Just now';
+    if (m < 1) return '< 1 min ago';
     if (m < 60) return '$m min ago';
     final int hours = m ~/ 60;
     final int rem = m % 60;
     if (rem == 0) return '$hours hr ago';
     return '${hours}h ${rem}m ago';
+  }
+
+  String _formatReportTimeIst(dynamic createdAtRaw) {
+    if (createdAtRaw == null) return '';
+    try {
+      final String raw = createdAtRaw.toString().trim();
+      DateTime dt;
+      if (!raw.contains('+') && !raw.endsWith('Z') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(raw)) {
+        dt = DateTime.parse('$raw+05:30').toUtc().add(const Duration(hours: 5, minutes: 30));
+      } else {
+        dt = DateTime.parse(raw).toUtc().add(const Duration(hours: 5, minutes: 30));
+      }
+      final int hour = dt.hour;
+      final int minute = dt.minute;
+      final String period = hour >= 12 ? 'PM' : 'AM';
+      final int h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      final String minStr = minute < 10 ? '0$minute' : '$minute';
+      return '$h12:$minStr $period IST';
+    } catch (_) {
+      return '';
+    }
   }
 
   String _formatExpires(dynamic minutes) {
@@ -298,7 +319,7 @@ class _CommunityReportsScreenState
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'No severe hazards or low visibility reported by travelers in the past 6 hours.',
+                    'No severe hazards nor low visibility reported by travelers in the past 6 hours.',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
@@ -614,6 +635,9 @@ class _CommunityReportsScreenState
     final String regionName =
         report['region_name']?.toString() ?? 'Corridor Segment';
     final String ageStr = _formatAge(report['age_minutes']);
+    final String timeIst = _formatReportTimeIst(report['created_at']);
+    final String timestampDisplay =
+        timeIst.isNotEmpty ? '$ageStr • $timeIst' : ageStr;
     final String expiresStr = _formatExpires(report['expires_in_minutes']);
 
     final String? vis = report['visibility']?.toString();
@@ -693,7 +717,7 @@ class _CommunityReportsScreenState
                 ),
               ),
               Text(
-                ageStr,
+                timestampDisplay,
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

@@ -97,9 +97,9 @@ def create_trip_request(
     # ============================================================
 
     if request.role == "traveler":
-        from datetime import datetime
+        from services.timezone_service import get_ist_now
 
-        travel_datetime = datetime.now()
+        travel_datetime = get_ist_now()
 
     else:
         from datetime import datetime

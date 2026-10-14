@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.traveler_report import TravelerReport
+from services.timezone_service import format_ist_iso, get_ist_now
 from services.traveler_report_service import traveler_report_service
 
 router = APIRouter(
@@ -149,24 +150,32 @@ def get_live_community_reports(
     Expired reports are automatically excluded from the output and risk evaluation.
     Computes active risky corridor segments based exclusively on user inputs.
     """
-    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    now = get_ist_now()
+    # Handle both IST timestamps and legacy UTC timestamps in DB
+    cutoff_time_ist = now - timedelta(hours=hours)
+    cutoff_time_utc = (now - timedelta(hours=5, minutes=30)) - timedelta(hours=hours)
 
     reports_query = (
         db.query(TravelerReport)
-        .filter(TravelerReport.created_at >= cutoff_time)
+        .filter(TravelerReport.created_at >= min(cutoff_time_ist, cutoff_time_utc))
         .order_by(TravelerReport.created_at.desc())
         .all()
     )
 
-    now = datetime.utcnow()
     serialized_reports = []
     region_hazard_map: dict[str, list[dict[str, Any]]] = {}
 
     for report in reports_query:
         created_dt = report.created_at or now
+        # If created_dt was saved in UTC earlier, normalize to IST
+        if (now - created_dt).total_seconds() > (hours * 3600) and (now - (created_dt + timedelta(hours=5, minutes=30))).total_seconds() <= (hours * 3600):
+            created_dt = created_dt + timedelta(hours=5, minutes=30)
+
         age_seconds = max(0, int((now - created_dt).total_seconds()))
         age_minutes = age_seconds // 60
         remaining_minutes = max(0, (hours * 60) - age_minutes)
+        if remaining_minutes <= 0 and age_minutes > (hours * 60):
+            continue
 
         region_code = (report.route_region or "").strip().upper()
         if region_code not in REGION_METADATA:
@@ -197,7 +206,7 @@ def get_live_community_reports(
             "road_condition": report.unusual_conditions,
             "traffic": report.traffic,
             "raw_message": report.raw_message,
-            "created_at": created_dt.isoformat(),
+            "created_at": format_ist_iso(created_dt),
             "age_minutes": age_minutes,
             "expires_in_minutes": remaining_minutes,
             "is_risky": is_risky,
@@ -249,6 +258,7 @@ def get_live_community_reports(
 
     return {
         "status": "success",
+        "evaluated_at": format_ist_iso(now),
         "lookback_hours": hours,
         "total_reports": len(serialized_reports),
         "total_risky_regions": len(risky_regions),
@@ -312,6 +322,6 @@ def submit_community_road_report(
         "report_id": report.id,
         "route_region": region_code,
         "segment_name": meta["name"],
-        "created_at": report.created_at.isoformat() if report.created_at else datetime.utcnow().isoformat(),
+        "created_at": format_ist_iso(report.created_at),
         "message": "Community road report recorded successfully.",
     }

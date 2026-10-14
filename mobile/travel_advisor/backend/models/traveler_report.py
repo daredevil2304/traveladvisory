@@ -11,6 +11,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+from services.timezone_service import get_ist_now
 
 
 class TravelerReport(Base):
@@ -103,7 +104,7 @@ class TravelerReport(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=get_ist_now,
         nullable=False,
         index=True,
     )

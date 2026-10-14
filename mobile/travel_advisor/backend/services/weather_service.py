@@ -308,19 +308,21 @@ class WeatherService:
     ) -> datetime:
         """
         Convert OpenWeather's UTC Unix timestamp to an
-        aware UTC datetime.
+        aware IST datetime.
         """
 
         timestamp = WeatherService._to_float(
             unix_timestamp
         )
 
+        from services.timezone_service import IST
+
         if timestamp is None:
-            return datetime.now(timezone.utc)
+            return datetime.now(IST)
 
         return datetime.fromtimestamp(
             timestamp,
-            tz=timezone.utc,
+            tz=IST,
         )
 
     @staticmethod

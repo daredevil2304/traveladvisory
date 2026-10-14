@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+from services.timezone_service import get_ist_now
 
 
 class Trip(Base):
@@ -64,7 +65,7 @@ class Trip(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=get_ist_now,
         nullable=False,
     )
 

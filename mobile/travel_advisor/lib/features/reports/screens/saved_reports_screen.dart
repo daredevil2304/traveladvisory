@@ -148,14 +148,20 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
   String _formatDate(dynamic dateRaw) {
     if (dateRaw == null) return '';
     try {
-      final DateTime dt = DateTime.parse(dateRaw.toString()).toLocal();
+      final String raw = dateRaw.toString().trim();
+      DateTime dt;
+      if (!raw.contains('+') && !raw.endsWith('Z') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(raw)) {
+        dt = DateTime.parse('$raw+05:30').toUtc().add(const Duration(hours: 5, minutes: 30));
+      } else {
+        dt = DateTime.parse(raw).toUtc().add(const Duration(hours: 5, minutes: 30));
+      }
       final String month = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ][dt.month - 1];
       final String hour = dt.hour.toString().padLeft(2, '0');
       final String minute = dt.minute.toString().padLeft(2, '0');
-      return '${dt.day} $month ${dt.year}, $hour:$minute';
+      return '${dt.day} $month ${dt.year}, $hour:$minute IST';
     } catch (_) {
       return dateRaw.toString();
     }

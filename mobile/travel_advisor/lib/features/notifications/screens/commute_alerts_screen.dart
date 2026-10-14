@@ -132,7 +132,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                           child: TextField(
                             controller: depCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Departure (HH:MM)',
+                              labelText: 'Departure (HH:MM IST)',
                               prefixIcon: Icon(Icons.access_time),
                               border: OutlineInputBorder(),
                             ),
@@ -143,7 +143,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                           child: TextField(
                             controller: alertCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Alert (HH:MM)',
+                              labelText: 'Alert (HH:MM IST)',
                               prefixIcon: Icon(Icons.notifications_active),
                               border: OutlineInputBorder(),
                             ),
@@ -667,19 +667,19 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                     _buildHabitRow(
                       icon: Icons.departure_board,
                       label: 'Typical Departure',
-                      value: '$depTime hrs',
+                      value: '$depTime IST',
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
                       icon: Icons.history_toggle_off,
                       label: 'Observed Check Time',
-                      value: '~$checkTime hrs',
+                      value: '~$checkTime IST',
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
                       icon: Icons.alarm,
                       label: 'Proactive Alert Time',
-                      value: '$alertTime hrs (15 min prior)',
+                      value: '$alertTime IST (15 min prior)',
                       highlight: true,
                     ),
                   ],

@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from pwdlib import PasswordHash
+from services.timezone_service import get_ist_now
 from sqlalchemy.orm import Session
 
 from models.otp import OTPVerification
@@ -57,7 +58,7 @@ def create_otp(
         otp_hash=password_hash.hash(otp),
         purpose=purpose,
         expires_at=(
-            datetime.utcnow()
+            get_ist_now()
             + timedelta(minutes=OTP_EXPIRY_MINUTES)
         ),
         is_used=False,
@@ -106,7 +107,7 @@ def verify_otp(
     # OTP expired
     # --------------------------------------------------------
 
-    if datetime.utcnow() > otp_record.expires_at:
+    if get_ist_now() > otp_record.expires_at:
         otp_record.is_used = True
         db.commit()
 

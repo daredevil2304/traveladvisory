@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+from services.timezone_service import get_ist_now
 
 
 class User(Base):
@@ -51,6 +52,6 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=get_ist_now,
         nullable=False,
     )

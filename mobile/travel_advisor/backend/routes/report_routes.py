@@ -9,6 +9,7 @@ from schemas.report import (
     SavedReportSummary,
 )
 from services.report_service import report_service
+from services.timezone_service import to_ist
 
 
 router = APIRouter(
@@ -203,10 +204,10 @@ def _to_summary_response(
         source=report.source_name,
         destination=report.destination_name,
         role=report.role,
-        travel_datetime=report.travel_datetime,
+        travel_datetime=to_ist(report.travel_datetime),
         safety_score=report.safety_score,
         confidence=report.confidence,
-        created_at=report.created_at,
+        created_at=to_ist(report.created_at),
     )
 
 
@@ -222,10 +223,10 @@ def _to_detail_response(
         source=report.source_name,
         destination=report.destination_name,
         role=report.role,
-        travel_datetime=report.travel_datetime,
+        travel_datetime=to_ist(report.travel_datetime),
         safety_score=report.safety_score,
         confidence=report.confidence,
         advisory=report.advisory,
         analysis_data=report.analysis_data,
-        created_at=report.created_at,
+        created_at=to_ist(report.created_at),
     )

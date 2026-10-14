@@ -15,6 +15,7 @@ from services.route_segment_service import (
     normalize_location,
     resolve_route_segments,
 )
+from services.timezone_service import format_ist_iso, get_ist_now
 from services.weather_service import weather_service
 
 
@@ -46,9 +47,9 @@ class CommuteNotificationService:
         """
         Record a check event and update the user's learned commute habit.
         """
-        now = datetime.utcnow()
+        now = get_ist_now()
         if not check_time:
-            # Format as HH:MM
+            # Format as HH:MM in IST
             check_time = now.strftime("%H:%M")
 
         canonical_source = normalize_location(source) if source else "Panvel"
@@ -140,7 +141,7 @@ class CommuteNotificationService:
             "observed_check_time": "07:50",
             "alert_time": "07:45",
             "is_enabled": True,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": format_ist_iso(),
             "has_habit": False,
         }
 
@@ -183,7 +184,7 @@ class CommuteNotificationService:
             habit.departure_time = departure_time.strip()
             habit.alert_time = alert_time.strip()
             habit.is_enabled = is_enabled
-            habit.updated_at = datetime.utcnow()
+            habit.updated_at = get_ist_now()
 
         db.commit()
         db.refresh(habit)
@@ -228,13 +229,15 @@ class CommuteNotificationService:
         if not segments:
             segments = ["R2", "R3", "R4", "R5", "R6", "R7"]
 
-        # 2. Lookback cutoff for recent human observations
-        cutoff_time = datetime.utcnow() - timedelta(hours=self.LOOKBACK_HOURS)
+        # 2. Lookback cutoff for recent human observations in IST
+        now = get_ist_now()
+        cutoff_time_ist = now - timedelta(hours=self.LOOKBACK_HOURS)
+        cutoff_time_utc = (now - timedelta(hours=5, minutes=30)) - timedelta(hours=self.LOOKBACK_HOURS)
 
         recent_reports = (
             db.query(TravelerReport)
             .filter(
-                TravelerReport.created_at >= cutoff_time,
+                TravelerReport.created_at >= min(cutoff_time_ist, cutoff_time_utc),
                 TravelerReport.route_region.in_(segments),
             )
             .order_by(desc(TravelerReport.created_at))
@@ -404,7 +407,7 @@ class CommuteNotificationService:
             "warnings": warnings,
             "segment_risks": segment_risks,
             "advice": advice,
-            "evaluation_time": datetime.utcnow().isoformat(),
+            "evaluation_time": format_ist_iso(),
             "has_warnings": len(warnings) > 0,
         }
 
@@ -439,7 +442,7 @@ class CommuteNotificationService:
             habit.departure_time = detected["departure_time"]
             habit.observed_check_time = detected["observed_check_time"]
             habit.alert_time = detected["alert_time"]
-            habit.updated_at = datetime.utcnow()
+            habit.updated_at = get_ist_now()
 
         db.commit()
 

@@ -179,6 +179,19 @@ class _RoleSelectionScreenState
         ),
 
         actions: [
+          IconButton(
+            tooltip: 'Live Road Updates',
+            icon: const Icon(
+              Icons.campaign_outlined,
+              color: AppTheme.darkNavy,
+            ),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.liveRoadUpdates,
+              );
+            },
+          ),
           Padding(
             padding:
                 const EdgeInsets.only(right: 12),
@@ -248,7 +261,7 @@ class _RoleSelectionScreenState
               ),
 
               const SizedBox(
-                height: 32,
+                height: 28,
               ),
 
               // ==================================================
@@ -261,7 +274,7 @@ class _RoleSelectionScreenState
                     Icons.directions_car_rounded,
                 title: 'Traveler',
                 description:
-                    'I am travelling or about to travel.',
+                    'Travelling immediately along the corridor.',
               ),
 
               const SizedBox(
@@ -279,6 +292,83 @@ class _RoleSelectionScreenState
                 title: 'Planner',
                 description:
                     'I am planning a journey for a future date.',
+              ),
+
+              const SizedBox(
+                height: 20,
+              ),
+
+              // ==================================================
+              // LIVE ROAD UPDATES
+              // ==================================================
+
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.liveRoadUpdates,
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppTheme.border,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.campaign_rounded,
+                          color: Color(0xFFE65100),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Live Road Updates',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.darkNavy,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Inspect active crowd-sourced road hazards and weather conditions.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 16,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
               ),
 
               const Spacer(),
