@@ -1,3 +1,4 @@
+from models.commute_habit import CommuteCheckLog, CommuteHabit
 from models.otp import OTPVerification
 from models.traveler_report import TravelerReport
 from models.trip import Trip
@@ -8,4 +9,6 @@ __all__ = [
     "OTPVerification",
     "Trip",
     "TravelerReport",
+    "CommuteHabit",
+    "CommuteCheckLog",
 ]

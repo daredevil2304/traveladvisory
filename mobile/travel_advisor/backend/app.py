@@ -2,12 +2,13 @@ from fastapi import FastAPI
 
 from config import settings
 from database import Base, engine
-from models import User
+from models import CommuteCheckLog, CommuteHabit, User
 from models.travel_report import TravelReport
 
 from routes import auth_router, trip_router
 from routes.chatbot_routes import router as chatbot_router
 from routes.community_routes import router as community_router
+from routes.notification_routes import router as notification_router
 from routes.report_routes import router as report_router
 
 
@@ -49,6 +50,10 @@ app.include_router(
 
 app.include_router(
     report_router,
+)
+
+app.include_router(
+    notification_router,
 )
 
 
