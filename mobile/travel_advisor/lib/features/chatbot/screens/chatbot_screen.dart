@@ -52,8 +52,6 @@ class _ChatbotScreenState
   bool _isAnalyzing = false;
   bool _analysisComplete = false;
   bool _isCollectingLiveUpdates = false;
-  bool _reportSaved = false;
-  bool _isSavingReport = false;
   Map<String, dynamic>? _tripAnalysis;
 
   int? _tripId;
@@ -404,8 +402,9 @@ class _ChatbotScreenState
         break;
 
       case _ConversationStep.liveUpdateRain:
-      case _ConversationStep.liveUpdateTraffic:
+      case _ConversationStep.liveUpdateVisibility:
       case _ConversationStep.liveUpdateHazards:
+      case _ConversationStep.liveUpdateTraffic:
         _handleLiveUpdateMessage(message);
         break;
 
@@ -930,18 +929,6 @@ class _ChatbotScreenState
   // READY
   // ============================================================
 
-  void _prepareJourneyAnalysis() {
-    _step =
-        _ConversationStep.ready;
-
-    setState(() {
-      _journeyReady = true;
-    });
-
-    _showTypingThen(
-      'Thanks. I have what I need. Tap "Analyze Journey" and I will assess the route using the available intelligence sources.',
-    );
-  }
 
   // ============================================================
 // ANALYZE JOURNEY
@@ -1056,7 +1043,7 @@ final Map<String, dynamic> analysisData =
 
     Future.delayed(const Duration(milliseconds: 500), () async {
       if (mounted) {
-        final result = await Navigator.pushNamed(
+        await Navigator.pushNamed(
           context,
           AppRoutes.journeyAnalysis,
           arguments: {
@@ -1147,6 +1134,36 @@ final Map<String, dynamic> analysisData =
     switch (_step) {
       case _ConversationStep.liveUpdateRain:
         _rain = message.trim();
+        _step = _ConversationStep.liveUpdateVisibility;
+        _addBotMessage(
+          'How is visibility along your section?',
+          quickReplies: const [
+            'Clear (> 1 km)',
+            'Moderate mist (500m - 1km)',
+            'Dense fog (< 200m)',
+            'Near zero visibility',
+          ],
+        );
+        break;
+
+      case _ConversationStep.liveUpdateVisibility:
+        _visibility = message.trim();
+        _step = _ConversationStep.liveUpdateHazards;
+        _addBotMessage(
+          'What is the road condition along your section?',
+          quickReplies: const [
+            'Smooth / Dry',
+            'Wet / Slippery',
+            'Waterlogging',
+            'Potholes',
+            'Landslide / Rockfall',
+            'Debris',
+          ],
+        );
+        break;
+
+      case _ConversationStep.liveUpdateHazards:
+        _unusualConditions = message.trim();
         _step = _ConversationStep.liveUpdateTraffic;
         _addBotMessage(
           'How is traffic moving along your section?',
@@ -1161,22 +1178,6 @@ final Map<String, dynamic> analysisData =
 
       case _ConversationStep.liveUpdateTraffic:
         _traffic = message.trim();
-        _step = _ConversationStep.liveUpdateHazards;
-        _addBotMessage(
-          'Any road hazards observed along your route?',
-          quickReplies: const [
-            'All clear',
-            'Slippery surface',
-            'Waterlogging',
-            'Potholes',
-            'Landslide / Rockfall',
-            'Debris',
-          ],
-        );
-        break;
-
-      case _ConversationStep.liveUpdateHazards:
-        _unusualConditions = message.trim();
         _finishLiveUpdates(skipped: false);
         break;
 
@@ -1194,6 +1195,7 @@ final Map<String, dynamic> analysisData =
       _addBotMessage(
         'Live observations skipped. Feel welcome to ask questions regarding your corridor.',
         quickReplies: const [
+          'Live Road Updates',
           'Why is this score low?',
           'Which segment needs attention?',
           'What precautions should I take?',
@@ -1207,19 +1209,21 @@ final Map<String, dynamic> analysisData =
         await ApiService.submitObservation(
           tripId: _tripId!,
           rain: _rain,
+          visibility: _visibility,
           traffic: _traffic,
           unusualConditions: _unusualConditions,
-          rawMessage: 'Rain: $_rain; Traffic: $_traffic; Hazards: $_unusualConditions',
+          rawMessage: 'Rain: $_rain; Visibility: $_visibility; Road: $_unusualConditions; Traffic: $_traffic',
         );
       } catch (_) {}
     }
 
     _addBotMessage(
-      'Thank you! Your live observations have been submitted to enhance corridor intelligence.',
+      'Thank you! Your live road update has been posted to Live Road Updates (active for 6 hours).',
     );
     _addBotMessage(
-      'Feel welcome to ask questions regarding conditions along your corridor.',
+      'Feel welcome to ask questions or view real-time community road reports along the corridor.',
       quickReplies: const [
+        'Live Road Updates',
         'Why is this score low?',
         'Which segment needs attention?',
         'What precautions should I take?',
@@ -1734,6 +1738,15 @@ Future<void> _handlePostAnalysisMessage(
   final String userMessage = message.trim();
 
   if (userMessage.isEmpty) {
+    return;
+  }
+
+  if (userMessage.toLowerCase().contains('live road update') ||
+      userMessage.toLowerCase().contains('view live road update')) {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.liveRoadUpdates,
+    );
     return;
   }
 
@@ -3353,6 +3366,19 @@ Widget build(
         actions: [
           IconButton(
             icon: const Icon(
+              Icons.campaign_outlined,
+              color: AppTheme.darkNavy,
+            ),
+            tooltip: 'Live Road Updates',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.liveRoadUpdates,
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(
               Icons.bookmark_outline_rounded,
               color: AppTheme.darkNavy,
             ),
@@ -3483,8 +3509,9 @@ enum _ConversationStep {
   travelerTraffic,
   ready,
   liveUpdateRain,
-  liveUpdateTraffic,
+  liveUpdateVisibility,
   liveUpdateHazards,
+  liveUpdateTraffic,
   postAnalysis,
 }
 

@@ -122,6 +122,13 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.campaign_outlined, color: AppTheme.darkNavy),
+            tooltip: 'Live Road Updates',
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
             tooltip: 'Saved Reports',
             onPressed: () {
@@ -145,6 +152,43 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                   color: AppTheme.textSecondary,
                 ),
                 textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 10),
+
+              // LIVE ROAD UPDATES COMMUNITY FEED PILL
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.forestGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.forestGreen.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.campaign_outlined, size: 16, color: AppTheme.forestGreen),
+                      SizedBox(width: 6),
+                      Text(
+                        'Live Road Updates Feed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.forestGreen,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppTheme.forestGreen),
+                    ],
+                  ),
+                ),
               ),
 
               if (isPlanner && (travelDate != null || travelTime != null)) ...[

@@ -10,6 +10,7 @@ import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/verify_account_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
+import '../features/community/screens/community_reports_screen.dart';
 import '../features/location/screens/location_permission_screen.dart';
 import '../features/onboarding/screens/role_selection_screen.dart';
 import '../features/reports/screens/saved_reports_screen.dart';
@@ -49,6 +50,9 @@ class AppRoutes {
 
   static const String savedReports =
       '/saved-reports';
+
+  static const String liveRoadUpdates =
+      '/live-road-updates';
 
 
   static Map<String, WidgetBuilder> get routes => {
@@ -93,5 +97,8 @@ class AppRoutes {
 
         savedReports: (context) =>
             const SavedReportsScreen(),
+
+        liveRoadUpdates: (context) =>
+            const CommunityReportsScreen(),
       };
 }

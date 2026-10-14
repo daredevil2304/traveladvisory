@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 
@@ -545,6 +546,34 @@ class _TripDetailsScreenState
         elevation: 0,
         title:
             const Text('Trip Details'),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.campaign_outlined,
+              color: AppTheme.darkNavy,
+            ),
+            tooltip: 'Live Road Updates',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.liveRoadUpdates,
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.bookmark_outline_rounded,
+              color: AppTheme.darkNavy,
+            ),
+            tooltip: 'Saved Reports',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.savedReports,
+              );
+            },
+          ),
+        ],
       ),
 
       body: SafeArea(
@@ -561,6 +590,109 @@ class _TripDetailsScreenState
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
+              // Live Road Updates Community Card
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.liveRoadUpdates,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F2942), Color(0xFF1E3A5F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F2942).withOpacity(0.18),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.campaign_outlined,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Row(
+                              children: [
+                                Text(
+                                  'Live Road Updates',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF22C55E),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(6)),
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    child: Text(
+                                      'ACTIVE 6H',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Check risky segments & traveler road reports without full analysis.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFFCBD5E1),
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white70,
+                        size: 15,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(
+                height: 22,
+              ),
+
               Text(
                 isPlanner
                     ? 'Plan your journey'

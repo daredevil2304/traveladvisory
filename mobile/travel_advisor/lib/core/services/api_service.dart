@@ -823,4 +823,91 @@ class ApiService {
       data['detail'] ?? 'Failed to delete report.',
     );
   }
+
+  // ============================================================
+  // LIVE COMMUNITY REPORTS / ROAD UPDATES
+  // ============================================================
+
+  static Future<Map<String, dynamic>> getLiveCommunityReports({
+    int hours = 6,
+  }) async {
+    final uri = Uri.parse('$baseUrl/community/live-reports?hours=$hours');
+
+    try {
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw ApiException(
+        'Failed to load live road updates (${response.statusCode})',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Network error while connecting to live road updates.',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> submitCommunityReport({
+    required String routeRegion,
+    String? visibility,
+    String? rain,
+    String? roadCondition,
+    String? traffic,
+    String? rawMessage,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final uri = Uri.parse('$baseUrl/community/report');
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = storedUserId ?? 1;
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'user_id': resolvedUserId,
+              'route_region': routeRegion,
+              'visibility': visibility,
+              'rain': rain,
+              'road_condition': roadCondition,
+              'traffic': traffic,
+              'raw_message': rawMessage,
+              'latitude': latitude,
+              'longitude': longitude,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw ApiException(
+        'Failed to submit road report (${response.statusCode})',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Network error while posting road report.',
+      );
+    }
+  }
 }
