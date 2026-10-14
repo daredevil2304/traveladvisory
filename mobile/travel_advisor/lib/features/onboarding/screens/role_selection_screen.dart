@@ -169,10 +169,24 @@ class _RoleSelectionScreenState
     return Scaffold(
       backgroundColor: AppTheme.lightMint,
 
+      drawer: _buildDrawer(context),
+
       appBar: AppBar(
         backgroundColor: AppTheme.lightMint,
         elevation: 0,
         automaticallyImplyLeading: false,
+
+        leading: Builder(
+          builder: (scaffoldContext) => IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(
+              Icons.menu_rounded,
+              color: AppTheme.darkNavy,
+              size: 26,
+            ),
+            onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+          ),
+        ),
 
         title: const Text(
           'Travel Advisor',
@@ -189,6 +203,19 @@ class _RoleSelectionScreenState
               Navigator.pushNamed(
                 context,
                 AppRoutes.liveRoadUpdates,
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Saved Reports',
+            icon: const Icon(
+              Icons.bookmark_outline_rounded,
+              color: AppTheme.darkNavy,
+            ),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.savedReports,
               );
             },
           ),
@@ -261,7 +288,7 @@ class _RoleSelectionScreenState
               ),
 
               const SizedBox(
-                height: 28,
+                height: 32,
               ),
 
               // ==================================================
@@ -292,83 +319,6 @@ class _RoleSelectionScreenState
                 title: 'Planner',
                 description:
                     'I am planning a journey for a future date.',
-              ),
-
-              const SizedBox(
-                height: 20,
-              ),
-
-              // ==================================================
-              // LIVE ROAD UPDATES
-              // ==================================================
-
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.liveRoadUpdates,
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppTheme.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppTheme.border,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.campaign_rounded,
-                          color: Color(0xFFE65100),
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Live Road Updates',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.darkNavy,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Inspect active crowd-sourced road hazards and weather conditions.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 16,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
               ),
 
               const Spacer(),
@@ -537,6 +487,223 @@ class _RoleSelectionScreenState
                 size: 26,
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // SIDEBAR DRAWER
+  // ============================================================
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // DRAWER HEADER
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              decoration: const BoxDecoration(
+                color: AppTheme.lightMint,
+                border: Border(
+                  bottom: BorderSide(color: AppTheme.border, width: 1),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppTheme.forestGreen,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.alt_route_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Travel Advisor',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.darkNavy,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Mumbai–Pune Corridor Hub',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Text(
+                'CORRIDOR FEEDS & RECORDS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade500,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+
+            // LIVE ROAD UPDATES TILE
+            _buildDrawerTile(
+              icon: Icons.campaign_rounded,
+              iconColor: const Color(0xFFE65100),
+              iconBg: const Color(0xFFFFF3E0),
+              title: 'Live Road Updates',
+              subtitle: 'Active hazard reports and weather observations',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+              },
+            ),
+
+            const SizedBox(height: 6),
+
+            // SAVED REPORTS TILE
+            _buildDrawerTile(
+              icon: Icons.bookmark_rounded,
+              iconColor: AppTheme.forestGreen,
+              iconBg: AppTheme.mint,
+              title: 'Saved Reports',
+              subtitle: 'Inspect your saved journey assessments',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.savedReports);
+              },
+            ),
+
+            const SizedBox(height: 6),
+
+            // DAILY COMMUTE ALERTS TILE
+            _buildDrawerTile(
+              icon: Icons.notifications_active_rounded,
+              iconColor: const Color(0xFF0284C7),
+              iconBg: const Color(0xFFE0F2FE),
+              title: 'Daily Commute Alerts',
+              subtitle: 'Configure daily travel route and alert notifications',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.commuteAlerts);
+              },
+            ),
+
+            const Spacer(),
+
+            const Divider(height: 1),
+
+            // LOGOUT TILE
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              leading: const Icon(
+                Icons.logout_rounded,
+                color: AppTheme.crimsonRed,
+              ),
+              title: const Text(
+                'Logout',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.crimsonRed,
+                  fontSize: 15,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showLogoutConfirmation();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerTile({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.darkNavy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: AppTheme.textSecondary,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

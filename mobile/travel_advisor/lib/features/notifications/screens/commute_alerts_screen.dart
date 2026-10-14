@@ -61,6 +61,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     String destination = habit['destination'] ?? 'Pune';
     String departureTime = habit['departure_time'] ?? '08:00';
     String alertTime = habit['alert_time'] ?? '07:45';
+    String travelDays = habit['travel_days'] ?? 'Mon-Fri';
     bool isEnabled = habit['is_enabled'] == true;
 
     final sourceCtrl = TextEditingController(text: source);
@@ -77,13 +78,13 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
       ),
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalContext, setModalState) {
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -94,7 +95,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Configure Commute Schedule',
+                          'Configure Daily Commute Schedule',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -125,7 +126,52 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Active Commute Days',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.darkNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Monday to Friday'),
+                          selected: travelDays == 'Mon-Fri',
+                          selectedColor: AppTheme.mint,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() => travelDays = 'Mon-Fri');
+                            }
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Daily'),
+                          selected: travelDays == 'Daily',
+                          selectedColor: AppTheme.mint,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() => travelDays = 'Daily');
+                            }
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Weekends'),
+                          selected: travelDays == 'Sat-Sun',
+                          selectedColor: AppTheme.mint,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() => travelDays = 'Sat-Sun');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Expanded(
@@ -136,6 +182,22 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                               prefixIcon: Icon(Icons.access_time),
                               border: OutlineInputBorder(),
                             ),
+                            onChanged: (val) {
+                              final parts = val.trim().split(':');
+                              if (parts.length >= 2) {
+                                final h = int.tryParse(parts[0]);
+                                final m = int.tryParse(parts[1]);
+                                if (h != null && m != null) {
+                                  int totalMin = h * 60 + m - 15;
+                                  if (totalMin < 0) totalMin += 1440;
+                                  final alertH = (totalMin ~/ 60).toString().padLeft(2, '0');
+                                  final alertM = (totalMin % 60).toString().padLeft(2, '0');
+                                  setModalState(() {
+                                    alertCtrl.text = '$alertH:$alertM';
+                                  });
+                                }
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -186,6 +248,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                             destination: destCtrl.text.trim(),
                             departureTime: depCtrl.text.trim(),
                             alertTime: alertCtrl.text.trim(),
+                            travelDays: travelDays,
                             isEnabled: isEnabled,
                           );
                           await _habitService.fetchAlert(
@@ -588,6 +651,12 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     );
   }
 
+  String _formatTravelDays(String? days) {
+    if (days == 'Daily') return 'Daily (All 7 Days)';
+    if (days == 'Sat-Sun') return 'Weekends (Sat & Sun)';
+    return 'Monday to Friday (Commute Days)';
+  }
+
   Widget _buildHabitScheduleSection() {
     return ValueListenableBuilder<Map<String, dynamic>?>(
       valueListenable: _habitService.commuteHabitNotifier,
@@ -598,14 +667,15 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           'departure_time': '08:00',
           'observed_check_time': '07:50',
           'alert_time': '07:45',
+          'travel_days': 'Mon-Fri',
           'is_enabled': true,
         };
 
         final String src = habitData['source'] ?? 'Panvel';
         final String dst = habitData['destination'] ?? 'Pune';
         final String depTime = habitData['departure_time'] ?? '08:00';
-        final String checkTime = habitData['observed_check_time'] ?? '07:50';
         final String alertTime = habitData['alert_time'] ?? '07:45';
+        final String travelDays = habitData['travel_days'] ?? 'Mon-Fri';
         final bool isEnabled = habitData['is_enabled'] == true;
 
         return Container(
@@ -623,10 +693,10 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.psychology, color: AppTheme.forestGreen, size: 24),
+                      Icon(Icons.directions_car_filled, color: AppTheme.forestGreen, size: 24),
                       SizedBox(width: 8),
                       Text(
-                        'Learned Commute Habit',
+                        'Daily Commute Schedule',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -635,16 +705,20 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20, color: AppTheme.forestGreen),
-                    tooltip: 'Edit Schedule',
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.forestGreen,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Configure'),
                     onPressed: () => _showEditHabitDialog(habitData),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
               Text(
-                'The app detects when you check route reports regularly and proactively sends road condition updates in advance.',
+                'Specify your daily route corridor, active commute days, departure time, and proactive alert schedule.',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.3),
               ),
               const SizedBox(height: 16),
@@ -660,20 +734,20 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   children: [
                     _buildHabitRow(
                       icon: Icons.directions_car,
-                      label: 'Frequent Corridor',
+                      label: 'Commute Corridor',
                       value: '$src ➔ $dst',
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
-                      icon: Icons.departure_board,
-                      label: 'Typical Departure',
-                      value: '$depTime IST',
+                      icon: Icons.calendar_month_rounded,
+                      label: 'Active Days',
+                      value: _formatTravelDays(travelDays),
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
-                      icon: Icons.history_toggle_off,
-                      label: 'Observed Check Time',
-                      value: '~$checkTime IST',
+                      icon: Icons.departure_board,
+                      label: 'Departure Time',
+                      value: '$depTime IST',
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
@@ -691,7 +765,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Automatic Daily Alerts',
+                    'Daily Commute Notifications',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   Switch(
@@ -703,6 +777,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                         destination: dst,
                         departureTime: depTime,
                         alertTime: alertTime,
+                        travelDays: travelDays,
                         isEnabled: val,
                       );
                       setState(() {});
@@ -761,10 +836,10 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.tune, color: AppTheme.alertAmber, size: 22),
+              Icon(Icons.verified_user_outlined, color: AppTheme.forestGreen, size: 22),
               SizedBox(width: 8),
               Text(
-                'Test Proactive Alert',
+                'Verify Notification Assessment',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -775,24 +850,24 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Test how the notification evaluates current predictions and human hazard inputs along Panvel ➔ Pune.',
+            'Simulate and verify the proactive commute alert generated by our prediction model, live weather, and human community reports along your route.',
             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.forestGreen,
-                side: const BorderSide(color: AppTheme.forestGreen),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.forestGreen,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              icon: const Icon(Icons.notification_important_outlined),
+              icon: const Icon(Icons.notifications_active_outlined),
               label: const Text(
-                'Simulate Commute Alert Now',
+                'Verify Notification Alert',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onPressed: () async {
@@ -804,7 +879,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Alert generated: Score ${alert['safety_score']}/100 • ${alert['risk_level']}',
+                        'Notification evaluated: Score ${alert['safety_score']}/100 • ${alert['risk_level']}',
                       ),
                       backgroundColor: _getScoreColor(alert['safety_score'] ?? 70),
                     ),

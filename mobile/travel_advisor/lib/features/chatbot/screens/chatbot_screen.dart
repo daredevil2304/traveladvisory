@@ -1237,6 +1237,30 @@ final Map<String, dynamic> analysisData =
     );
   }
 
+  static const Map<String, String> _corridorSegmentMap = {
+    'R1': 'Mumbai to Panvel',
+    'R2': 'Panvel to Khalapur',
+    'R3': 'Khalapur to Khopoli',
+    'R4': 'Khopoli to Khandala (Bhor Ghat)',
+    'R5': 'Khandala to Lonavala',
+    'R6': 'Lonavala to Kamshet',
+    'R7': 'Kamshet to Pune',
+    'R8': 'Pune Urban Corridor',
+  };
+
+  static String _resolveSegmentName(String raw) {
+    if (raw.trim().isEmpty) return '';
+    final trimmed = raw.trim().toUpperCase();
+    if (_corridorSegmentMap.containsKey(trimmed)) {
+      return _corridorSegmentMap[trimmed]!;
+    }
+    String text = raw;
+    _corridorSegmentMap.forEach((code, name) {
+      text = text.replaceAll(RegExp('\\b$code\\b', caseSensitive: false), name);
+    });
+    return text;
+  }
+
   // ============================================================
   // ADVISORY IN CHAT
   // ============================================================
@@ -1244,353 +1268,71 @@ final Map<String, dynamic> analysisData =
   void _addAdvisoryToChat(
     dynamic analysis,
   ) {
+    if (analysis == null) {
+      _addBotMessage(
+        'The analysis service did not provide a journey result.',
+      );
+      return;
+    }
+
     final double? safetyScore =
         _readDouble(
       analysis,
       'overallSafetyScore',
     );
 
-    final double? confidence =
-        _readDouble(
-      analysis,
-      'overallConfidence',
-    );
-
-    final String? status =
-        _readString(
-      analysis,
-      'status',
-    );
-
     final bool isPlanner = _role == 'planner';
+    final double score = safetyScore ?? 80;
+    final String verdict = score >= 80
+        ? 'Safe to travel'
+        : score >= 60
+            ? 'Moderate caution recommended'
+            : 'Caution advised along certain stretches';
 
-    if (!isPlanner) {
-      // Concise traveler advisory
-      final double score = safetyScore ?? 80;
-      final String verdict = score >= 80
-          ? 'Safe to travel'
-          : score >= 60
-              ? 'Moderate caution recommended'
-              : 'Caution advised along certain stretches';
+    final String titlePrefix =
+        isPlanner ? 'Planned Journey Safety Score' : 'Journey Safety Score';
+    _addBotMessage(
+      '$titlePrefix: ${_formatNumber(score)}/100 ($verdict)',
+    );
 
-      _addBotMessage(
-        'Journey Safety Score: ${_formatNumber(score)}/100 ($verdict)',
-      );
-
-      final dynamic segments = _readProperty(analysis, 'problematicSegments');
-      if (segments is List && segments.isNotEmpty) {
-        final List<String> flaggedNames = [];
-        for (final dynamic seg in segments.take(2)) {
-          final String reg = _readDynamicString(seg, 'region');
-          if (reg.isNotEmpty) flaggedNames.add(reg);
+    final dynamic segments = _readProperty(analysis, 'problematicSegments');
+    if (segments is List && segments.isNotEmpty) {
+      final List<String> flaggedNames = [];
+      for (final dynamic seg in segments.take(2)) {
+        final String rawReg = _readDynamicString(seg, 'region');
+        final String reg = _resolveSegmentName(rawReg);
+        if (reg.isNotEmpty && !flaggedNames.contains(reg)) {
+          flaggedNames.add(reg);
         }
-        if (flaggedNames.isNotEmpty) {
-          _addBotMessage(
-            'Keep watch near: ${flaggedNames.join(', ')}.',
-          );
-        }
-      } else {
+      }
+      if (flaggedNames.isNotEmpty) {
         _addBotMessage(
-          'All route segments are clear with no major hazards reported.',
+          'Keep watch near: ${flaggedNames.join(', ')}.',
         );
       }
-
-      final List<String> precautions = _generatePrecautions(analysis);
-      if (precautions.isNotEmpty) {
-        _addBotMessage(
-          'Quick tip: ${precautions.first}',
-        );
-      }
-
-      _addBotMessage(
-        'Feel welcome to ask me questions regarding conditions along your corridor.',
-      );
-      return;
-    }
-
-    // Detailed planner advisory
-    if (safetyScore != null) {
-      _addBotMessage(
-        'Overall Safety Score: ${_formatNumber(safetyScore)}/100',
-      );
     } else {
       _addBotMessage(
-        'A final Safety Score is not available from the current evidence.',
+        'All route segments are clear with no major hazards reported.',
       );
     }
 
-    if (confidence != null) {
+    final List<String> precautions = _generatePrecautions(analysis);
+    if (precautions.isNotEmpty) {
       _addBotMessage(
-        'Evidence confidence: ${_formatNumber(confidence)}%. This is separate from the Safety Score and reflects how much supporting information was available.',
+        'Quick tip: ${precautions.first}',
       );
-    }
-
-    if (status != null && status.isNotEmpty) {
-      if (status == 'safety_score_available' ||
-          status == 'consensus_available' ||
-          status == 'partial_intelligence_available') {
-        _addBotMessage(
-          'The route analysis completed successfully.',
-        );
-      }
-    }
-
-    _addProblematicSegments(
-      analysis,
-    );
-
-    _addReasons(
-      analysis,
-    );
-
-    _addSourceCoverage(
-      analysis,
-    );
-
-    _addPrecautions(
-      analysis,
-    );
-
-    _addRouteGuidance(
-      analysis,
-    );
-
-    _addBotMessage(
-      'You can continue asking me questions about this journey, such as: "Why is this score low?", "Which segment needs attention?", "What precautions should I take?"',
-    );
-  }
-
-  // ============================================================
-  // PROBLEMATIC SEGMENTS
-  // ============================================================
-
-  void _addProblematicSegments(
-    dynamic analysis,
-  ) {
-    final dynamic segments =
-        _readProperty(
-      analysis,
-      'problematicSegments',
-    );
-
-    if (segments is! List ||
-        segments.isEmpty) {
-      _addBotMessage(
-        'I did not receive any specifically flagged route segments from the analysis.',
-      );
-      return;
     }
 
     _addBotMessage(
-      'Route segments requiring attention:',
-    );
-
-    int shown = 0;
-
-    for (final dynamic segment
-        in segments) {
-      if (shown >= 5) {
-        break;
-      }
-
-      final String region =
-          _readDynamicString(
-            segment,
-            'region',
-          );
-
-      final double? score =
-          _readDynamicDouble(
-        segment,
-        'safetyScore',
-      );
-
-      final List<String>
-          reasons =
-          _readDynamicStringList(
-        segment,
-        'reasons',
-      );
-
-      String text =
-          region;
-
-      final dynamic
-          details =
-          _readProperty(
-        segment,
-        'segmentDetails',
-      );
-
-      final String start =
-          _readDynamicString(
-        details,
-        'start',
-      );
-
-      final String end =
-          _readDynamicString(
-        details,
-        'end',
-      );
-
-      if (start.isNotEmpty &&
-          end.isNotEmpty) {
-        text +=
-            ' ($start $end)';
-      }
-
-      if (score != null) {
-        text +=
-            '  score ${_formatNumber(score)}/100';
-      }
-
-      if (reasons.isNotEmpty) {
-        text +=
-            '. ${reasons.take(2).join('. ')}';
-      }
-
-      _addBotMessage(
-        text,
-      );
-
-      shown++;
-    }
-  }
-
-  // ============================================================
-  // REASONS
-  // ============================================================
-
-  void _addReasons(
-    dynamic analysis,
-  ) {
-    final dynamic rawReasons =
-        _readProperty(
-      analysis,
-      'reasons',
-    );
-
-    if (rawReasons is! List ||
-        rawReasons.isEmpty) {
-      return;
-    }
-
-    final List<String> reasons =
-        rawReasons
-            .whereType<String>()
-            .where(
-              (reason) =>
-                  reason.trim().isNotEmpty,
-            )
-            .toList();
-
-    if (reasons.isEmpty) {
-      return;
-    }
-
-    _addBotMessage(
-      'Why the result looks this way:',
-    );
-
-    for (final reason
-        in reasons.take(6)) {
-      _addBotMessage(
-        reason,
-      );
-    }
-  }
-
-  // ============================================================
-  // SOURCE COVERAGE
-  // ============================================================
-
-  void _addSourceCoverage(
-    dynamic analysis,
-  ) {
-    final dynamic available =
-        _readProperty(
-      analysis,
-      'availableIntelligenceSources',
-    );
-
-    final dynamic missing =
-        _readProperty(
-      analysis,
-      'missingIntelligenceSources',
-    );
-
-    final List<String>
-        availableSources =
-        _stringList(
-      available,
-    );
-
-    final List<String>
-        missingSources =
-        _stringList(
-      missing,
-    );
-
-    if (availableSources
-            .isEmpty &&
-        missingSources.isEmpty) {
-      return;
-    }
-
-    String message =
-        'Evidence used: ';
-
-    if (availableSources
-        .isNotEmpty) {
-      message +=
-          availableSources.join(
-        ', ',
-      );
-    } else {
-      message +=
-          'limited available data';
-    }
-
-    if (missingSources
-        .isNotEmpty) {
-      message +=
-          '. Missing or unavailable in parts of the analysis: ${missingSources.join(', ')}.';
-    }
-
-    _addBotMessage(
-      message,
+      'Feel welcome to ask me questions regarding conditions along your corridor.',
     );
   }
 
+
+
   // ============================================================
-  // PRECAUTIONS
+  // PRECAUTIONS GENERATION
   // ============================================================
-
-  void _addPrecautions(
-    dynamic analysis,
-  ) {
-    final List<String>
-        precautions =
-        _generatePrecautions(
-      analysis,
-    );
-
-    if (precautions.isEmpty) {
-      return;
-    }
-
-    _addBotMessage(
-      'Safety precautions:',
-    );
-
-    for (final precaution
-        in precautions) {
-      _addBotMessage(
-        ' $precaution',
-      );
-    }
-  }
 
   List<String>
       _generatePrecautions(
@@ -1674,52 +1416,7 @@ final Map<String, dynamic> analysisData =
     return precautions;
   }
 
-  // ============================================================
-  // ROUTE GUIDANCE
-  // ============================================================
 
-  void _addRouteGuidance(
-    dynamic analysis,
-  ) {
-    final double? score =
-        _readDouble(
-      analysis,
-      'overallSafetyScore',
-    );
-
-    if (score == null) {
-      return;
-    }
-
-    /*
-     * We deliberately do NOT invent an alternate route.
-     *
-     * Google Maps / Routes API will eventually provide
-     * candidate routes. Our backend intelligence engine
-     * will then evaluate those candidate routes.
-     *
-     * Until that integration exists, the chatbot should
-     * not claim that an alternate road is available.
-     */
-
-    if (score < 60) {
-      _addBotMessage(
-        'The current assessment contains conditions that need attention. If you have flexibility, consider checking another travel time. Alternate-route comparison will be available once route candidates are supplied by the routing service.',
-      );
-      return;
-    }
-
-    if (score < 80) {
-      _addBotMessage(
-        'Some conditions along the journey deserve attention. If your travel time is flexible, you can ask me about choosing a different time.',
-      );
-      return;
-    }
-
-    _addBotMessage(
-      'The available evidence does not currently indicate a major route-level concern. Conditions can still change during travel.',
-    );
-  }
 
   // ============================================================
   // POST-ANALYSIS CHAT
@@ -2475,21 +2172,7 @@ Future<void> _handlePostAnalysisMessage(
     );
   }
 
-  String? _readString(
-    dynamic object,
-    String property,
-  ) {
-    final dynamic value = _readProperty(
-      object,
-      property,
-    );
 
-    if (value is String) {
-      return value;
-    }
-
-    return value?.toString();
-  }
 
   String _readDynamicString(
     dynamic object,
@@ -2503,35 +2186,6 @@ Future<void> _handlePostAnalysisMessage(
     return value?.toString() ?? '';
   }
 
-double? _readDynamicDouble(
-  dynamic object,
-  String property,
-) {
-  final dynamic value = _readProperty(
-    object,
-    property,
-  );
-
-  if (value is num) {
-    return value.toDouble();
-  }
-
-  return double.tryParse(
-    value?.toString() ?? '',
-  );
-}
-
-List<String> _readDynamicStringList(
-  dynamic object,
-  String property,
-) {
-  final dynamic value = _readProperty(
-    object,
-    property,
-  );
-
-  return _stringList(value);
-}
 
 List<String> _stringList(
   dynamic value,

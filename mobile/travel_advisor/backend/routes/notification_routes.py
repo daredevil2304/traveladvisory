@@ -21,6 +21,7 @@ class CommuteHabitUpdateRequest(BaseModel):
     destination: str = Field(..., example="Pune")
     departure_time: str = Field(..., example="08:00")
     alert_time: str = Field(..., example="07:45")
+    travel_days: str | None = Field("Mon-Fri", example="Monday to Friday")
     is_enabled: bool = Field(True, example=True)
 
 
@@ -38,7 +39,7 @@ def get_commute_habit(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
-    Retrieve learned or configured commute habit and scheduled alert time.
+    Retrieve learned and configured commute habit and scheduled alert time.
     """
     try:
         habit = commute_notification_service.get_commute_habit(
@@ -62,7 +63,7 @@ def save_commute_habit(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
-    Update or customize daily commute habit and alert notification schedule.
+    Update and customize daily commute habit and alert notification schedule.
     """
     try:
         updated = commute_notification_service.save_commute_habit(
@@ -72,6 +73,7 @@ def save_commute_habit(
             destination=request.destination,
             departure_time=request.departure_time,
             alert_time=request.alert_time,
+            travel_days=request.travel_days,
             is_enabled=request.is_enabled,
         )
         return {

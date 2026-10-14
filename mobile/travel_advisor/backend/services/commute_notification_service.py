@@ -80,7 +80,7 @@ class CommuteNotificationService:
         user_id: int,
     ) -> dict[str, Any]:
         """
-        Retrieve learned or configured commute habit for this user.
+        Retrieve learned and configured commute habit for this user.
         """
         habit = (
             db.query(CommuteHabit)
@@ -97,12 +97,13 @@ class CommuteNotificationService:
                 "departure_time": habit.departure_time,
                 "observed_check_time": habit.observed_check_time,
                 "alert_time": habit.alert_time,
+                "travel_days": getattr(habit, "travel_days", None) if getattr(habit, "travel_days", None) else "Mon-Fri",
                 "is_enabled": habit.is_enabled,
                 "updated_at": habit.updated_at.isoformat(),
                 "has_habit": True,
             }
 
-        # Check Trip history or logs to auto-seed habit
+        # Check Trip history and logs to auto-seed habit
         detected = self._detect_habit_from_database(db, user_id)
         if detected:
             new_habit = CommuteHabit(
@@ -112,6 +113,7 @@ class CommuteNotificationService:
                 departure_time=detected["departure_time"],
                 observed_check_time=detected["observed_check_time"],
                 alert_time=detected["alert_time"],
+                travel_days="Mon-Fri",
                 is_enabled=True,
             )
             db.add(new_habit)
@@ -126,6 +128,7 @@ class CommuteNotificationService:
                 "departure_time": new_habit.departure_time,
                 "observed_check_time": new_habit.observed_check_time,
                 "alert_time": new_habit.alert_time,
+                "travel_days": new_habit.travel_days if new_habit.travel_days else "Mon-Fri",
                 "is_enabled": new_habit.is_enabled,
                 "updated_at": new_habit.updated_at.isoformat(),
                 "has_habit": True,
@@ -140,6 +143,7 @@ class CommuteNotificationService:
             "departure_time": "08:00",
             "observed_check_time": "07:50",
             "alert_time": "07:45",
+            "travel_days": "Mon-Fri",
             "is_enabled": True,
             "updated_at": format_ist_iso(),
             "has_habit": False,
@@ -153,10 +157,11 @@ class CommuteNotificationService:
         destination: str,
         departure_time: str,
         alert_time: str,
+        travel_days: str | None = "Mon-Fri",
         is_enabled: bool = True,
     ) -> dict[str, Any]:
         """
-        Explicitly update or customize commute habit settings.
+        Explicitly update and customize commute habit settings.
         """
         canonical_source = normalize_location(source)
         canonical_destination = normalize_location(destination)
@@ -167,6 +172,8 @@ class CommuteNotificationService:
             .first()
         )
 
+        resolved_days = travel_days.strip() if travel_days else "Mon-Fri"
+
         if not habit:
             habit = CommuteHabit(
                 user_id=user_id,
@@ -175,6 +182,7 @@ class CommuteNotificationService:
                 departure_time=departure_time.strip(),
                 observed_check_time=self._calculate_check_time(departure_time),
                 alert_time=alert_time.strip(),
+                travel_days=resolved_days,
                 is_enabled=is_enabled,
             )
             db.add(habit)
@@ -183,6 +191,7 @@ class CommuteNotificationService:
             habit.destination_name = canonical_destination
             habit.departure_time = departure_time.strip()
             habit.alert_time = alert_time.strip()
+            habit.travel_days = resolved_days
             habit.is_enabled = is_enabled
             habit.updated_at = get_ist_now()
 
@@ -197,6 +206,7 @@ class CommuteNotificationService:
             "departure_time": habit.departure_time,
             "observed_check_time": habit.observed_check_time,
             "alert_time": habit.alert_time,
+            "travel_days": habit.travel_days if habit.travel_days else "Mon-Fri",
             "is_enabled": habit.is_enabled,
             "updated_at": habit.updated_at.isoformat(),
             "has_habit": True,
@@ -433,6 +443,7 @@ class CommuteNotificationService:
                 departure_time=detected["departure_time"],
                 observed_check_time=detected["observed_check_time"],
                 alert_time=detected["alert_time"],
+                travel_days="Mon-Fri",
                 is_enabled=True,
             )
             db.add(habit)
@@ -452,7 +463,7 @@ class CommuteNotificationService:
         user_id: int,
     ) -> dict[str, str] | None:
         """
-        Clusters check logs or trips to identify recurring commute times.
+        Clusters check logs and trips to identify recurring commute times.
         """
         # 1. Check CommuteCheckLog
         logs = (
@@ -511,7 +522,7 @@ class CommuteNotificationService:
     ) -> str:
         """
         Calculates optimal proactive alert notification time:
-        15 minutes before typical departure, or 5 minutes before typical check time.
+        15 minutes before typical departure, and 5 minutes before typical check time.
         """
         try:
             dep_parts = [int(p) for p in departure_time_str.split(":")[:2]]

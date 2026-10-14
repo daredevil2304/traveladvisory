@@ -79,7 +79,12 @@ IMPORTANT RULES:
     the user's own judgment or official road authorities.
 
 15. Do NOT use markdown bold asterisks (such as **) anywhere in your output.
-    Write clean, readable sentences without asterisks, hashes, or code tags.
+    Write clean, readable sentences without asterisks, hashes, and code tags.
+
+16. Always refer to real geographical town names (such as Mumbai, Panvel,
+    Khalapur, Khopoli, Khandala / Bhor Ghat, Lonavala, Kamshet, Pune).
+    Never output technical segment codes like R1, R2, R3, R4, R5, R6, R7.
+    Always describe the corridor stretch using town names.
 """.strip()
 
     def answer(
@@ -242,10 +247,14 @@ IMPORTANT RULES:
                 start = details.get("start")
                 end = details.get("end")
                 
+                from services.trip_analysis_service import SEGMENT_NAME_MAP
+
                 if start and end:
                     region_name = f"Between {start} and {end}"
                 else:
-                    region_name = segment.get("region", "Unknown Region")
+                    raw_reg = segment.get("region", "")
+                    fallback_reg = raw_reg if raw_reg else "Corridor stretch"
+                    region_name = SEGMENT_NAME_MAP.get(str(raw_reg).upper(), fallback_reg)
 
                 score = segment.get(
                     "safety_score"
@@ -299,7 +308,8 @@ IMPORTANT RULES:
                         end = rs.end
                     except Exception:
                         pass
-                label = f"{start} to {end} ({reg})" if (start and end) else reg
+                from services.trip_analysis_service import SEGMENT_NAME_MAP
+                label = f"{start} to {end}" if (start and end) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
 
                 score_info = seg.get("safety_score_result") or {}
                 seg_score = score_info.get("score")

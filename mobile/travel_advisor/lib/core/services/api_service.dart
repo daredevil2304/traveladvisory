@@ -954,6 +954,7 @@ class ApiService {
     required String destination,
     required String departureTime,
     required String alertTime,
+    String? travelDays,
     bool isEnabled = true,
   }) async {
     final storedUserId = await getStoredUserId();
@@ -974,6 +975,7 @@ class ApiService {
               'destination': destination,
               'departure_time': departureTime,
               'alert_time': alertTime,
+              'travel_days': travelDays ?? 'Mon-Fri',
               'is_enabled': isEnabled,
             }),
           )

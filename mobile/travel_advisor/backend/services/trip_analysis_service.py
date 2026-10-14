@@ -17,6 +17,16 @@ from services.segment_intelligence_service import (
     segment_intelligence_service,
 )
 
+SEGMENT_NAME_MAP: dict[str, str] = {
+    "R1": "Mumbai to Panvel",
+    "R2": "Panvel to Khalapur",
+    "R3": "Khalapur to Khopoli",
+    "R4": "Khopoli to Khandala (Bhor Ghat)",
+    "R5": "Khandala to Lonavala",
+    "R6": "Lonavala to Kamshet",
+    "R7": "Kamshet to Pune",
+}
+
 
 @dataclass(frozen=True)
 class TripAnalysisResult:
@@ -476,9 +486,11 @@ class TripAnalysisService:
             if not score_is_low and not has_hazard:
                 continue
 
+            reg_display = SEGMENT_NAME_MAP.get(str(region).upper(), region)
             problematic.append(
                 {
-                    "region": region,
+                    "region": reg_display,
+                    "region_code": region,
                     "segment_details": segment_details,
                     "safety_score": score,
                     "confidence": safety_result.get(
@@ -636,8 +648,9 @@ class TripAnalysisService:
                 ):
                     continue
 
+                reg_display = SEGMENT_NAME_MAP.get(str(region).upper(), region)
                 contextual_reason = (
-                    f"{region}: {reason}"
+                    f"{reg_display}: {reason}"
                 )
 
                 if contextual_reason in seen:

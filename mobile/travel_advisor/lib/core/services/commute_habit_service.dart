@@ -61,6 +61,7 @@ class CommuteHabitService {
     required String destination,
     required String departureTime,
     required String alertTime,
+    String? travelDays,
     bool isEnabled = true,
   }) async {
     isLoadingNotifier.value = true;
@@ -70,6 +71,7 @@ class CommuteHabitService {
         destination: destination,
         departureTime: departureTime,
         alertTime: alertTime,
+        travelDays: travelDays,
         isEnabled: isEnabled,
       );
       if (res['habit'] != null) {

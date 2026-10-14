@@ -9,7 +9,7 @@ from services.timezone_service import get_ist_now
 
 class CommuteHabit(Base):
     """
-    Stores learned or customized commute habits for a traveler.
+    Stores learned and customized commute habits for a traveler.
     """
 
     __tablename__ = "commute_habits"
@@ -54,6 +54,12 @@ class CommuteHabit(Base):
         String(20),
         nullable=False,
         default="07:45",
+    )
+
+    travel_days: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        default="Mon-Fri",
     )
 
     is_enabled: Mapped[bool] = mapped_column(
