@@ -910,4 +910,154 @@ class ApiService {
       );
     }
   }
+
+  // ============================================================
+  // COMMUTE HABITS & SMART NOTIFICATIONS
+  // ============================================================
+
+  static Future<Map<String, dynamic>> getCommuteHabit({
+    int? userId,
+  }) async {
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = userId ?? storedUserId ?? 1;
+    final uri = Uri.parse(
+      '$baseUrl/notifications/commute-habit?user_id=$resolvedUserId',
+    );
+
+    try {
+      final response = await http
+          .get(
+            uri,
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw ApiException(
+        'Failed to fetch commute habit (${response.statusCode})',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Network error while connecting to commute habit service.',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> saveCommuteHabit({
+    int? userId,
+    required String source,
+    required String destination,
+    required String departureTime,
+    required String alertTime,
+    bool isEnabled = true,
+  }) async {
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = userId ?? storedUserId ?? 1;
+    final uri = Uri.parse('$baseUrl/notifications/commute-habit');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'user_id': resolvedUserId,
+              'source': source,
+              'destination': destination,
+              'departure_time': departureTime,
+              'alert_time': alertTime,
+              'is_enabled': isEnabled,
+            }),
+          )
+          .timeout(requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw ApiException(
+        'Failed to save commute habit (${response.statusCode})',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error while saving commute habit.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCommuteAlert({
+    int? userId,
+    String source = 'Panvel',
+    String destination = 'Pune',
+  }) async {
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = userId ?? storedUserId ?? 1;
+    final uri = Uri.parse(
+      '$baseUrl/notifications/commute-alert?user_id=$resolvedUserId&source=${Uri.encodeComponent(source)}&destination=${Uri.encodeComponent(destination)}',
+    );
+
+    try {
+      final response = await http
+          .get(
+            uri,
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw ApiException(
+        'Failed to load commute alert (${response.statusCode})',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Network error while connecting to commute alert service.',
+      );
+    }
+  }
+
+  static Future<void> logCommuteCheck({
+    int? userId,
+    required String source,
+    required String destination,
+    String? departureTime,
+    String? checkTime,
+  }) async {
+    final storedUserId = await getStoredUserId();
+    final int resolvedUserId = userId ?? storedUserId ?? 1;
+    final uri = Uri.parse('$baseUrl/notifications/log-commute-check');
+
+    try {
+      await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'user_id': resolvedUserId,
+              'source': source,
+              'destination': destination,
+              'departure_time': departureTime,
+              'check_time': checkTime,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Fire-and-forget background logging
+    }
+  }
 }

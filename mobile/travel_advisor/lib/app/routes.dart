@@ -12,6 +12,7 @@ import '../features/auth/screens/verify_account_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/community/screens/community_reports_screen.dart';
 import '../features/location/screens/location_permission_screen.dart';
+import '../features/notifications/screens/commute_alerts_screen.dart';
 import '../features/onboarding/screens/role_selection_screen.dart';
 import '../features/reports/screens/saved_reports_screen.dart';
 import '../features/trip/screens/trip_details_screen.dart';
@@ -53,6 +54,9 @@ class AppRoutes {
 
   static const String liveRoadUpdates =
       '/live-road-updates';
+
+  static const String commuteAlerts =
+      '/commute-alerts';
 
 
   static Map<String, WidgetBuilder> get routes => {
@@ -100,5 +104,8 @@ class AppRoutes {
 
         liveRoadUpdates: (context) =>
             const CommunityReportsScreen(),
+
+        commuteAlerts: (context) =>
+            const CommuteAlertsScreen(),
       };
 }

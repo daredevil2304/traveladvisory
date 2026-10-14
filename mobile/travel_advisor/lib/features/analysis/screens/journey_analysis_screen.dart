@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/commute_habit_service.dart';
 
 class JourneyAnalysisScreen extends StatefulWidget {
   const JourneyAnalysisScreen({super.key});
@@ -121,6 +122,42 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         ),
         centerTitle: true,
         actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: CommuteHabitService().hasUnreadAlertNotifier,
+            builder: (context, hasAlert, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: AppTheme.darkNavy,
+                    ),
+                    tooltip: 'Commute Alerts',
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.commuteAlerts,
+                      );
+                    },
+                  ),
+                  if (hasAlert)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.crimsonRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.campaign_outlined, color: AppTheme.darkNavy),
             tooltip: 'Live Road Updates',

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/commute_habit_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -995,6 +996,13 @@ Future<void> _analyzeJourney() async {
             'traffic': _traffic,
           }
         : null;
+
+    // Automatically record commute check to learn habit patterns
+    CommuteHabitService().logCheck(
+      source: _source!,
+      destination: _destination!,
+      departureTime: _travelTime,
+    );
 
     final Map<String, dynamic> response =
         await ApiService.createTripRequest(
@@ -2643,44 +2651,6 @@ List<String> _stringList(
   }
 
   // ============================================================
-  // TYPING
-  // ============================================================
-
-  void _showTypingThen(
-    String message,
-  ) {
-    setState(() {
-      _isTyping = true;
-    });
-
-    _scrollToBottom();
-
-    Future.delayed(
-      const Duration(
-        milliseconds: 650,
-      ),
-      () {
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _isTyping = false;
-
-          _messages.add(
-            _ChatMessage(
-              text: message,
-              isUser: false,
-            ),
-          );
-        });
-
-        _scrollToBottom();
-      },
-    );
-  }
-
-  // ============================================================
   // MESSAGE HELPERS
   // ============================================================
 
@@ -3364,6 +3334,42 @@ Widget build(
           ],
         ),
         actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: CommuteHabitService().hasUnreadAlertNotifier,
+            builder: (context, hasAlert, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: AppTheme.darkNavy,
+                    ),
+                    tooltip: 'Commute Alerts',
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.commuteAlerts,
+                      );
+                    },
+                  ),
+                  if (hasAlert)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.crimsonRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(
               Icons.campaign_outlined,

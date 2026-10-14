@@ -18,6 +18,9 @@ class AppTheme {
   static const Color white = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFDDE7E3);
   static const Color danger = Color(0xFFDC2626);
+  static const Color crimsonRed = Color(0xFFDC2626);
+  static const Color alertAmber = Color(0xFFF79316);
+  static const Color subtleGrey = Color(0xFF657785);
 
   static ThemeData get lightTheme {
     return ThemeData(

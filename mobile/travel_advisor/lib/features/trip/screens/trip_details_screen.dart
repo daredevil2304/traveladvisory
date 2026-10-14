@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/commute_habit_service.dart';
+import '../../notifications/widgets/commute_alert_banner.dart';
 
 class RoutePoint {
   final String name;
@@ -334,9 +336,14 @@ class _TripDetailsScreenState
     });
 
     try {
-      // ========================================================
-      // STEP 1: CREATE TRIP
-      // ========================================================
+      // Automatically log commute check to learn traveler routine
+      if (isPlanner && _selectedTime != null) {
+        CommuteHabitService().logCheck(
+          source: _selectedSource!,
+          destination: _selectedDestination!,
+          departureTime: _formatApiTime(_selectedTime!),
+        );
+      }
 
       final response =
           await ApiService.createTripRequest(
@@ -547,6 +554,42 @@ class _TripDetailsScreenState
         title:
             const Text('Trip Details'),
         actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: CommuteHabitService().hasUnreadAlertNotifier,
+            builder: (context, hasAlert, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: AppTheme.darkNavy,
+                    ),
+                    tooltip: 'Commute Alerts',
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.commuteAlerts,
+                      );
+                    },
+                  ),
+                  if (hasAlert)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.crimsonRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(
               Icons.campaign_outlined,
@@ -590,6 +633,9 @@ class _TripDetailsScreenState
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
+              // Smart Commute Habit Alert Banner
+              const CommuteAlertBanner(),
+
               // Live Road Updates Community Card
               InkWell(
                 borderRadius: BorderRadius.circular(16),

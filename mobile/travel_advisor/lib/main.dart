@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/app.dart';
+import 'core/services/commute_habit_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,5 +10,13 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
+
+  // Initialize habit detection and proactive commute alert schedule
+  try {
+    CommuteHabitService().init();
+  } catch (e) {
+    debugPrint('Commute habit service initialization error: $e');
+  }
+
   runApp(const TravelAdvisorApp());
 }
