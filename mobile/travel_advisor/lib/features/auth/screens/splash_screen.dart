@@ -77,7 +77,7 @@ class _SplashScreenState
       if (hasSession) {
         Navigator.pushReplacementNamed(
           context,
-          AppRoutes.roleSelection,
+          AppRoutes.dashboard,
         );
       } else {
         Navigator.pushReplacementNamed(

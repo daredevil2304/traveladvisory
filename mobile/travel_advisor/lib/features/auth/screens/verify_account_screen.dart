@@ -215,7 +215,7 @@ void didChangeDependencies() {
 
       Navigator.pushNamedAndRemoveUntil(
         context,
-        AppRoutes.roleSelection,
+        AppRoutes.dashboard,
         (route) => false,
       );
     } on ApiException catch (e) {

@@ -11,6 +11,7 @@ import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/verify_account_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/community/screens/community_reports_screen.dart';
+import '../features/dashboard/screens/corridor_dashboard_screen.dart';
 import '../features/location/screens/location_permission_screen.dart';
 import '../features/notifications/screens/commute_alerts_screen.dart';
 import '../features/onboarding/screens/role_selection_screen.dart';
@@ -33,6 +34,9 @@ class AppRoutes {
 
   static const String verifyAccount =
       '/verify-account';
+
+  static const String dashboard =
+      '/dashboard';
 
   static const String roleSelection =
       '/role-selection';
@@ -83,6 +87,9 @@ class AppRoutes {
 
         verifyAccount: (context) =>
             const VerifyAccountScreen(),
+
+        dashboard: (context) =>
+            const CorridorDashboardScreen(),
 
         roleSelection: (context) =>
             const RoleSelectionScreen(),

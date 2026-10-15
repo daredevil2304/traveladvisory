@@ -417,7 +417,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         Navigator.pop(context);
                         Navigator.pushNamedAndRemoveUntil(
                           context,
-                          AppRoutes.roleSelection,
+                          AppRoutes.dashboard,
                           (route) => false,
                         );
                       },

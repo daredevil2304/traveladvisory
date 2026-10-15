@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.pushNamedAndRemoveUntil(
       context,
-      AppRoutes.roleSelection,
+      AppRoutes.dashboard,
       (route) => false,
     );
   } on ApiException catch (e) {
