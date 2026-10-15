@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'app/app.dart';
 import 'core/services/commute_habit_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/shorebird_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,13 @@ void main() async {
     NotificationService().requestPermission();
   } catch (e) {
     debugPrint('Notification service initialization error: $e');
+  }
+
+  // Initialize Shorebird Over-The-Air code push service
+  try {
+    ShorebirdService().init();
+  } catch (e) {
+    debugPrint('Shorebird initialization error: $e');
   }
 
   runApp(const TravelAdvisorApp());
