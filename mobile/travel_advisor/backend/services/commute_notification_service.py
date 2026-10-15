@@ -98,7 +98,7 @@ class CommuteNotificationService:
                 "departure_time": habit.departure_time,
                 "observed_check_time": habit.observed_check_time,
                 "alert_time": habit.alert_time,
-                "travel_days": getattr(habit, "travel_days", None) if getattr(habit, "travel_days", None) else "Mon-Fri",
+                "travel_days": getattr(habit, "travel_days", None) if getattr(habit, "travel_days", None) else "Daily",
                 "is_enabled": habit.is_enabled,
                 "updated_at": habit.updated_at.isoformat(),
                 "has_habit": True,
@@ -114,7 +114,7 @@ class CommuteNotificationService:
                 departure_time=detected["departure_time"],
                 observed_check_time=detected["observed_check_time"],
                 alert_time=detected["alert_time"],
-                travel_days="Mon-Fri",
+                travel_days="Daily",
                 is_enabled=True,
             )
             db.add(new_habit)
@@ -129,7 +129,7 @@ class CommuteNotificationService:
                 "departure_time": new_habit.departure_time,
                 "observed_check_time": new_habit.observed_check_time,
                 "alert_time": new_habit.alert_time,
-                "travel_days": new_habit.travel_days if new_habit.travel_days else "Mon-Fri",
+                "travel_days": new_habit.travel_days if new_habit.travel_days else "Daily",
                 "is_enabled": new_habit.is_enabled,
                 "updated_at": new_habit.updated_at.isoformat(),
                 "has_habit": True,
@@ -144,11 +144,46 @@ class CommuteNotificationService:
             "departure_time": "08:00",
             "observed_check_time": "07:50",
             "alert_time": "07:45",
-            "travel_days": "Mon-Fri",
+            "travel_days": "Daily",
             "is_enabled": True,
             "updated_at": format_ist_iso(),
             "has_habit": False,
         }
+
+    @staticmethod
+    def is_scheduled_current_day(
+        travel_days: str | None,
+        dt: datetime | None = None,
+    ) -> bool:
+        """
+        Check whether the target datetime corresponds to an active commute day.
+        """
+        if not travel_days:
+            return True
+        if dt is None:
+            dt = get_ist_now()
+
+        weekday_map = {
+            0: "Mon",
+            1: "Tue",
+            2: "Wed",
+            3: "Thu",
+            4: "Fri",
+            5: "Sat",
+            6: "Sun",
+        }
+        current_code = weekday_map.get(dt.weekday())
+        trimmed = travel_days.strip()
+        if trimmed == "Daily":
+            return True
+        if trimmed in ("Sat-Sun", "Weekends"):
+            return dt.weekday() in (5, 6)
+        if trimmed == "Mon-Fri":
+            return dt.weekday() in (0, 1, 2, 3, 4)
+
+        clean = trimmed.replace("Custom:", "")
+        selected = {d.strip() for d in clean.split(",") if d.strip()}
+        return current_code in selected
 
     def save_commute_habit(
         self,
@@ -158,7 +193,7 @@ class CommuteNotificationService:
         destination: str,
         departure_time: str,
         alert_time: str,
-        travel_days: str | None = "Mon-Fri",
+        travel_days: str | None = "Daily",
         is_enabled: bool = True,
     ) -> dict[str, Any]:
         """
@@ -173,7 +208,7 @@ class CommuteNotificationService:
             .first()
         )
 
-        resolved_days = travel_days.strip() if travel_days else "Mon-Fri"
+        resolved_days = travel_days.strip() if travel_days else "Daily"
 
         if not habit:
             habit = CommuteHabit(
@@ -207,7 +242,7 @@ class CommuteNotificationService:
             "departure_time": habit.departure_time,
             "observed_check_time": habit.observed_check_time,
             "alert_time": habit.alert_time,
-            "travel_days": habit.travel_days if habit.travel_days else "Mon-Fri",
+            "travel_days": habit.travel_days if habit.travel_days else "Daily",
             "is_enabled": habit.is_enabled,
             "updated_at": habit.updated_at.isoformat(),
             "has_habit": True,
@@ -435,6 +470,15 @@ class CommuteNotificationService:
         else:
             advice = "Expressway conditions are clear and favorable for your daily commute."
 
+        # 7. Check if active day matches scheduled travel days
+        habit = (
+            db.query(CommuteHabit)
+            .filter(CommuteHabit.user_id == user_id)
+            .first()
+        )
+        travel_days = habit.travel_days if habit and habit.travel_days else "Daily"
+        is_scheduled = self.is_scheduled_current_day(travel_days, now)
+
         return {
             "source": canonical_source,
             "destination": canonical_destination,
@@ -453,6 +497,8 @@ class CommuteNotificationService:
             "evaluation_time": format_ist_iso(),
             "has_warnings": len(warnings) > 0,
             "evaluated_segments_count": len(segments),
+            "is_scheduled_commute_day": is_scheduled,
+            "travel_days": travel_days,
         }
 
     def _update_habit_from_history(self, db: Session, user_id: int) -> None:
@@ -477,7 +523,7 @@ class CommuteNotificationService:
                 departure_time=detected["departure_time"],
                 observed_check_time=detected["observed_check_time"],
                 alert_time=detected["alert_time"],
-                travel_days="Mon-Fri",
+                travel_days="Daily",
                 is_enabled=True,
             )
             db.add(habit)

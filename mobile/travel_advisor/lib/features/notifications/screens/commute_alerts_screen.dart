@@ -61,7 +61,37 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     String destination = habit['destination'] ?? 'Pune';
     String departureTime = habit['departure_time'] ?? '08:00';
     String alertTime = habit['alert_time'] ?? '07:45';
-    String travelDays = habit['travel_days'] ?? 'Mon-Fri';
+    final String rawDays =
+        (habit['travel_days']?.toString() ?? 'Daily').trim();
+    String travelDaysMode = 'Daily';
+    Set<String> customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+    String travelDays = 'Daily';
+
+    if (rawDays == 'Daily') {
+      travelDaysMode = 'Daily';
+      customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'};
+      travelDays = 'Daily';
+    } else if (rawDays == 'Sat-Sun' || rawDays == 'Weekends') {
+      travelDaysMode = 'Weekends';
+      customDaysSet = {'Sat', 'Sun'};
+      travelDays = 'Sat-Sun';
+    } else {
+      travelDaysMode = 'Custom';
+      final clean = rawDays.replaceFirst('Custom:', '');
+      final parts = clean
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.isEmpty || rawDays == 'Mon-Fri') {
+        customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+      } else {
+        customDaysSet = parts.toSet();
+      }
+      const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final sorted = dayOrder.where((d) => customDaysSet.contains(d)).toList();
+      travelDays = sorted.join(',');
+    }
     bool isEnabled = habit['is_enabled'] == true;
 
     const corridorPoints = [
@@ -186,39 +216,155 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
+                      runSpacing: 6,
                       children: [
                         ChoiceChip(
-                          label: const Text('Monday to Friday'),
-                          selected: travelDays == 'Mon-Fri',
-                          selectedColor: AppTheme.mint,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setModalState(() => travelDays = 'Mon-Fri');
-                            }
-                          },
-                        ),
-                        ChoiceChip(
                           label: const Text('Daily'),
-                          selected: travelDays == 'Daily',
+                          selected: travelDaysMode == 'Daily',
                           selectedColor: AppTheme.mint,
                           onSelected: (selected) {
                             if (selected) {
-                              setModalState(() => travelDays = 'Daily');
+                              setModalState(() {
+                                travelDaysMode = 'Daily';
+                                customDaysSet = {
+                                  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                                };
+                                travelDays = 'Daily';
+                              });
                             }
                           },
                         ),
                         ChoiceChip(
                           label: const Text('Weekends'),
-                          selected: travelDays == 'Sat-Sun',
+                          selected: travelDaysMode == 'Weekends',
                           selectedColor: AppTheme.mint,
                           onSelected: (selected) {
                             if (selected) {
-                              setModalState(() => travelDays = 'Sat-Sun');
+                              setModalState(() {
+                                travelDaysMode = 'Weekends';
+                                customDaysSet = {'Sat', 'Sun'};
+                                travelDays = 'Sat-Sun';
+                              });
+                            }
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Custom Days'),
+                          selected: travelDaysMode == 'Custom',
+                          selectedColor: AppTheme.mint,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                travelDaysMode = 'Custom';
+                                if (customDaysSet.isEmpty) {
+                                  customDaysSet = {
+                                    'Mon', 'Tue', 'Wed', 'Thu', 'Fri'
+                                  };
+                                }
+                                const dayOrder = [
+                                  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                                ];
+                                final sorted = dayOrder
+                                    .where((d) => customDaysSet.contains(d))
+                                    .toList();
+                                travelDays = sorted.join(',');
+                              });
                             }
                           },
                         ),
                       ],
                     ),
+                    if (travelDaysMode == 'Custom') ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Select Active Days (Monday to Sunday):',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.darkNavy,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final day in [
+                                  {'code': 'Mon', 'label': 'Monday'},
+                                  {'code': 'Tue', 'label': 'Tuesday'},
+                                  {'code': 'Wed', 'label': 'Wednesday'},
+                                  {'code': 'Thu', 'label': 'Thursday'},
+                                  {'code': 'Fri', 'label': 'Friday'},
+                                  {'code': 'Sat', 'label': 'Saturday'},
+                                  {'code': 'Sun', 'label': 'Sunday'},
+                                ])
+                                  FilterChip(
+                                    label: Text(
+                                      day['code']!,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight:
+                                            customDaysSet.contains(day['code'])
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                        color:
+                                            customDaysSet.contains(day['code'])
+                                                ? const Color(0xFF065F46)
+                                                : AppTheme.darkNavy,
+                                      ),
+                                    ),
+                                    tooltip: day['label'],
+                                    selected:
+                                        customDaysSet.contains(day['code']),
+                                    selectedColor: AppTheme.mint,
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: BorderSide(
+                                        color:
+                                            customDaysSet.contains(day['code'])
+                                                ? AppTheme.forestGreen
+                                                : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    onSelected: (selected) {
+                                      setModalState(() {
+                                        travelDaysMode = 'Custom';
+                                        if (selected) {
+                                          customDaysSet.add(day['code']!);
+                                        } else {
+                                          if (customDaysSet.length > 1) {
+                                            customDaysSet.remove(day['code']!);
+                                          }
+                                        }
+                                        const dayOrder = [
+                                          'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                                        ];
+                                        final sorted = dayOrder
+                                            .where((d) =>
+                                                customDaysSet.contains(d))
+                                            .toList();
+                                        travelDays = sorted.join(',');
+                                      });
+                                    },
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     Row(
                       children: [
@@ -700,9 +846,25 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   }
 
   String _formatTravelDays(String? days) {
-    if (days == 'Daily') return 'Daily (All 7 Days)';
-    if (days == 'Sat-Sun') return 'Weekends (Sat & Sun)';
-    return 'Monday to Friday (Commute Days)';
+    if (days == null || days.isEmpty || days == 'Daily') {
+      return 'Daily (All 7 Days)';
+    }
+    if (days == 'Sat-Sun' || days == 'Weekends') {
+      return 'Weekends (Sat & Sun)';
+    }
+    final clean = days.replaceFirst('Custom:', '');
+    final parts = clean
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty || days == 'Mon-Fri') {
+      return 'Custom (Mon, Tue, Wed, Thu, Fri)';
+    }
+    if (parts.length == 7) {
+      return 'Daily (All 7 Days)';
+    }
+    return 'Custom (${parts.join(', ')})';
   }
 
   Widget _buildHabitScheduleSection() {
@@ -715,7 +877,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           'departure_time': '08:00',
           'observed_check_time': '07:50',
           'alert_time': '07:45',
-          'travel_days': 'Mon-Fri',
+          'travel_days': 'Daily',
           'is_enabled': true,
         };
 
@@ -723,7 +885,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         final String dst = habitData['destination'] ?? 'Pune';
         final String depTime = habitData['departure_time'] ?? '08:00';
         final String alertTime = habitData['alert_time'] ?? '07:45';
-        final String travelDays = habitData['travel_days'] ?? 'Mon-Fri';
+        final String travelDays = habitData['travel_days'] ?? 'Daily';
         final bool isEnabled = habitData['is_enabled'] == true;
 
         return Container(

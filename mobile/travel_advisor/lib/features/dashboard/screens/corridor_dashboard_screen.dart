@@ -44,7 +44,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
       TextEditingController(text: '08:00');
   final TextEditingController _alertTimeCtrl =
       TextEditingController(text: '07:45');
-  String _travelDays = 'Mon-Fri';
+  String _travelDays = 'Daily';
+  String _commuteDayMode = 'Daily';
+  Set<String> _selectedCustomDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
   bool _notificationsEnabled = true;
 
   static const Map<String, String> _corridorSegmentMap = {
@@ -86,7 +88,35 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         }
         _depTimeCtrl.text = habit['departure_time'] ?? '08:00';
         _alertTimeCtrl.text = habit['alert_time'] ?? '07:45';
-        _travelDays = habit['travel_days'] ?? 'Mon-Fri';
+        final rawDays = (habit['travel_days']?.toString() ?? 'Daily').trim();
+        if (rawDays == 'Daily') {
+          _commuteDayMode = 'Daily';
+          _selectedCustomDays = {
+            'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+          };
+          _travelDays = 'Daily';
+        } else if (rawDays == 'Sat-Sun' || rawDays == 'Weekends') {
+          _commuteDayMode = 'Weekends';
+          _selectedCustomDays = {'Sat', 'Sun'};
+          _travelDays = 'Sat-Sun';
+        } else {
+          _commuteDayMode = 'Custom';
+          final clean = rawDays.replaceFirst('Custom:', '');
+          final parts = clean
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+          if (parts.isEmpty || rawDays == 'Mon-Fri') {
+            _selectedCustomDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+          } else {
+            _selectedCustomDays = parts.toSet();
+          }
+          const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          final sorted =
+              dayOrder.where((d) => _selectedCustomDays.contains(d)).toList();
+          _travelDays = sorted.join(',');
+        }
         _notificationsEnabled = habit['is_enabled'] ?? true;
       }
 
@@ -1462,32 +1492,99 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
             runSpacing: 6,
             children: [
               ChoiceChip(
-                label: const Text('Monday to Friday',
-                    style: TextStyle(fontSize: 11.5)),
-                selected: _travelDays == 'Mon-Fri',
-                selectedColor: const Color(0xFFBFDBFE),
-                onSelected: (val) {
-                  if (val) setState(() => _travelDays = 'Mon-Fri');
-                },
-              ),
-              ChoiceChip(
                 label: const Text('Daily', style: TextStyle(fontSize: 11.5)),
-                selected: _travelDays == 'Daily',
+                selected: _commuteDayMode == 'Daily',
                 selectedColor: const Color(0xFFBFDBFE),
                 onSelected: (val) {
-                  if (val) setState(() => _travelDays = 'Daily');
+                  if (val) {
+                    setState(() {
+                      _commuteDayMode = 'Daily';
+                      _selectedCustomDays = {
+                        'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                      };
+                      _travelDays = 'Daily';
+                    });
+                  }
                 },
               ),
               ChoiceChip(
                 label: const Text('Weekends', style: TextStyle(fontSize: 11.5)),
-                selected: _travelDays == 'Sat-Sun',
+                selected: _commuteDayMode == 'Weekends',
                 selectedColor: const Color(0xFFBFDBFE),
                 onSelected: (val) {
-                  if (val) setState(() => _travelDays = 'Sat-Sun');
+                  if (val) {
+                    setState(() {
+                      _commuteDayMode = 'Weekends';
+                      _selectedCustomDays = {'Sat', 'Sun'};
+                      _travelDays = 'Sat-Sun';
+                    });
+                  }
+                },
+              ),
+              ChoiceChip(
+                label: const Text('Custom Days', style: TextStyle(fontSize: 11.5)),
+                selected: _commuteDayMode == 'Custom',
+                selectedColor: const Color(0xFFBFDBFE),
+                onSelected: (val) {
+                  if (val) {
+                    setState(() {
+                      _commuteDayMode = 'Custom';
+                      if (_selectedCustomDays.isEmpty) {
+                        _selectedCustomDays = {
+                          'Mon', 'Tue', 'Wed', 'Thu', 'Fri'
+                        };
+                      }
+                      const dayOrder = [
+                        'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                      ];
+                      final sorted = dayOrder
+                          .where((d) => _selectedCustomDays.contains(d))
+                          .toList();
+                      _travelDays = sorted.join(',');
+                    });
+                  }
                 },
               ),
             ],
           ),
+          if (_commuteDayMode == 'Custom') ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select Active Days (Monday to Sunday):',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.darkNavy,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildCorridorDayFilterChip('Mon', 'Monday'),
+                      _buildCorridorDayFilterChip('Tue', 'Tuesday'),
+                      _buildCorridorDayFilterChip('Wed', 'Wednesday'),
+                      _buildCorridorDayFilterChip('Thu', 'Thursday'),
+                      _buildCorridorDayFilterChip('Fri', 'Friday'),
+                      _buildCorridorDayFilterChip('Sat', 'Saturday'),
+                      _buildCorridorDayFilterChip('Sun', 'Sunday'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // SCHEDULE TIMES (IST)
@@ -1647,6 +1744,54 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCorridorDayFilterChip(String code, String label) {
+    final isSelected = _selectedCustomDays.contains(code);
+    return FilterChip(
+      label: Text(
+        code,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? const Color(0xFF1E3A8A) : AppTheme.darkNavy,
+        ),
+      ),
+      tooltip: label,
+      selected: isSelected,
+      selectedColor: const Color(0xFFBFDBFE),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF3B82F6) : Colors.grey.shade300,
+        ),
+      ),
+      onSelected: (selected) {
+        setState(() {
+          _commuteDayMode = 'Custom';
+          if (selected) {
+            _selectedCustomDays.add(code);
+          } else {
+            if (_selectedCustomDays.length > 1) {
+              _selectedCustomDays.remove(code);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select at least one active day.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+          const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          final sorted = dayOrder
+              .where((d) => _selectedCustomDays.contains(d))
+              .toList();
+          _travelDays = sorted.join(',');
+        });
+      },
     );
   }
 

@@ -112,6 +112,40 @@ class CommuteHabitService {
     }
   }
 
+  /// Validate if the active weekday matches the configured travel schedule
+  static bool isScheduledDay(String? travelDays, int weekday) {
+    if (travelDays == null || travelDays.trim().isEmpty) return true;
+    final trimmed = travelDays.trim();
+    if (trimmed == 'Daily') return true;
+    if (trimmed == 'Sat-Sun' || trimmed == 'Weekends') {
+      return weekday == DateTime.saturday || weekday == DateTime.sunday;
+    }
+    if (trimmed == 'Mon-Fri') {
+      return weekday >= DateTime.monday && weekday <= DateTime.friday;
+    }
+
+    const weekdayToCode = {
+      1: 'Mon',
+      2: 'Tue',
+      3: 'Wed',
+      4: 'Thu',
+      5: 'Fri',
+      6: 'Sat',
+      7: 'Sun',
+    };
+    final currentCode = weekdayToCode[weekday];
+    if (currentCode == null) return false;
+
+    final cleanStr = trimmed.replaceFirst('Custom:', '');
+    final selectedDays = cleanStr
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+
+    return selectedDays.contains(currentCode);
+  }
+
   /// Check whether current time matches the alert time window
   Future<void> checkCommuteAlertWindow() async {
     final habit = commuteHabitNotifier.value ?? await loadHabit();
@@ -119,8 +153,15 @@ class CommuteHabitService {
       return;
     }
 
-    final String alertTimeStr = habit['alert_time'] ?? '07:45';
+    final String travelDays = habit['travel_days']?.toString() ?? 'Daily';
     final now = DateTime.now();
+
+    // Verify whether the active day matches user travel selection
+    if (!isScheduledDay(travelDays, now.weekday)) {
+      return;
+    }
+
+    final String alertTimeStr = habit['alert_time'] ?? '07:45';
     final parts = alertTimeStr.split(':');
     if (parts.length < 2) return;
 

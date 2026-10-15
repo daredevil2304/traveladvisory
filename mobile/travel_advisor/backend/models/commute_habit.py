@@ -59,7 +59,7 @@ class CommuteHabit(Base):
     travel_days: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
-        default="Mon-Fri",
+        default="Daily",
     )
 
     is_enabled: Mapped[bool] = mapped_column(
