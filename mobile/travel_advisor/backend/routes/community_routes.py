@@ -75,6 +75,20 @@ REGION_NAME_TO_CODE: dict[str, str] = {
     "khandala to lonavala": "R5",
     "lonavala to kamshet": "R6",
     "kamshet to pune": "R7",
+    "mumbai": "R1",
+    "sion": "R1",
+    "vashi": "R1",
+    "panvel": "R2",
+    "khalapur": "R3",
+    "khopoli": "R4",
+    "bhor ghat": "R4",
+    "ghat": "R4",
+    "khandala": "R5",
+    "lonavala": "R6",
+    "kamshet": "R7",
+    "talegaon": "R7",
+    "wakad": "R7",
+    "pune": "R7",
 }
 
 # ================================================================
@@ -104,10 +118,10 @@ def _normalize_region_code(region_input: str) -> str:
         return REGION_NAME_TO_CODE[lower]
 
     for key, code in REGION_NAME_TO_CODE.items():
-        if key in lower or lower in key:
+        if any([key in lower, lower in key]):
             return code
 
-    return "R5"
+    return "R1"
 
 
 def _assess_report_hazards(report: TravelerReport) -> tuple[bool, list[str]]:

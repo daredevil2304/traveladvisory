@@ -44,6 +44,7 @@ class _ChatbotScreenState
   String? _fog;
   String? _unusualConditions;
   String? _traffic;
+  String? _selectedReportRegion;
 
   _ConversationStep _step =
       _ConversationStep.confirmSource;
@@ -402,6 +403,7 @@ class _ChatbotScreenState
       case _ConversationStep.ready:
         break;
 
+      case _ConversationStep.liveUpdateRegion:
       case _ConversationStep.liveUpdateRain:
       case _ConversationStep.liveUpdateVisibility:
       case _ConversationStep.liveUpdateHazards:
@@ -1118,14 +1120,42 @@ final Map<String, dynamic> analysisData =
 
   void _startLiveUpdatesQuestionnaire() {
     _isCollectingLiveUpdates = true;
-    _step = _ConversationStep.liveUpdateRain;
+    _step = _ConversationStep.liveUpdateRegion;
+
+    String defaultRegion = 'R1';
+    final src = (_source ?? '').toLowerCase().trim();
+    if (src.contains('mumbai') || src.contains('sion')) {
+      defaultRegion = 'R1';
+    } else if (src.contains('panvel')) {
+      defaultRegion = 'R2';
+    } else if (src.contains('khalapur')) {
+      defaultRegion = 'R3';
+    } else if (src.contains('khopoli')) {
+      defaultRegion = 'R4';
+    } else if (src.contains('khandala')) {
+      defaultRegion = 'R5';
+    } else if (src.contains('lonavala')) {
+      defaultRegion = 'R6';
+    } else if (src.contains('kamshet')) {
+      defaultRegion = 'R7';
+    } else if (src.contains('pune')) {
+      defaultRegion = 'R7';
+    }
+
+    _selectedReportRegion = defaultRegion;
+    final defaultName = _corridorSegmentMap[defaultRegion] ?? 'Mumbai to Panvel';
+
     _addBotMessage(
-      'Share your live route observations to keep corridor intelligence updated. Are you experiencing rain along the route?',
-      quickReplies: const [
-        'None',
-        'Light drizzle',
-        'Moderate rain',
-        'Heavy downpour',
+      'Share your live route observations to keep corridor intelligence updated. Which section are you reporting for?',
+      quickReplies: [
+        'Confirm: $defaultName',
+        'Mumbai to Panvel',
+        'Panvel to Khalapur',
+        'Khalapur to Khopoli',
+        'Khopoli to Khandala (Bhor Ghat)',
+        'Khandala to Lonavala',
+        'Lonavala to Kamshet',
+        'Kamshet to Pune',
         'Skip live updates',
       ],
     );
@@ -1140,6 +1170,36 @@ final Map<String, dynamic> analysisData =
     }
 
     switch (_step) {
+      case _ConversationStep.liveUpdateRegion:
+        if (lower.contains('mumbai')) {
+          _selectedReportRegion = 'R1';
+        } else if (lower.contains('panvel')) {
+          _selectedReportRegion = 'R2';
+        } else if (lower.contains('khalapur')) {
+          _selectedReportRegion = 'R3';
+        } else if (lower.contains('khopoli')) {
+          _selectedReportRegion = 'R4';
+        } else if (lower.contains('khandala')) {
+          _selectedReportRegion = 'R5';
+        } else if (lower.contains('lonavala')) {
+          _selectedReportRegion = 'R6';
+        } else if (lower.contains('kamshet') || lower.contains('pune')) {
+          _selectedReportRegion = 'R7';
+        }
+
+        _step = _ConversationStep.liveUpdateRain;
+        _addBotMessage(
+          'Are you experiencing rainfall along ${_corridorSegmentMap[_selectedReportRegion] ?? 'this section'}?',
+          quickReplies: const [
+            'None',
+            'Light drizzle',
+            'Moderate rain',
+            'Heavy downpour',
+            'Skip live updates',
+          ],
+        );
+        break;
+
       case _ConversationStep.liveUpdateRain:
         _rain = message.trim();
         _step = _ConversationStep.liveUpdateVisibility;
@@ -1215,17 +1275,20 @@ final Map<String, dynamic> analysisData =
       try {
         await ApiService.submitObservation(
           tripId: _tripId!,
+          routeRegion: _selectedReportRegion,
+          latitude: _latitude,
+          longitude: _longitude,
           rain: _rain,
           visibility: _visibility,
           traffic: _traffic,
           unusualConditions: _unusualConditions,
-          rawMessage: 'Rain: $_rain; Visibility: $_visibility; Road: $_unusualConditions; Traffic: $_traffic',
+          rawMessage: 'Section: ${_corridorSegmentMap[_selectedReportRegion] ?? _selectedReportRegion}; Rain: $_rain; Visibility: $_visibility; Road: $_unusualConditions; Traffic: $_traffic',
         );
       } catch (_) {}
     }
 
     _addBotMessage(
-      'Thank you! Your road condition observation has been recorded successfully.',
+      'Thank you! Your road report for ${_corridorSegmentMap[_selectedReportRegion] ?? 'your section'} has been recorded and posted to the Live Updates Feed.',
     );
     _addBotMessage(
       'Feel welcome to ask questions regarding your corridor assessment.',
@@ -3108,6 +3171,7 @@ enum _ConversationStep {
   travelerUnusual,
   travelerTraffic,
   ready,
+  liveUpdateRegion,
   liveUpdateRain,
   liveUpdateVisibility,
   liveUpdateHazards,

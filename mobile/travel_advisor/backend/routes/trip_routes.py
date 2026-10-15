@@ -14,6 +14,8 @@ from schemas.trip import (
     TripRequestResponse,
 )
 from services.route_segment_service import (
+    ROUTE_POINT_COORDINATES,
+    normalize_location,
     resolve_route_segments,
 )
 from services.traveler_report_service import (
@@ -473,19 +475,56 @@ def submit_trip_observation(
             detail=f"Trip with id {trip_id} was not found.",
         )
 
-    user_id = request.user_id or trip.user_id
+    user_id = request.user_id if request.user_id is not None else trip.user_id
     lat = request.latitude if request.latitude is not None else trip.source_latitude
     lon = request.longitude if request.longitude is not None else trip.source_longitude
 
     resolved_region = request.route_region
     if not resolved_region:
         try:
-            segments = resolve_route_segments(trip.source, trip.destination)
-            if segments:
-                # Default to ghat crest segment if full corridor, or first segment
-                resolved_region = "R5" if "R5" in segments else segments[0]
+            # 1. Map GPS position to closest highway point
+            if lat is not None and lon is not None:
+                best_point = None
+                best_dist = float("inf")
+                for pt_name, (pt_lat, pt_lon) in ROUTE_POINT_COORDINATES.items():
+                    d = (lat - pt_lat) ** 2 + (lon - pt_lon) ** 2
+                    if d < best_dist:
+                        best_dist = d
+                        best_point = pt_name
+
+                point_to_seg = {
+                    "Mumbai": "R1",
+                    "Panvel": "R2",
+                    "Khalapur": "R3",
+                    "Khopoli": "R4",
+                    "Khandala": "R5",
+                    "Lonavala": "R6",
+                    "Kamshet": "R7",
+                    "Pune": "R7",
+                }
+                resolved_region = point_to_seg.get(best_point)
+
+            # 2. Map trip starting point
+            if not resolved_region and trip.source:
+                src_clean = normalize_location(trip.source)
+                src_to_seg = {
+                    "Mumbai": "R1",
+                    "Panvel": "R2",
+                    "Khalapur": "R3",
+                    "Khopoli": "R4",
+                    "Khandala": "R5",
+                    "Lonavala": "R6",
+                    "Kamshet": "R7",
+                    "Pune": "R7",
+                }
+                resolved_region = src_to_seg.get(src_clean)
+
+            # 3. Fallback to initial route segment
+            if not resolved_region:
+                segments = resolve_route_segments(trip.source, trip.destination)
+                resolved_region = segments[0] if segments else "R1"
         except Exception:
-            resolved_region = "R5"
+            resolved_region = "R1"
 
     parts = []
     if request.rain:

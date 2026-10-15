@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand colors
-  static const Color forestGreen = Color(0xFF0B4F45);
-  static const Color deepGreen = Color(0xFF063B35);
-  static const Color teal = Color(0xFF16A37A);
-  static const Color mint = Color(0xFFEAF6F0);
-  static const Color lightMint = Color(0xFFF5F9F6);
+  // Brand colors: Executive Slate & Royal Cobalt
+  static const Color forestGreen = Color(0xFF1E40AF); // Primary Royal Cobalt
+  static const Color deepGreen = Color(0xFF0F172A); // Deep Slate Navy
+  static const Color teal = Color(0xFF0284C7); // Electric Ocean Blue
+  static const Color mint = Color(0xFFEFF6FF); // Soft Ice-Blue Card Tint
+  static const Color lightMint = Color(0xFFF8FAFC); // Clean Crisp Slate Canvas
 
-  static const Color orange = Color(0xFFF79316);
+  static const Color orange = Color(0xFFF59E0B);
 
-  static const Color darkNavy = Color(0xFF132A3A);
-  static const Color textSecondary = Color(0xFF657785);
+  static const Color darkNavy = Color(0xFF0F172A);
+  static const Color textSecondary = Color(0xFF64748B);
 
   static const Color primary = forestGreen;
   static const Color textPrimary = darkNavy;
   static const Color white = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFDDE7E3);
-  static const Color danger = Color(0xFFDC2626);
-  static const Color crimsonRed = Color(0xFFDC2626);
-  static const Color alertAmber = Color(0xFFF79316);
-  static const Color subtleGrey = Color(0xFF657785);
+  static const Color border = Color(0xFFE2E8F0);
+  static const Color danger = Color(0xFFEF4444);
+  static const Color crimsonRed = Color(0xFFEF4444);
+  static const Color alertAmber = Color(0xFFF59E0B);
+  static const Color emeraldGreen = Color(0xFF10B981);
+  static const Color subtleGrey = Color(0xFF94A3B8);
 
   static ThemeData get lightTheme {
     return ThemeData(

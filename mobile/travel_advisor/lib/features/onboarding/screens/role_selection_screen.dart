@@ -5,6 +5,7 @@ import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/commute_habit_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/widgets/custom_corridor_icons.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -408,7 +409,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
-                        icon: Icons.sensors_rounded,
+                        customIcon: const LiveRadarIcon(
+                          size: 20,
+                          color: Color(0xFFEF4444),
+                          showLivePulse: true,
+                        ),
                         color: const Color(0xFFEF4444),
                         title: '2. Live Road Feeds',
                         desc:
@@ -416,7 +421,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
-                        icon: Icons.alt_route_rounded,
+                        customIcon: const CorridorHubIcon(
+                          size: 20,
+                          color: Color(0xFF0284C7),
+                        ),
                         color: const Color(0xFF0284C7),
                         title: '3. Corridor Hub & Commute Alerts',
                         desc:
@@ -425,10 +433,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
                         icon: Icons.swipe_left_rounded,
-                        color: const Color(0xFF7C3AED),
+                        color: const Color(0xFF0284C7),
                         title: '4. Expandable Side Drawer',
                         desc:
-                            'Tap the green edge tab on the right side of the screen anytime to quickly access Live Feeds and your Corridor Hub scheduler.',
+                            'Tap the docked capsule on the right screen edge and the in-page card anytime to quickly access Live Feeds and your Corridor Hub scheduler.',
                       ),
                     ],
                   ),
@@ -463,7 +471,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   Widget _buildGuideFeatureItem({
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required Color color,
     required String title,
     required String desc,
@@ -477,7 +486,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: customIcon ?? Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -618,6 +627,116 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         'I am planning a journey for a future date.',
                   ),
 
+                  const SizedBox(height: 18),
+
+                  // IN-PAGE QUICK ACCESS TO CORRIDOR RADAR & COMMUTE HUB
+                  GestureDetector(
+                    onTap: () {
+                      if (_showTutorialCoachmark) {
+                        _dismissTutorialCoachmark();
+                      }
+                      setState(() => _isSliderExpanded = true);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppTheme.border),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x080F172A),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFDBEAFE)),
+                            ),
+                            child: const Center(
+                              child: LiveRadarIcon(
+                                size: 22,
+                                color: Color(0xFFEF4444),
+                                showLivePulse: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Live Feeds & Corridor Hub',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.darkNavy,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    CorridorHubIcon(
+                                      size: 14,
+                                      color: Color(0xFF0284C7),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Inspect real-time hazards & manage daily commute alerts',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Open',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1E40AF),
+                                  ),
+                                ),
+                                SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 14,
+                                  color: Color(0xFF1E40AF),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const Spacer(),
 
                   // CONTINUE
@@ -652,7 +771,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           if (!_isSliderExpanded)
             Positioned(
               right: 0,
-              top: MediaQuery.of(context).size.height * 0.30,
+              top: MediaQuery.of(context).size.height * 0.36,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -661,19 +780,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   if (_showTutorialCoachmark)
                     Container(
                       margin: const EdgeInsets.only(right: 8),
-                      constraints: const BoxConstraints(maxWidth: 210),
+                      constraints: const BoxConstraints(maxWidth: 220),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                          horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppTheme.darkNavy,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: 14,
+                            blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
                         ],
+                        border: Border.all(color: const Color(0xFF334155)),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -683,13 +803,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             children: [
                               const Icon(
                                 Icons.touch_app_rounded,
-                                color: Color(0xFF6EE7B7),
+                                color: Color(0xFF38BDF8),
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
                               const Expanded(
                                 child: Text(
-                                  'Explore Side Hub',
+                                  'Corridor Quick Drawer',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
@@ -707,32 +827,32 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
                           const Text(
-                            'Tap the tab to inspect Live Road Feeds and configure daily commute alerts.',
+                            'Tap to inspect live road updates and configure your daily commute schedule.',
                             style: TextStyle(
                               color: Colors.white70,
-                              fontSize: 10.5,
+                              fontSize: 11,
                               height: 1.3,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.centerRight,
                             child: GestureDetector(
                               onTap: _dismissTutorialCoachmark,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: AppTheme.forestGreen,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Text(
                                   'Got it',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 10.5,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -743,7 +863,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                     ),
 
-                  // DUAL-ICON SLIDER HANDLE (LIVE FEEDS + CORRIDOR HUB)
+                  // DOCKED DUAL-ICON SLIDER CAPSULE
                   GestureDetector(
                     onTap: () {
                       if (_showTutorialCoachmark) {
@@ -752,56 +872,39 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       setState(() => _isSliderExpanded = true);
                     },
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(10, 14, 6, 14),
+                      padding: const EdgeInsets.fromLTRB(10, 12, 6, 12),
                       decoration: BoxDecoration(
-                        color: AppTheme.forestGreen,
+                        color: const Color(0xFF0F172A),
                         borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(18),
+                          left: Radius.circular(20),
                         ),
+                        border: Border.all(
+                            color: const Color(0xFF334155), width: 1.2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: 14,
-                            offset: const Offset(-3, 3),
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 16,
+                            offset: const Offset(-4, 4),
                           ),
                         ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // 1. LIVE ROAD FEEDS ICON WITH LIVE DOT
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.sensors_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                              Positioned(
-                                top: -1,
-                                right: -1,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEF4444),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 1.5),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          // 1. LIVE RADAR ICON
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1E293B),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const LiveRadarIcon(
+                              size: 19,
+                              color: Color(0xFFEF4444),
+                              showLivePulse: true,
+                            ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           const Text(
                             'LIVE',
                             style: TextStyle(
@@ -811,46 +914,45 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
 
                           // SEPARATOR
                           Container(
-                            width: 22,
-                            height: 1.5,
-                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 20,
+                            height: 1,
+                            color: const Color(0xFF334155),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
 
                           // 2. CORRIDOR HUB ICON
                           Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1E293B),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.alt_route_rounded,
-                              color: Colors.white,
-                              size: 20,
+                            child: const CorridorHubIcon(
+                              size: 19,
+                              color: Color(0xFF38BDF8),
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           const Text(
                             'HUB',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFF38BDF8),
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
 
                           // CHEVRON EXPAND INDICATOR
                           const Icon(
                             Icons.chevron_left_rounded,
-                            color: Colors.white,
-                            size: 20,
+                            color: Colors.white70,
+                            size: 18,
                           ),
                         ],
                       ),
@@ -996,30 +1098,35 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
                     ),
-                    child: const Icon(
-                      Icons.sensors_rounded,
-                      color: Colors.white,
-                      size: 19,
+                    child: const Center(
+                      child: LiveRadarIcon(
+                        size: 20,
+                        color: Color(0xFFEF4444),
+                        showLivePulse: true,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0284C7),
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF7DD3FC)),
                     ),
-                    child: const Icon(
-                      Icons.alt_route_rounded,
-                      color: Colors.white,
-                      size: 19,
+                    child: const Center(
+                      child: CorridorHubIcon(
+                        size: 20,
+                        color: Color(0xFF0284C7),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1075,16 +1182,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEF4444)
-                                  .withValues(alpha: 0.15),
+                                  .withValues(alpha: 0.12),
                               shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFFCA5A5)),
                             ),
-                            child: const Icon(
-                              Icons.sensors_rounded,
-                              size: 15,
+                            child: const LiveRadarIcon(
+                              size: 14,
                               color: Color(0xFFEF4444),
+                              showLivePulse: true,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -1197,9 +1305,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
                   // SECTION 3: SAVED REPORTS
                   _buildDrawerTile(
-                    icon: Icons.bookmark_rounded,
-                    iconColor: AppTheme.forestGreen,
-                    iconBg: AppTheme.mint,
+                    iconWidget: const SavedReportsBookmarkIcon(
+                      size: 20,
+                      color: Color(0xFF1E40AF),
+                    ),
+                    iconBg: const Color(0xFFEFF6FF),
                     title: 'Saved Reports',
                     subtitle: 'Inspect your saved journey assessments',
                     onTap: () {
@@ -1241,12 +1351,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isRisky ? const Color(0xFFFFF8F1) : const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(12),
+        color: isRisky ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isRisky ? const Color(0xFFFFD8A8) : const Color(0xFFBBF7D0),
+          color: isRisky ? const Color(0xFFFDE68A) : const Color(0xFFBFDBFE),
           width: 1,
         ),
       ),
@@ -1255,14 +1365,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                isRisky
-                    ? Icons.warning_amber_rounded
-                    : Icons.check_circle_outline,
-                size: 16,
-                color: isRisky ? const Color(0xFFE65100) : AppTheme.forestGreen,
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isRisky
+                      ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                      : const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: HazardCategoryIcon(
+                  category: isRisky ? 'hazard' : 'road',
+                  size: 14,
+                  color: isRisky
+                      ? const Color(0xFFD97706)
+                      : const Color(0xFF0284C7),
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   regionName,
@@ -1285,27 +1404,47 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             ],
           ),
           if (hazards.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 4,
-              runSpacing: 4,
+              spacing: 6,
+              runSpacing: 6,
               children: hazards.take(3).map((h) {
                 return Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isRisky ? const Color(0xFFFFE8D6) : AppTheme.mint,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    h,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
+                    color: isRisky
+                        ? const Color(0xFFFEF3C7)
+                        : const Color(0xFFDBEAFE),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
                       color: isRisky
-                          ? const Color(0xFFC05621)
-                          : AppTheme.forestGreen,
+                          ? const Color(0xFFFCD34D)
+                          : const Color(0xFF93C5FD),
                     ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HazardCategoryIcon(
+                        category: h,
+                        size: 12,
+                        color: isRisky
+                            ? const Color(0xFFB45309)
+                            : const Color(0xFF1E40AF),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        h,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isRisky
+                              ? const Color(0xFFB45309)
+                              : const Color(0xFF1E40AF),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -1334,16 +1473,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF7DD3FC)),
                 ),
-                child: const Icon(
-                  Icons.alarm_on_rounded,
-                  color: Colors.white,
-                  size: 18,
+                child: const Center(
+                  child: CommuteClockIcon(
+                    size: 20,
+                    color: Color(0xFF0284C7),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1886,8 +2027,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   // ============================================================
 
   Widget _buildDrawerTile({
-    required IconData icon,
-    required Color iconColor,
+    required Widget iconWidget,
     required Color iconBg,
     required String title,
     required String subtitle,
@@ -1911,8 +2051,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   decoration: BoxDecoration(
                     color: iconBg,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDBEAFE)),
                   ),
-                  child: Icon(icon, color: iconColor, size: 22),
+                  child: Center(child: iconWidget),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

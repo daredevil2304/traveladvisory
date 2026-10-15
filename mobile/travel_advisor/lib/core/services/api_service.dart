@@ -617,6 +617,9 @@ class ApiService {
 
   static Future<Map<String, dynamic>> submitObservation({
     required int tripId,
+    String? routeRegion,
+    double? latitude,
+    double? longitude,
     String? rain,
     String? visibility,
     String? fog,
@@ -638,6 +641,9 @@ class ApiService {
             },
             body: jsonEncode({
               'user_id': resolvedUserId,
+              'route_region': routeRegion,
+              'latitude': latitude,
+              'longitude': longitude,
               'rain': rain,
               'visibility': visibility,
               'fog': fog,
