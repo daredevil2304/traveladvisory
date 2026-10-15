@@ -114,8 +114,8 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
 
     final sourceCtrl = TextEditingController(text: source);
     final destCtrl = TextEditingController(text: destination);
-    final depCtrl = TextEditingController(text: departureTime);
-    final alertCtrl = TextEditingController(text: alertTime);
+    TimeOfDay modalDepTime = CommuteHabitService.parseTime(departureTime);
+    TimeOfDay modalAlertTime = CommuteHabitService.parseTime(alertTime);
 
     showModalBottomSheet(
       context: context,
@@ -366,42 +366,153 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       ),
                     ],
                     const SizedBox(height: 14),
+                    // 12-HOUR AM/PM TIME SELECTORS (IST)
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: depCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Departure (HH:MM IST)',
-                              prefixIcon: Icon(Icons.access_time),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (val) {
-                              final parts = val.trim().split(':');
-                              if (parts.length >= 2) {
-                                final h = int.tryParse(parts[0]);
-                                final m = int.tryParse(parts[1]);
-                                if (h != null && m != null) {
-                                  int totalMin = h * 60 + m - 15;
-                                  if (totalMin < 0) totalMin += 1440;
-                                  final alertH = (totalMin ~/ 60).toString().padLeft(2, '0');
-                                  final alertM = (totalMin % 60).toString().padLeft(2, '0');
-                                  setModalState(() {
-                                    alertCtrl.text = '$alertH:$alertM';
-                                  });
-                                }
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: modalDepTime,
+                                initialEntryMode: TimePickerEntryMode.dial,
+                                builder: (pickerContext, child) {
+                                  return MediaQuery(
+                                    data: MediaQuery.of(pickerContext).copyWith(
+                                      alwaysUse24HourFormat: false,
+                                    ),
+                                    child: child ?? const SizedBox.shrink(),
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  modalDepTime = picked;
+                                  int depMin = picked.hour * 60 + picked.minute;
+                                  int alertMin = depMin - 15;
+                                  if (alertMin < 0) alertMin += 1440;
+                                  modalAlertTime = TimeOfDay(
+                                    hour: alertMin ~/ 60,
+                                    minute: alertMin % 60,
+                                  );
+                                });
                               }
                             },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.schedule,
+                                          size: 14, color: AppTheme.forestGreen),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Departure (IST)',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.darkNavy,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    CommuteHabitService.formatTime12h(modalDepTime),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.darkNavy,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Tap to change',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: TextField(
-                            controller: alertCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Alert (HH:MM IST)',
-                              prefixIcon: Icon(Icons.notifications_active),
-                              border: OutlineInputBorder(),
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: modalAlertTime,
+                                initialEntryMode: TimePickerEntryMode.dial,
+                                builder: (pickerContext, child) {
+                                  return MediaQuery(
+                                    data: MediaQuery.of(pickerContext).copyWith(
+                                      alwaysUse24HourFormat: false,
+                                    ),
+                                    child: child ?? const SizedBox.shrink(),
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  modalAlertTime = picked;
+                                });
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.notifications_active,
+                                          size: 14, color: AppTheme.forestGreen),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Alert Notice (IST)',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.darkNavy,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    CommuteHabitService.formatTime12h(
+                                        modalAlertTime),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.darkNavy,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Tap to change',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -437,11 +548,15 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                         onPressed: () async {
                           Navigator.pop(ctx);
                           setState(() => _isLoading = true);
+                          final formattedDep =
+                              CommuteHabitService.formatTime12h(modalDepTime);
+                          final formattedAlert =
+                              CommuteHabitService.formatTime12h(modalAlertTime);
                           await _habitService.saveHabit(
                             source: sourceCtrl.text.trim(),
                             destination: destCtrl.text.trim(),
-                            departureTime: depCtrl.text.trim(),
-                            alertTime: alertCtrl.text.trim(),
+                            departureTime: formattedDep,
+                            alertTime: formattedAlert,
                             travelDays: travelDays,
                             isEnabled: isEnabled,
                           );

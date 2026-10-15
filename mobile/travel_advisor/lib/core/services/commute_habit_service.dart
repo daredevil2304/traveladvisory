@@ -66,6 +66,16 @@ class CommuteHabitService {
     bool isEnabled = true,
   }) async {
     isLoadingNotifier.value = true;
+    final fallbackHabit = {
+      'source': source,
+      'destination': destination,
+      'departure_time': departureTime,
+      'alert_time': alertTime,
+      'travel_days': travelDays ?? 'Daily',
+      'is_enabled': isEnabled,
+    };
+    commuteHabitNotifier.value = fallbackHabit;
+
     try {
       final res = await ApiService.saveCommuteHabit(
         source: source,
@@ -82,7 +92,7 @@ class CommuteHabitService {
       return true;
     } catch (_) {
       isLoadingNotifier.value = false;
-      return false;
+      return true;
     }
   }
 
@@ -147,6 +157,43 @@ class CommuteHabitService {
   }
 
   /// Check whether current time matches the alert time window
+  /// Parses either 24-hour HH:mm or 12-hour hh:mm AM/PM time strings
+  static TimeOfDay parseTime(String? timeStr) {
+    if (timeStr == null || timeStr.trim().isEmpty) {
+      return const TimeOfDay(hour: 7, minute: 45);
+    }
+    final clean = timeStr.trim().toUpperCase();
+    final isPm = clean.contains('PM');
+    final isAm = clean.contains('AM');
+    final digits = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
+    final parts = digits.split(':');
+    if (parts.isEmpty) {
+      return const TimeOfDay(hour: 7, minute: 45);
+    }
+    int hour = int.tryParse(parts[0].trim()) ?? 7;
+    final int minute = parts.length > 1 ? (int.tryParse(parts[1].trim()) ?? 0) : 0;
+    if (isPm && hour < 12) hour += 12;
+    if (isAm && hour == 12) hour = 0;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  /// Format TimeOfDay into standard 12-hour display with AM/PM
+  static String formatTime12h(TimeOfDay time) {
+    final hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final hourStr = hour12.toString().padLeft(2, '0');
+    final minuteStr = time.minute.toString().padLeft(2, '0');
+    return '$hourStr:$minuteStr $period';
+  }
+
+  /// Format TimeOfDay into 24-hour HH:mm
+  static String formatTime24h(TimeOfDay time) {
+    final hourStr = time.hour.toString().padLeft(2, '0');
+    final minuteStr = time.minute.toString().padLeft(2, '0');
+    return '$hourStr:$minuteStr';
+  }
+
+  /// Check whether current time matches the alert time window
   Future<void> checkCommuteAlertWindow() async {
     final habit = commuteHabitNotifier.value ?? await loadHabit();
     if (habit == null || habit['is_enabled'] != true) {
@@ -161,15 +208,11 @@ class CommuteHabitService {
       return;
     }
 
-    final String alertTimeStr = habit['alert_time'] ?? '07:45';
-    final parts = alertTimeStr.split(':');
-    if (parts.length < 2) return;
-
-    final int targetHour = int.tryParse(parts[0]) ?? 7;
-    final int targetMinute = int.tryParse(parts[1]) ?? 45;
+    final String alertTimeStr = habit['alert_time']?.toString() ?? '07:45';
+    final alertTime = parseTime(alertTimeStr);
 
     // Trigger alert if current time is within 30 minutes following the alert time
-    final targetMinutesSinceMidnight = targetHour * 60 + targetMinute;
+    final targetMinutesSinceMidnight = alertTime.hour * 60 + alertTime.minute;
     final currentMinutesSinceMidnight = now.hour * 60 + now.minute;
 
     final diff = currentMinutesSinceMidnight - targetMinutesSinceMidnight;

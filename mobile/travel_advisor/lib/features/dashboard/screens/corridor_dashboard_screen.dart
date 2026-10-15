@@ -39,11 +39,18 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   String _selectedSource = 'Panvel';
   String _selectedDestination = 'Pune';
 
+  // Active segmented tab index (0: Commute Setup, 1: Live Road Radar, 2: Saved Reports)
+  int _selectedTabIndex = 0;
+
+  // 12-hour AM/PM Time representations (IST)
+  TimeOfDay _selectedDepartureTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _selectedAlertTime = const TimeOfDay(hour: 7, minute: 45);
+
   // Controllers for schedule configuration
   final TextEditingController _depTimeCtrl =
-      TextEditingController(text: '08:00');
+      TextEditingController(text: '08:00 AM');
   final TextEditingController _alertTimeCtrl =
-      TextEditingController(text: '07:45');
+      TextEditingController(text: '07:45 AM');
   String _travelDays = 'Daily';
   String _commuteDayMode = 'Daily';
   Set<String> _selectedCustomDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
@@ -86,8 +93,14 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         if (_corridorPoints.contains(dst)) {
           _selectedDestination = dst;
         }
-        _depTimeCtrl.text = habit['departure_time'] ?? '08:00';
-        _alertTimeCtrl.text = habit['alert_time'] ?? '07:45';
+        final depStr = habit['departure_time']?.toString() ?? '08:00 AM';
+        final alertStr = habit['alert_time']?.toString() ?? '07:45 AM';
+        _selectedDepartureTime = CommuteHabitService.parseTime(depStr);
+        _selectedAlertTime = CommuteHabitService.parseTime(alertStr);
+        _depTimeCtrl.text =
+            CommuteHabitService.formatTime12h(_selectedDepartureTime);
+        _alertTimeCtrl.text =
+            CommuteHabitService.formatTime12h(_selectedAlertTime);
         final rawDays = (habit['travel_days']?.toString() ?? 'Daily').trim();
         if (rawDays == 'Daily') {
           _commuteDayMode = 'Daily';
@@ -160,6 +173,69 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   }
 
   // ============================================================
+  // 12-HOUR AM/PM TIME PICKERS & SELECTORS
+  // ============================================================
+
+  Future<void> _pickTime({required bool isDeparture}) async {
+    final initial = isDeparture ? _selectedDepartureTime : _selectedAlertTime;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      initialEntryMode: TimePickerEntryMode.dial,
+      builder: (pickerContext, child) {
+        return MediaQuery(
+          data: MediaQuery.of(pickerContext).copyWith(
+            alwaysUse24HourFormat: false,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isDeparture) {
+          _selectedDepartureTime = picked;
+          _depTimeCtrl.text = CommuteHabitService.formatTime12h(picked);
+          // Automatically set alert notice 15 minutes before departure
+          int depMin = picked.hour * 60 + picked.minute;
+          int alertMin = depMin - 15;
+          if (alertMin < 0) alertMin += 1440;
+          _selectedAlertTime =
+              TimeOfDay(hour: alertMin ~/ 60, minute: alertMin % 60);
+          _alertTimeCtrl.text =
+              CommuteHabitService.formatTime12h(_selectedAlertTime);
+        } else {
+          _selectedAlertTime = picked;
+          _alertTimeCtrl.text = CommuteHabitService.formatTime12h(picked);
+        }
+      });
+    }
+  }
+
+  void _setPeriod({required bool isDeparture, required bool isAm}) {
+    setState(() {
+      if (isDeparture) {
+        int currentHour = _selectedDepartureTime.hour;
+        if (isAm && currentHour >= 12) currentHour -= 12;
+        if (!isAm && currentHour < 12) currentHour += 12;
+        _selectedDepartureTime =
+            TimeOfDay(hour: currentHour, minute: _selectedDepartureTime.minute);
+        _depTimeCtrl.text =
+            CommuteHabitService.formatTime12h(_selectedDepartureTime);
+      } else {
+        int currentHour = _selectedAlertTime.hour;
+        if (isAm && currentHour >= 12) currentHour -= 12;
+        if (!isAm && currentHour < 12) currentHour += 12;
+        _selectedAlertTime =
+            TimeOfDay(hour: currentHour, minute: _selectedAlertTime.minute);
+        _alertTimeCtrl.text =
+            CommuteHabitService.formatTime12h(_selectedAlertTime);
+      }
+    });
+  }
+
+  // ============================================================
   // COMMUTE SCHEDULE SAVE
   // ============================================================
 
@@ -178,11 +254,17 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     if (_notificationsEnabled) {
       await NotificationService().requestPermission();
     }
+
+    final formattedDep =
+        CommuteHabitService.formatTime12h(_selectedDepartureTime);
+    final formattedAlert =
+        CommuteHabitService.formatTime12h(_selectedAlertTime);
+
     final success = await _habitService.saveHabit(
       source: _selectedSource,
       destination: _selectedDestination,
-      departureTime: _depTimeCtrl.text.trim(),
-      alertTime: _alertTimeCtrl.text.trim(),
+      departureTime: formattedDep,
+      alertTime: formattedAlert,
       travelDays: _travelDays,
       isEnabled: _notificationsEnabled,
     );
@@ -192,7 +274,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         SnackBar(
           content: Text(
             success
-                ? 'Commute schedule saved successfully!'
+                ? 'Commute schedule saved! ($formattedDep / Alert $formattedAlert IST)'
                 : 'Failed to save commute schedule.',
           ),
           backgroundColor:
@@ -625,25 +707,25 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   // WELCOMING HERO HEADER
                   _buildWelcomingHero(),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
 
-                  // SECTION 1: PROFILE SELECTION
-                  _buildProfileSelectionSection(),
+                  // STREAMLINED PROFILE SELECTION ACTION BAR
+                  _buildCompactProfileBar(),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 18),
 
-                  // SECTION 2: LIVE ROAD UPDATES & CORRIDOR HUB
-                  _buildLiveUpdatesSection(),
+                  // SEGMENTED TAB SELECTOR (Commute Setup | Road Radar | Saved Reports)
+                  _buildTabSelector(),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // CORRIDOR HUB: COMMUTE SCHEDULER
-                  _buildCorridorHubSection(),
-
-                  const SizedBox(height: 20),
-
-                  // SAVED REPORTS QUICK TILE
-                  _buildSavedReportsTile(),
+                  // ACTIVE TAB CONTENT
+                  if (_selectedTabIndex == 0)
+                    _buildCorridorHubSection()
+                  else if (_selectedTabIndex == 1)
+                    _buildLiveUpdatesSection()
+                  else
+                    _buildSavedReportsSection(),
 
                   const SizedBox(height: 36),
                 ],
@@ -785,10 +867,322 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   }
 
   // ============================================================
-  // SECTION 1: PROFILE SELECTION
+  // STREAMLINED PROFILE SELECTION ACTION BAR
   // ============================================================
 
-  Widget _buildProfileSelectionSection() {
+  Widget _buildCompactProfileBar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: const Icon(
+              Icons.person_pin_circle_rounded,
+              color: Color(0xFF1E40AF),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Travel Profile',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.darkNavy,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Traveler (immediate) • Planner (scheduled)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E40AF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.roleSelection);
+            },
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Choose',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 14),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // SEGMENTED TAB SELECTOR
+  // ============================================================
+
+  Widget _buildTabSelector() {
+    final tabs = [
+      {'title': 'Commute Setup', 'icon': Icons.alarm_rounded},
+      {'title': 'Road Radar', 'icon': Icons.radar_rounded},
+      {'title': 'Saved Reports', 'icon': Icons.bookmark_rounded},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (idx) {
+          final isSelected = _selectedTabIndex == idx;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedTabIndex = idx);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isSelected
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x140F172A),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      tabs[idx]['icon'] as IconData,
+                      size: 15,
+                      color: isSelected
+                          ? const Color(0xFF1E40AF)
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      tabs[idx]['title'] as String,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected
+                            ? const Color(0xFF1E40AF)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ============================================================
+  // 12-HOUR AM/PM TIME SELECTOR CARD
+  // ============================================================
+
+  Widget _buildTimeSelectorCard({
+    required String label,
+    required TimeOfDay time,
+    required bool isDeparture,
+  }) {
+    final hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final hourStr = hour12.toString().padLeft(2, '0');
+    final minuteStr = time.minute.toString().padLeft(2, '0');
+    final isAm = time.period == DayPeriod.am;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isDeparture ? Icons.schedule_rounded : Icons.alarm_rounded,
+                size: 14,
+                color: const Color(0xFF0284C7),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _pickTime(isDeparture: isDeparture),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '$hourStr:$minuteStr',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkNavy,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () =>
+                            _setPeriod(isDeparture: isDeparture, isAm: true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isAm
+                                ? const Color(0xFF1E40AF)
+                                : const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'AM',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: isAm
+                                  ? Colors.white
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () =>
+                            _setPeriod(isDeparture: isDeparture, isAm: false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: !isAm
+                                ? const Color(0xFF1E40AF)
+                                : const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'PM',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: !isAm
+                                  ? Colors.white
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Center(
+            child: Text(
+              'Tap to adjust • IST',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // TAB 3: SAVED REPORTS ARCHIVE SECTION
+  // ============================================================
+
+  Widget _buildSavedReportsSection() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -810,17 +1204,18 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                  border: Border.all(color: const Color(0xFFDBEAFE)),
                 ),
-                child: const Icon(
-                  Icons.person_pin_circle_rounded,
-                  color: Color(0xFF1E40AF),
-                  size: 24,
+                child: const Center(
+                  child: SavedReportsBookmarkIcon(
+                    size: 22,
+                    color: Color(0xFF1E40AF),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -829,7 +1224,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'SECTION 1: PROFILE SELECTION',
+                      'SAVED REPORTS ARCHIVE',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -838,7 +1233,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                       ),
                     ),
                     Text(
-                      'Plan Your Highway Journey',
+                      'Bookmarked Travel Reports',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -852,141 +1247,37 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Select your travel persona so our AI model can evaluate expressway risk parameters specifically tailored to your journey timeline.',
+            'Access all your archived corridor trip risk assessments, weather observations, and departure recommendations saved during past planning sessions.',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12.5,
               color: AppTheme.textSecondary,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 16),
-
-          // TWO PROFILE BADGES PREVIEW
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.directions_car_rounded,
-                        size: 20,
-                        color: Color(0xFF0F172A),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Traveler',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.darkNavy,
-                              ),
-                            ),
-                            Text(
-                              'Instant departure',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.event_note_rounded,
-                        size: 20,
-                        color: Color(0xFF1E40AF),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Planner',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.darkNavy,
-                              ),
-                            ),
-                            Text(
-                              'Future schedule',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
           const SizedBox(height: 18),
-
-          // CHOOSE PROFILE ACTION BUTTON
           SizedBox(
             width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
+            height: 48,
+            child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1E40AF),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                elevation: 2,
+                elevation: 1,
               ),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.roleSelection);
+                Navigator.pushNamed(context, AppRoutes.savedReports);
               },
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Choose Profile',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 18,
-                  ),
-                ],
+              icon: const Icon(Icons.bookmark_added_rounded, size: 18),
+              label: const Text(
+                'Open Saved Reports Archive',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
               ),
             ),
           ),
@@ -1587,46 +1878,22 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ],
           const SizedBox(height: 12),
 
-          // SCHEDULE TIMES (IST)
+          // SCHEDULE TIMES (12-HOUR AM/PM SELECTION IN IST)
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _depTimeCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Departure (IST)',
-                    labelStyle: const TextStyle(fontSize: 12.5),
-                    prefixIcon: const Icon(Icons.schedule,
-                        size: 16, color: Color(0xFF0284C7)),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
+                child: _buildTimeSelectorCard(
+                  label: 'Departure Time (IST)',
+                  time: _selectedDepartureTime,
+                  isDeparture: true,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextField(
-                  controller: _alertTimeCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Alert Notice (IST)',
-                    labelStyle: const TextStyle(fontSize: 12.5),
-                    prefixIcon: const Icon(Icons.alarm,
-                        size: 16, color: Color(0xFF0284C7)),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
+                child: _buildTimeSelectorCard(
+                  label: 'Alert Notice Time (IST)',
+                  time: _selectedAlertTime,
+                  isDeparture: false,
                 ),
               ),
             ],

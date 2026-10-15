@@ -7,6 +7,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from models.commute_habit import CommuteCheckLog, CommuteHabit
+from models.user import User
 from models.traveler_report import TravelerReport
 from models.trip import Trip
 from services.route_segment_service import (
@@ -209,6 +210,21 @@ class CommuteNotificationService:
         )
 
         resolved_days = travel_days.strip() if travel_days else "Daily"
+
+        # Ensure user exists in database to prevent foreign key failure
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            user = User(
+                id=user_id,
+                full_name="Expressway Commuter",
+                email=f"commuter_{user_id}@expressway.local",
+                mobile=f"900000000{user_id % 10}",
+                password_hash="guest_hash",
+                is_verified=True,
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()
 
         if not habit:
             habit = CommuteHabit(
@@ -595,6 +611,21 @@ class CommuteNotificationService:
 
         return None
 
+    @staticmethod
+    def _parse_time_parts(time_str: str) -> tuple[int, int]:
+        clean = time_str.strip().upper()
+        is_pm = "PM" in clean
+        is_am = "AM" in clean
+        digits = clean.replace("AM", "").replace("PM", "").strip()
+        parts = [int(p.strip()) for p in digits.split(":")[:2]]
+        hour = parts[0]
+        minute = parts[1] if len(parts) > 1 else 0
+        if is_pm and hour < 12:
+            hour += 12
+        elif is_am and hour == 12:
+            hour = 0
+        return hour, minute
+
     def _calculate_alert_time(
         self,
         departure_time_str: str,
@@ -605,16 +636,16 @@ class CommuteNotificationService:
         15 minutes before typical departure, and 5 minutes before typical check time.
         """
         try:
-            dep_parts = [int(p) for p in departure_time_str.split(":")[:2]]
-            dep_dt = datetime(2026, 1, 1, dep_parts[0], dep_parts[1])
+            hour, minute = self._parse_time_parts(departure_time_str)
+            dep_dt = datetime(2026, 1, 1, hour, minute)
             alert_dt = dep_dt - timedelta(minutes=15)
             return alert_dt.strftime("%H:%M")
         except Exception:
             pass
 
         try:
-            check_parts = [int(p) for p in observed_check_time_str.split(":")[:2]]
-            check_dt = datetime(2026, 1, 1, check_parts[0], check_parts[1])
+            hour, minute = self._parse_time_parts(observed_check_time_str)
+            check_dt = datetime(2026, 1, 1, hour, minute)
             alert_dt = check_dt - timedelta(minutes=5)
             return alert_dt.strftime("%H:%M")
         except Exception:
@@ -625,8 +656,8 @@ class CommuteNotificationService:
         Default check time roughly 10 minutes prior to departure.
         """
         try:
-            parts = [int(p) for p in departure_time_str.split(":")[:2]]
-            dt = datetime(2026, 1, 1, parts[0], parts[1]) - timedelta(minutes=10)
+            hour, minute = self._parse_time_parts(departure_time_str)
+            dt = datetime(2026, 1, 1, hour, minute) - timedelta(minutes=10)
             return dt.strftime("%H:%M")
         except Exception:
             return "07:50"

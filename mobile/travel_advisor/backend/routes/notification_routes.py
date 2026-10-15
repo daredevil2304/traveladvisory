@@ -20,6 +20,7 @@ class CommuteHabitUpdateRequest(BaseModel):
     source: str = Field(..., example="Panvel")
     destination: str = Field(..., example="Pune")
     departure_time: str = Field(..., example="08:00")
+    alert_time: str = Field("07:45", example="07:45")
     travel_days: str | None = Field("Daily", example="Daily")
     is_enabled: bool = Field(True, example=True)
 
