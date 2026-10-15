@@ -153,6 +153,7 @@ class SegmentIntelligenceService:
         ) = self._get_weather_result(
             latitude=latitude,
             longitude=longitude,
+            target_datetime=travel_datetime,
         )
 
         # =========================================================
@@ -301,29 +302,39 @@ class SegmentIntelligenceService:
         self,
         latitude: float,
         longitude: float,
+        target_datetime: datetime | None = None,
     ) -> tuple[
         dict[str, Any] | None,
         dict[str, Any] | None,
     ]:
         """
         Retrieve and normalize OpenWeather information.
-
-        Returns:
-
-            weather_result:
-                Complete normalized weather data.
-
-            weather_dimensions:
-                Dimension-level data passed into fusion and scoring.
+        Uses 5-day forecast when target_datetime is in the future.
         """
-
         try:
-            weather: WeatherData = (
-                weather_service.get_current_weather(
-                    latitude=latitude,
-                    longitude=longitude,
+            is_future = False
+            if target_datetime is not None:
+                from services.timezone_service import get_ist_now
+                diff_seconds = (target_datetime - get_ist_now()).total_seconds()
+                # If target is at least 30 minutes in the future, use forecast
+                if diff_seconds > 1800:
+                    is_future = True
+
+            if is_future:
+                weather: WeatherData = (
+                    weather_service.get_forecast_weather(
+                        latitude=latitude,
+                        longitude=longitude,
+                        target_time=target_datetime,
+                    )
                 )
-            )
+            else:
+                weather: WeatherData = (
+                    weather_service.get_current_weather(
+                        latitude=latitude,
+                        longitude=longitude,
+                    )
+                )
 
             normalized: NormalizedWeather = (
                 weather_normalizer.normalize(

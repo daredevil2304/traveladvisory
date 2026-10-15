@@ -200,6 +200,85 @@ class WeatherService:
             requested_longitude=longitude,
         )
 
+    def get_forecast_weather(
+        self,
+        latitude: float,
+        longitude: float,
+        target_time: datetime | None = None,
+    ) -> WeatherData:
+        """
+        Retrieve 5-day / 3-hour forecast from OpenWeather and pick
+        the forecast interval closest to target_time in IST.
+        """
+        self.validate_coordinates(
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+        api_key = settings.openweather_api_key.strip()
+        if not api_key:
+            return self.get_current_weather(latitude, longitude)
+
+        url = f"{settings.openweather_base_url.rstrip('/')}/forecast"
+        params = {
+            "lat": latitude,
+            "lon": longitude,
+            "appid": api_key,
+            "units": "metric",
+        }
+
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=self.REQUEST_TIMEOUT_SECONDS,
+            )
+        except requests.RequestException:
+            return self.get_current_weather(latitude, longitude)
+
+        if response.status_code != 200:
+            return self.get_current_weather(latitude, longitude)
+
+        try:
+            payload = response.json()
+        except ValueError:
+            return self.get_current_weather(latitude, longitude)
+
+        forecast_list = payload.get("list")
+        if not isinstance(forecast_list, list) or not forecast_list:
+            return self.get_current_weather(latitude, longitude)
+
+        # If target_time is specified, select the entry with closest timestamp
+        selected_entry = forecast_list[0]
+        if target_time is not None:
+            target_ts = target_time.timestamp()
+            smallest_diff = float("inf")
+            for item in forecast_list:
+                item_ts = item.get("dt")
+                if isinstance(item_ts, (int, float)):
+                    diff = abs(item_ts - target_ts)
+                    if diff < smallest_diff:
+                        smallest_diff = diff
+                        selected_entry = item
+
+        parsed = self._parse_openweather_response(
+            payload=selected_entry,
+            requested_latitude=latitude,
+            requested_longitude=longitude,
+        )
+        return WeatherData(
+            latitude=parsed.latitude,
+            longitude=parsed.longitude,
+            observed_at=parsed.observed_at,
+            temperature_c=parsed.temperature_c,
+            humidity_percent=parsed.humidity_percent,
+            rainfall_mm=parsed.rainfall_mm,
+            wind_speed_kmh=parsed.wind_speed_kmh,
+            visibility_km=parsed.visibility_km,
+            weather_condition=parsed.weather_condition,
+            source="openweather_forecast",
+        )
+
     def _parse_openweather_response(
         self,
         payload: dict[str, Any],
