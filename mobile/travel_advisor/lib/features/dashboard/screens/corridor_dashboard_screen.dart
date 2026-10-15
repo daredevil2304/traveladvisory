@@ -25,10 +25,21 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
 
   List<Map<String, dynamic>> _liveReportsPreview = [];
 
-  // Controllers for direct schedule configuration
-  final TextEditingController _sourceCtrl =
-      TextEditingController(text: 'Panvel');
-  final TextEditingController _destCtrl = TextEditingController(text: 'Pune');
+  static const List<String> _corridorPoints = [
+    'Mumbai',
+    'Panvel',
+    'Khalapur',
+    'Khopoli',
+    'Khandala',
+    'Lonavala',
+    'Kamshet',
+    'Pune',
+  ];
+
+  String _selectedSource = 'Panvel';
+  String _selectedDestination = 'Pune';
+
+  // Controllers for schedule configuration
   final TextEditingController _depTimeCtrl =
       TextEditingController(text: '08:00');
   final TextEditingController _alertTimeCtrl =
@@ -55,8 +66,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
 
   @override
   void dispose() {
-    _sourceCtrl.dispose();
-    _destCtrl.dispose();
     _depTimeCtrl.dispose();
     _alertTimeCtrl.dispose();
     super.dispose();
@@ -67,8 +76,14 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     try {
       final habit = await _habitService.loadHabit();
       if (habit != null) {
-        _sourceCtrl.text = habit['source'] ?? 'Panvel';
-        _destCtrl.text = habit['destination'] ?? 'Pune';
+        final src = habit['source']?.toString() ?? 'Panvel';
+        final dst = habit['destination']?.toString() ?? 'Pune';
+        if (_corridorPoints.contains(src)) {
+          _selectedSource = src;
+        }
+        if (_corridorPoints.contains(dst)) {
+          _selectedDestination = dst;
+        }
         _depTimeCtrl.text = habit['departure_time'] ?? '08:00';
         _alertTimeCtrl.text = habit['alert_time'] ?? '07:45';
         _travelDays = habit['travel_days'] ?? 'Mon-Fri';
@@ -119,13 +134,23 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   // ============================================================
 
   Future<void> _saveCommuteSchedule() async {
+    if (_selectedSource == _selectedDestination) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Starting point and destination cannot be identical.'),
+          backgroundColor: AppTheme.crimsonRed,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSavingSchedule = true);
     if (_notificationsEnabled) {
       await NotificationService().requestPermission();
     }
     final success = await _habitService.saveHabit(
-      source: _sourceCtrl.text.trim(),
-      destination: _destCtrl.text.trim(),
+      source: _selectedSource,
+      destination: _selectedDestination,
       departureTime: _depTimeCtrl.text.trim(),
       alertTime: _alertTimeCtrl.text.trim(),
       travelDays: _travelDays,
@@ -152,15 +177,23 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   // ============================================================
 
   Future<void> _triggerNotificationTest() async {
+    if (_selectedSource == _selectedDestination) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Starting point and destination cannot be identical.'),
+          backgroundColor: AppTheme.crimsonRed,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isTestingAlert = true);
     await NotificationService().requestPermission();
 
     try {
-      final dynamicSrc = _sourceCtrl.text.trim();
-      final dynamicDst = _destCtrl.text.trim();
       final alert = await _habitService.triggerTestAlert(
-        source: dynamicSrc.isNotEmpty ? dynamicSrc : 'Panvel',
-        destination: dynamicDst.isNotEmpty ? dynamicDst : 'Pune',
+        source: _selectedSource,
+        destination: _selectedDestination,
       );
       setState(() => _isTestingAlert = false);
 
@@ -1300,46 +1333,114 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ROUTE INPUTS
+          // ROUTE DROPDOWNS
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _sourceCtrl,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _corridorPoints.contains(_selectedSource)
+                      ? _selectedSource
+                      : _corridorPoints[1],
                   decoration: InputDecoration(
                     labelText: 'Starting Point',
-                    labelStyle: const TextStyle(fontSize: 12.5),
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                    ),
                     prefixIcon: const Icon(Icons.trip_origin,
                         size: 16, color: AppTheme.forestGreen),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                        horizontal: 10, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
+                  icon: const Icon(Icons.arrow_drop_down_rounded,
+                      color: Color(0xFF1E40AF)),
+                  isExpanded: true,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                  items: _corridorPoints.map((point) {
+                    return DropdownMenuItem<String>(
+                      value: point,
+                      child: Text(
+                        point,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedSource = val;
+                      });
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextField(
-                  controller: _destCtrl,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _corridorPoints.contains(_selectedDestination)
+                      ? _selectedDestination
+                      : _corridorPoints.last,
                   decoration: InputDecoration(
                     labelText: 'Destination',
-                    labelStyle: const TextStyle(fontSize: 12.5),
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                    ),
                     prefixIcon: const Icon(Icons.location_on,
                         size: 16, color: AppTheme.crimsonRed),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                        horizontal: 10, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
+                  icon: const Icon(Icons.arrow_drop_down_rounded,
+                      color: Color(0xFF1E40AF)),
+                  isExpanded: true,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                  items: _corridorPoints.map((point) {
+                    return DropdownMenuItem<String>(
+                      value: point,
+                      child: Text(
+                        point,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedDestination = val;
+                      });
+                    }
+                  },
                 ),
               ),
             ],

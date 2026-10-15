@@ -88,10 +88,10 @@ class SafetyScoreService:
     # -------------------------------------------------------------
 
     SOURCE_WEIGHTS = {
-        "ml": 0.40,
-        "weather": 0.30,
-        "traveler": 0.20,
-        "evidence": 0.10,
+        "ml": 0.50,
+        "weather": 0.50,
+        "traveler": 0.00,
+        "evidence": 0.00,
     }
 
     # -------------------------------------------------------------
@@ -469,7 +469,7 @@ class SafetyScoreService:
         already expressed in a recognized safety/risk representation.
 
         We do NOT assume that an arbitrary numeric prediction means
-        safety, probability, rainfall, or risk.
+        safety, probability, rainfall, nor risk.
 
         Supported explicit fields:
 

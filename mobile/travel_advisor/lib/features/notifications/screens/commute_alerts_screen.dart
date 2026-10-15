@@ -64,6 +64,24 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     String travelDays = habit['travel_days'] ?? 'Mon-Fri';
     bool isEnabled = habit['is_enabled'] == true;
 
+    const corridorPoints = [
+      'Mumbai',
+      'Panvel',
+      'Khalapur',
+      'Khopoli',
+      'Khandala',
+      'Lonavala',
+      'Kamshet',
+      'Pune',
+    ];
+
+    if (!corridorPoints.contains(source)) {
+      source = 'Panvel';
+    }
+    if (!corridorPoints.contains(destination)) {
+      destination = 'Pune';
+    }
+
     final sourceCtrl = TextEditingController(text: source);
     final destCtrl = TextEditingController(text: destination);
     final depCtrl = TextEditingController(text: departureTime);
@@ -109,22 +127,52 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: sourceCtrl,
+                    DropdownButtonFormField<String>(
+                      initialValue: source,
                       decoration: const InputDecoration(
                         labelText: 'Starting Point',
                         prefixIcon: Icon(Icons.trip_origin, color: AppTheme.forestGreen),
                         border: OutlineInputBorder(),
                       ),
+                      isExpanded: true,
+                      items: corridorPoints.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p,
+                          child: Text(p),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            source = val;
+                            sourceCtrl.text = val;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: destCtrl,
+                    DropdownButtonFormField<String>(
+                      initialValue: destination,
                       decoration: const InputDecoration(
                         labelText: 'Destination',
                         prefixIcon: Icon(Icons.location_on, color: AppTheme.crimsonRed),
                         border: OutlineInputBorder(),
                       ),
+                      isExpanded: true,
+                      items: corridorPoints.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p,
+                          child: Text(p),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            destination = val;
+                            destCtrl.text = val;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 14),
                     const Text(

@@ -214,15 +214,22 @@ class _TripDetailsScreenState
 
   Future<void> _selectDate() async {
     final DateTime now = DateTime.now();
+    final DateTime currentDate = DateTime(now.year, now.month, now.day);
+    final DateTime maxAllowedDate = currentDate.add(const Duration(days: 7));
+
+    DateTime initial = _selectedDate ?? currentDate;
+    if (initial.isBefore(currentDate)) {
+      initial = currentDate;
+    } else if (initial.isAfter(maxAllowedDate)) {
+      initial = maxAllowedDate;
+    }
 
     final DateTime? picked =
         await showDatePicker(
       context: context,
-      initialDate:
-          _selectedDate ?? now,
-      firstDate: now,
-      lastDate:
-          DateTime(now.year + 1),
+      initialDate: initial,
+      firstDate: currentDate,
+      lastDate: maxAllowedDate,
     );
 
     if (picked != null) {

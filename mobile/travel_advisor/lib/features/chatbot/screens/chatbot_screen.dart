@@ -621,11 +621,14 @@ class _ChatbotScreenState
 
   Future<void> _pickPlannerDate() async {
     final DateTime now = DateTime.now();
+    final DateTime currentDate = DateTime(now.year, now.month, now.day);
+    final DateTime maxAllowedDate = currentDate.add(const Duration(days: 7));
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 60)),
+      initialDate: currentDate,
+      firstDate: currentDate,
+      lastDate: maxAllowedDate,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
