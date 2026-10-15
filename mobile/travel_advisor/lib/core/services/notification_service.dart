@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -21,11 +24,13 @@ class NotificationService {
     enableVibration: true,
   );
 
-  /// Initialize local notifications and register channel
+  /// Initialize local notifications, timezone registry, and notification channel
   Future<void> init() async {
     if (_isInitialized) return;
 
     try {
+      tz.initializeTimeZones();
+
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -123,6 +128,84 @@ class NotificationService {
     } catch (e) {
       debugPrint('Failed to send real system notification: $e');
       return false;
+    }
+  }
+
+  /// Schedule a daily commute alert using Android's system AlarmManager
+  Future<bool> scheduleDailyCommuteAlert({
+    int id = 1001,
+    required TimeOfDay alertTime,
+    required String title,
+    required String body,
+    int score = 70,
+    List<String> warnings = const [],
+  }) async {
+    try {
+      if (!_isInitialized) {
+        await init();
+      }
+
+      await requestPermission();
+
+      final now = DateTime.now();
+      var scheduled = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        alertTime.hour,
+        alertTime.minute,
+      );
+
+      if (scheduled.isBefore(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      final tzScheduled = tz.TZDateTime.from(scheduled, tz.local);
+
+      final String bigSummary = warnings.isNotEmpty
+          ? '$body\n\nActive Hazards:\n• ${warnings.join("\n• ")}'
+          : body;
+
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        _channel.id,
+        _channel.name,
+        channelDescription: _channel.description,
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'Mumbai–Pune Commute Safety Alert',
+        styleInformation: BigTextStyleInformation(
+          bigSummary,
+          contentTitle: title,
+          summaryText: 'Safety Score: $score/100',
+        ),
+      );
+
+      await _notificationsPlugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzScheduled,
+        notificationDetails: NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'commute_scheduled_alert',
+      );
+
+      debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute}');
+      return true;
+    } catch (e) {
+      debugPrint('Failed to schedule daily commute alert: $e');
+      return false;
+    }
+  }
+
+  /// Cancel any active scheduled commute alerts
+  Future<void> cancelScheduledAlert({int id = 1001}) async {
+    try {
+      await _notificationsPlugin.cancel(id: id);
+    } catch (e) {
+      debugPrint('Error canceling scheduled alert: $e');
     }
   }
 }

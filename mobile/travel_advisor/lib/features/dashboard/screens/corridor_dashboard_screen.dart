@@ -181,7 +181,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
-      initialEntryMode: TimePickerEntryMode.dial,
+      initialEntryMode: TimePickerEntryMode.dialOnly,
       builder: (pickerContext, child) {
         return MediaQuery(
           data: MediaQuery.of(pickerContext).copyWith(
@@ -768,13 +768,13 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   Widget _buildWelcomingHero() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF0F172A),
-            Color(0xFF1E3A8A),
-            Color(0xFF1E40AF),
+            Color(0xFF0F172A), // Executive Obsidian Navy
+            Color(0xFF1E3A8A), // Deep Royal Sapphire
+            Color(0xFF2563EB), // Vibrant Expressway Blue
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -782,8 +782,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x241E40AF),
-            blurRadius: 18,
+            color: Color(0x280F172A),
+            blurRadius: 20,
             offset: Offset(0, 8),
           ),
         ],
@@ -794,55 +794,26 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                width: 6,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LiveRadarIcon(
-                      size: 14,
-                      color: Color(0xFF38BDF8),
-                      showLivePulse: true,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'LIVE CORRIDOR TELEMETRY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
+                  color: const Color(0xFFD97706), // Warm Champagne Gold Accent
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'IST ACTIVE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF86EFAC),
-                    letterSpacing: 0.5,
-                  ),
+              const SizedBox(width: 8),
+              const Text(
+                'EXPRESSWAY CORRIDOR RADAR',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFFDE68A), // Light Amber Gold
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           const Text(
             'Welcome to Mumbai–Pune\nTravel Intelligence',
             style: TextStyle(
@@ -857,7 +828,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
             'High-precision expressway telemetry, crowd-sourced hazard feeds, and smart commute safety predictions.',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.85),
+              color: Colors.white.withValues(alpha: 0.88),
               height: 1.4,
             ),
           ),
@@ -873,53 +844,63 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   Widget _buildCompactProfileBar() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Color(0x080F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x202563EB),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
             child: const Icon(
-              Icons.person_pin_circle_rounded,
-              color: Color(0xFF1E40AF),
+              Icons.alt_route_rounded,
+              color: Colors.white,
               size: 22,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Select Travel Profile',
+                  'Plan Highway Journey',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.darkNavy,
                   ),
                 ),
-                SizedBox(height: 2),
+                SizedBox(height: 3),
                 Text(
-                  'Traveler (immediate) • Planner (scheduled)',
+                  'Adaptive expressway risk & route intelligence',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.5,
                     color: AppTheme.textSecondary,
                   ),
                 ),
@@ -928,13 +909,13 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E40AF),
+              backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
@@ -945,8 +926,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Choose',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  'Choose Profile',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(width: 4),
                 Icon(Icons.arrow_forward_rounded, size: 14),

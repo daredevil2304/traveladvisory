@@ -375,7 +375,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                               final picked = await showTimePicker(
                                 context: context,
                                 initialTime: modalDepTime,
-                                initialEntryMode: TimePickerEntryMode.dial,
+                                initialEntryMode: TimePickerEntryMode.dialOnly,
                                 builder: (pickerContext, child) {
                                   return MediaQuery(
                                     data: MediaQuery.of(pickerContext).copyWith(
@@ -452,7 +452,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                               final picked = await showTimePicker(
                                 context: context,
                                 initialTime: modalAlertTime,
-                                initialEntryMode: TimePickerEntryMode.dial,
+                                initialEntryMode: TimePickerEntryMode.dialOnly,
                                 builder: (pickerContext, child) {
                                   return MediaQuery(
                                     data: MediaQuery.of(pickerContext).copyWith(

@@ -439,23 +439,30 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                 height: 54,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pop(context, {'action': 'live_updates'});
+                    Navigator.pop(
+                      context,
+                      isPlanner
+                          ? {'action': 'back_to_chat'}
+                          : {'action': 'live_updates'},
+                    );
                   },
-                  icon: const Icon(
-                    Icons.add_location_alt_rounded,
-                    color: AppTheme.forestGreen,
+                  icon: Icon(
+                    isPlanner
+                        ? Icons.chat_bubble_outline_rounded
+                        : Icons.add_location_alt_rounded,
+                    color: AppTheme.royalCobalt,
                   ),
-                  label: const Text(
-                    'Share Live Updates',
-                    style: TextStyle(
+                  label: Text(
+                    isPlanner ? 'Back to Chat' : 'Share Live Updates',
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.forestGreen,
+                      color: AppTheme.royalCobalt,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(
-                      color: AppTheme.forestGreen,
+                      color: AppTheme.royalCobalt,
                       width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(

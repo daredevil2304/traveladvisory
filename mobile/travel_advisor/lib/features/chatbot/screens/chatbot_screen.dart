@@ -6,6 +6,7 @@ import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/commute_habit_service.dart';
+import '../../location/services/location_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -1121,44 +1122,121 @@ final Map<String, dynamic> analysisData =
   // LIVE UPDATES / USER INPUT QUESTIONNAIRE
   // ============================================================
 
-  void _startLiveUpdatesQuestionnaire() {
-    _isCollectingLiveUpdates = true;
-    _step = _ConversationStep.liveUpdateRegion;
+  static const List<Map<String, dynamic>> _corridorSegmentCoordinates = [
+    {
+      'code': 'R1',
+      'name': 'Mumbai to Panvel',
+      'lat': 19.0176,
+      'lng': 72.9867,
+    },
+    {
+      'code': 'R2',
+      'name': 'Panvel to Khalapur',
+      'lat': 18.9027,
+      'lng': 73.1884,
+    },
+    {
+      'code': 'R3',
+      'name': 'Khalapur to Khopoli',
+      'lat': 18.8022,
+      'lng': 73.3052,
+    },
+    {
+      'code': 'R4',
+      'name': 'Khopoli to Khandala (Bhor Ghat)',
+      'lat': 18.7788,
+      'lng': 73.3634,
+    },
+    {
+      'code': 'R5',
+      'name': 'Khandala to Lonavala',
+      'lat': 18.7623,
+      'lng': 73.3946,
+    },
+    {
+      'code': 'R6',
+      'name': 'Lonavala to Kamshet',
+      'lat': 18.7588,
+      'lng': 73.4819,
+    },
+    {
+      'code': 'R7',
+      'name': 'Kamshet to Pune',
+      'lat': 18.6417,
+      'lng': 73.7071,
+    },
+  ];
 
+  static String _resolveSegmentFromGps(double lat, double lng) {
+    if (lat >= 18.95 && lng <= 73.12) {
+      return 'R1';
+    }
+    if (lat <= 18.60 && lng >= 73.70) {
+      return 'R7';
+    }
+
+    String bestCode = 'R1';
+    double minDistanceSq = double.infinity;
+    for (final seg in _corridorSegmentCoordinates) {
+      final double sLat = seg['lat'] as double;
+      final double sLng = seg['lng'] as double;
+      final double dSq =
+          (lat - sLat) * (lat - sLat) + (lng - sLng) * (lng - sLng);
+      if (dSq < minDistanceSq) {
+        minDistanceSq = dSq;
+        bestCode = seg['code'] as String;
+      }
+    }
+    return bestCode;
+  }
+
+  Future<void> _startLiveUpdatesQuestionnaire() async {
+    _isCollectingLiveUpdates = true;
+
+    // 1. Refresh live GPS position if possible
+    try {
+      final freshPos = await LocationService().getCurrentLocation();
+      _latitude = freshPos.latitude;
+      _longitude = freshPos.longitude;
+    } catch (_) {}
+
+    // 2. Auto-resolve current highway segment by GPS
     String defaultRegion = 'R1';
-    final src = (_source ?? '').toLowerCase().trim();
-    if (src.contains('mumbai') || src.contains('sion')) {
-      defaultRegion = 'R1';
-    } else if (src.contains('panvel')) {
-      defaultRegion = 'R2';
-    } else if (src.contains('khalapur')) {
-      defaultRegion = 'R3';
-    } else if (src.contains('khopoli')) {
-      defaultRegion = 'R4';
-    } else if (src.contains('khandala')) {
-      defaultRegion = 'R5';
-    } else if (src.contains('lonavala')) {
-      defaultRegion = 'R6';
-    } else if (src.contains('kamshet')) {
-      defaultRegion = 'R7';
-    } else if (src.contains('pune')) {
-      defaultRegion = 'R7';
+    if (_latitude != null && _longitude != null) {
+      defaultRegion = _resolveSegmentFromGps(_latitude!, _longitude!);
+    } else {
+      final src = (_source ?? '').toLowerCase().trim();
+      if (src.contains('mumbai') || src.contains('sion')) {
+        defaultRegion = 'R1';
+      } else if (src.contains('panvel')) {
+        defaultRegion = 'R2';
+      } else if (src.contains('khalapur')) {
+        defaultRegion = 'R3';
+      } else if (src.contains('khopoli')) {
+        defaultRegion = 'R4';
+      } else if (src.contains('khandala')) {
+        defaultRegion = 'R5';
+      } else if (src.contains('lonavala')) {
+        defaultRegion = 'R6';
+      } else if (src.contains('kamshet') || src.contains('pune')) {
+        defaultRegion = 'R7';
+      }
     }
 
     _selectedReportRegion = defaultRegion;
-    final defaultName = _corridorSegmentMap[defaultRegion] ?? 'Mumbai to Panvel';
+    final defaultName =
+        _corridorSegmentMap[defaultRegion] ?? 'Mumbai to Panvel';
+
+    // 3. Directly start with user input observation question without asking for section
+    _step = _ConversationStep.liveUpdateRain;
 
     _addBotMessage(
-      'Share your live route observations to keep corridor intelligence updated. Which section are you reporting for?',
-      quickReplies: [
-        'Confirm: $defaultName',
-        'Mumbai to Panvel',
-        'Panvel to Khalapur',
-        'Khalapur to Khopoli',
-        'Khopoli to Khandala (Bhor Ghat)',
-        'Khandala to Lonavala',
-        'Lonavala to Kamshet',
-        'Kamshet to Pune',
+      '📍 Location detected: $defaultName (via GPS).\nAre you experiencing rainfall along this section?',
+      quickReplies: const [
+        'None',
+        'Light drizzle',
+        'Moderate rain',
+        'Heavy downpour',
         'Skip live updates',
       ],
     );

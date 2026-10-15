@@ -28,7 +28,20 @@ class CommuteHabitService {
     if (_initialized) return;
     _initialized = true;
 
-    await loadHabit();
+    await NotificationService().init();
+    final habit = await loadHabit();
+    if (habit != null && habit['is_enabled'] == true) {
+      final alertTimeStr = habit['alert_time']?.toString() ?? '07:45 AM';
+      final parsed = parseTime(alertTimeStr);
+      final src = habit['source'] ?? 'Panvel';
+      final dst = habit['destination'] ?? 'Pune';
+      final dep = habit['departure_time'] ?? '08:00 AM';
+      await NotificationService().scheduleDailyCommuteAlert(
+        alertTime: parsed,
+        title: 'Mumbai–Pune Expressway Alert',
+        body: 'Pre-departure alert for $src to $dst commute ($dep). Check expressway conditions before departure.',
+      );
+    }
     await checkCommuteAlertWindow();
 
     // Check every 5 minutes while the app is alive
@@ -77,6 +90,17 @@ class CommuteHabitService {
     commuteHabitNotifier.value = fallbackHabit;
 
     try {
+      if (isEnabled) {
+        final parsed = parseTime(alertTime);
+        await NotificationService().scheduleDailyCommuteAlert(
+          alertTime: parsed,
+          title: 'Mumbai–Pune Expressway Alert',
+          body: 'Pre-departure alert for $source to $destination commute ($departureTime). Check expressway conditions before departure.',
+        );
+      } else {
+        await NotificationService().cancelScheduledAlert();
+      }
+
       final res = await ApiService.saveCommuteHabit(
         source: source,
         destination: destination,

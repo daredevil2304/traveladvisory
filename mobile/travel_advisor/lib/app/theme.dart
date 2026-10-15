@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand colors: Executive Slate & Royal Cobalt
-  static const Color forestGreen = Color(0xFF1E40AF); // Primary Royal Cobalt
-  static const Color deepGreen = Color(0xFF0F172A); // Deep Slate Navy
-  static const Color teal = Color(0xFF0284C7); // Electric Ocean Blue
+  // Brand colors: Executive Obsidian Navy, Royal Cobalt, and Warm Champagne Amber
+  static const Color forestGreen = Color(0xFF1E3A8A); // Deep Royal Sapphire
+  static const Color deepGreen = Color(0xFF0F172A); // Executive Obsidian Navy
+  static const Color royalCobalt = Color(0xFF2563EB); // Vibrant Expressway Blue
+  static const Color teal = Color(0xFF0D9488); // Precision Emerald Teal
+  static const Color amberGold = Color(0xFFD97706); // Warm Champagne Amber Accent
+  static const Color amberGoldLight = Color(0xFFFEF3C7); // Champagne Glow
   static const Color mint = Color(0xFFEFF6FF); // Soft Ice-Blue Card Tint
-  static const Color lightMint = Color(0xFFF8FAFC); // Clean Crisp Slate Canvas
+  static const Color lightMint = Color(0xFFF8FAFC); // Clean Slate Canvas
 
-  static const Color orange = Color(0xFFF59E0B);
+  static const Color orange = Color(0xFFD97706);
 
   static const Color darkNavy = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);
 
   static const Color primary = forestGreen;
+  static const Color secondary = royalCobalt;
+  static const Color accent = amberGold;
   static const Color textPrimary = darkNavy;
   static const Color white = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE2E8F0);
   static const Color danger = Color(0xFFEF4444);
   static const Color crimsonRed = Color(0xFFEF4444);
-  static const Color alertAmber = Color(0xFFF59E0B);
-  static const Color emeraldGreen = Color(0xFF10B981);
+  static const Color alertAmber = Color(0xFFD97706);
+  static const Color emeraldGreen = Color(0xFF059669);
   static const Color subtleGrey = Color(0xFF94A3B8);
 
   static ThemeData get lightTheme {

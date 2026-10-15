@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../location/services/location_service.dart';
 
 class CommunityReportsScreen extends StatefulWidget {
   const CommunityReportsScreen({super.key});
@@ -913,7 +914,48 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
   @override
   void initState() {
     super.initState();
-    _selectedSegmentCode = widget.corridorSegments[4]['code']; // Khandala - Lonavala
+    _selectedSegmentCode = widget.corridorSegments.isNotEmpty
+        ? widget.corridorSegments[0]['code']
+        : 'R1';
+    _detectUserSegment();
+  }
+
+  Future<void> _detectUserSegment() async {
+    try {
+      final pos = await LocationService().getCurrentLocation();
+      final lat = pos.latitude;
+      final lng = pos.longitude;
+      String detected = 'R1';
+      if (lat >= 18.95 && lng <= 73.12) {
+        detected = 'R1';
+      } else if (lat <= 18.60 && lng >= 73.70) {
+        detected = 'R7';
+      } else {
+        const midpoints = {
+          'R1': [19.0176, 72.9867],
+          'R2': [18.9027, 73.1884],
+          'R3': [18.8022, 73.3052],
+          'R4': [18.7788, 73.3634],
+          'R5': [18.7623, 73.3946],
+          'R6': [18.7588, 73.4819],
+          'R7': [18.6417, 73.7071],
+        };
+        double minDistSq = double.infinity;
+        midpoints.forEach((code, coords) {
+          final d = (lat - coords[0]) * (lat - coords[0]) +
+              (lng - coords[1]) * (lng - coords[1]);
+          if (d < minDistSq) {
+            minDistSq = d;
+            detected = code;
+          }
+        });
+      }
+      if (mounted) {
+        setState(() {
+          _selectedSegmentCode = detected;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _submit() async {
