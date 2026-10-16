@@ -30,6 +30,9 @@ class NotificationService {
 
     try {
       tz.initializeTimeZones();
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+      } catch (_) {}
 
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -160,7 +163,15 @@ class NotificationService {
         scheduled = scheduled.add(const Duration(days: 1));
       }
 
-      final tzScheduled = tz.TZDateTime.from(scheduled, tz.local);
+      final tzLocation = tz.local;
+      final tzScheduled = tz.TZDateTime(
+        tzLocation,
+        scheduled.year,
+        scheduled.month,
+        scheduled.day,
+        alertTime.hour,
+        alertTime.minute,
+      );
 
       final String bigSummary = warnings.isNotEmpty
           ? '$body\n\nActive Hazards:\n• ${warnings.join("\n• ")}'
@@ -181,16 +192,29 @@ class NotificationService {
         ),
       );
 
-      await _notificationsPlugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: body,
-        scheduledDate: tzScheduled,
-        notificationDetails: NotificationDetails(android: androidDetails),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-        payload: 'commute_scheduled_alert',
-      );
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: tzScheduled,
+          notificationDetails: NotificationDetails(android: androidDetails),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: 'commute_scheduled_alert',
+        );
+      } catch (_) {
+        await _notificationsPlugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: tzScheduled,
+          notificationDetails: NotificationDetails(android: androidDetails),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: 'commute_scheduled_alert',
+        );
+      }
 
       debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute}');
       return true;

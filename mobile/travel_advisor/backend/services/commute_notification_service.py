@@ -80,20 +80,31 @@ class CommuteNotificationService:
         self,
         db: Session,
         user_id: int,
+        schedule_type: str = "outbound",
     ) -> dict[str, Any]:
         """
-        Retrieve learned and configured commute habit for this user.
+        Retrieve learned and configured commute habit for this user and schedule type.
         """
         habit = (
             db.query(CommuteHabit)
-            .filter(CommuteHabit.user_id == user_id)
+            .filter(
+                CommuteHabit.user_id == user_id,
+                CommuteHabit.schedule_type == schedule_type,
+            )
             .first()
         )
+        if not habit and schedule_type == "outbound":
+            habit = (
+                db.query(CommuteHabit)
+                .filter(CommuteHabit.user_id == user_id)
+                .first()
+            )
 
         if habit:
             return {
                 "id": habit.id,
                 "user_id": habit.user_id,
+                "schedule_type": getattr(habit, "schedule_type", schedule_type),
                 "source": habit.source_name,
                 "destination": habit.destination_name,
                 "departure_time": habit.departure_time,
@@ -107,9 +118,10 @@ class CommuteNotificationService:
 
         # Check Trip history and logs to auto-seed habit
         detected = self._detect_habit_from_database(db, user_id)
-        if detected:
+        if detected and schedule_type == "outbound":
             new_habit = CommuteHabit(
                 user_id=user_id,
+                schedule_type=schedule_type,
                 source_name=detected["source"],
                 destination_name=detected["destination"],
                 departure_time=detected["departure_time"],
@@ -125,6 +137,7 @@ class CommuteNotificationService:
             return {
                 "id": new_habit.id,
                 "user_id": new_habit.user_id,
+                "schedule_type": new_habit.schedule_type,
                 "source": new_habit.source_name,
                 "destination": new_habit.destination_name,
                 "departure_time": new_habit.departure_time,
@@ -136,19 +149,39 @@ class CommuteNotificationService:
                 "has_habit": True,
             }
 
-        # Sensible defaults for Panvel -> Pune commuter
+        default_source = "Panvel" if schedule_type == "outbound" else "Pune"
+        default_destination = "Pune" if schedule_type == "outbound" else "Panvel"
+        default_departure = "08:00" if schedule_type == "outbound" else "18:00"
+        default_alert = "07:45" if schedule_type == "outbound" else "17:30"
+
         return {
             "id": 0,
             "user_id": user_id,
-            "source": "Panvel",
-            "destination": "Pune",
-            "departure_time": "08:00",
-            "observed_check_time": "07:50",
-            "alert_time": "07:45",
+            "schedule_type": schedule_type,
+            "source": default_source,
+            "destination": default_destination,
+            "departure_time": default_departure,
+            "observed_check_time": self._calculate_check_time(default_departure),
+            "alert_time": default_alert,
             "travel_days": "Daily",
             "is_enabled": True,
             "updated_at": format_ist_iso(),
             "has_habit": False,
+        }
+
+    def get_all_commute_habits(
+        self,
+        db: Session,
+        user_id: int,
+    ) -> dict[str, Any]:
+        """
+        Retrieve both Outbound and Return commute habits.
+        """
+        outbound = self.get_commute_habit(db, user_id, schedule_type="outbound")
+        return_habit = self.get_commute_habit(db, user_id, schedule_type="return")
+        return {
+            "outbound": outbound,
+            "return": return_habit,
         }
 
     @staticmethod
@@ -196,18 +229,28 @@ class CommuteNotificationService:
         alert_time: str,
         travel_days: str | None = "Daily",
         is_enabled: bool = True,
+        schedule_type: str = "outbound",
     ) -> dict[str, Any]:
         """
-        Explicitly update and customize commute habit settings.
+        Explicitly update and customize commute habit settings for outbound or return.
         """
         canonical_source = normalize_location(source)
         canonical_destination = normalize_location(destination)
 
         habit = (
             db.query(CommuteHabit)
-            .filter(CommuteHabit.user_id == user_id)
+            .filter(
+                CommuteHabit.user_id == user_id,
+                CommuteHabit.schedule_type == schedule_type,
+            )
             .first()
         )
+        if not habit and schedule_type == "outbound":
+            habit = (
+                db.query(CommuteHabit)
+                .filter(CommuteHabit.user_id == user_id)
+                .first()
+            )
 
         resolved_days = travel_days.strip() if travel_days else "Daily"
 
@@ -229,6 +272,7 @@ class CommuteNotificationService:
         if not habit:
             habit = CommuteHabit(
                 user_id=user_id,
+                schedule_type=schedule_type,
                 source_name=canonical_source,
                 destination_name=canonical_destination,
                 departure_time=departure_time.strip(),
@@ -239,6 +283,7 @@ class CommuteNotificationService:
             )
             db.add(habit)
         else:
+            habit.schedule_type = schedule_type
             habit.source_name = canonical_source
             habit.destination_name = canonical_destination
             habit.departure_time = departure_time.strip()
@@ -253,6 +298,7 @@ class CommuteNotificationService:
         return {
             "id": habit.id,
             "user_id": habit.user_id,
+            "schedule_type": habit.schedule_type,
             "source": habit.source_name,
             "destination": habit.destination_name,
             "departure_time": habit.departure_time,

@@ -17,6 +17,7 @@ router = APIRouter(
 
 class CommuteHabitUpdateRequest(BaseModel):
     user_id: int = Field(..., example=1)
+    schedule_type: str = Field("outbound", example="outbound")
     source: str = Field(..., example="Panvel")
     destination: str = Field(..., example="Pune")
     departure_time: str = Field(..., example="08:00")
@@ -36,6 +37,7 @@ class CommuteLogRequest(BaseModel):
 @router.get("/commute-habit")
 def get_commute_habit(
     user_id: int = Query(..., description="ID of the user"),
+    schedule_type: str = Query("outbound", description="Schedule type: outbound or return"),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
@@ -45,6 +47,7 @@ def get_commute_habit(
         habit = commute_notification_service.get_commute_habit(
             db=db,
             user_id=user_id,
+            schedule_type=schedule_type,
         )
         return {
             "status": "success",
@@ -54,6 +57,30 @@ def get_commute_habit(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unable to load commute habit: {str(e)}",
+        )
+
+
+@router.get("/commute-habits")
+def get_all_commute_habits(
+    user_id: int = Query(..., description="ID of the user"),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Retrieve both Outbound and Return commute habits for user.
+    """
+    try:
+        habits = commute_notification_service.get_all_commute_habits(
+            db=db,
+            user_id=user_id,
+        )
+        return {
+            "status": "success",
+            "habits": habits,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unable to load commute habits: {str(e)}",
         )
 
 
@@ -75,6 +102,7 @@ def save_commute_habit(
             alert_time=request.alert_time,
             travel_days=request.travel_days,
             is_enabled=request.is_enabled,
+            schedule_type=request.schedule_type,
         )
         return {
             "status": "success",

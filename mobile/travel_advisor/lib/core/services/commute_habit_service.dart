@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'notification_service.dart';
@@ -12,6 +13,12 @@ class CommuteHabitService {
       ValueNotifier<Map<String, dynamic>?>(null);
 
   final ValueNotifier<Map<String, dynamic>?> commuteHabitNotifier =
+      ValueNotifier<Map<String, dynamic>?>(null);
+
+  final ValueNotifier<Map<String, dynamic>?> outboundHabitNotifier =
+      ValueNotifier<Map<String, dynamic>?>(null);
+
+  final ValueNotifier<Map<String, dynamic>?> returnHabitNotifier =
       ValueNotifier<Map<String, dynamic>?>(null);
 
   final ValueNotifier<bool> hasUnreadAlertNotifier =
@@ -29,19 +36,39 @@ class CommuteHabitService {
     _initialized = true;
 
     await NotificationService().init();
-    final habit = await loadHabit();
-    if (habit != null && habit['is_enabled'] == true) {
-      final alertTimeStr = habit['alert_time']?.toString() ?? '07:45 AM';
+
+    // 1. Initialize Outbound Commute Schedule (ID: 1001)
+    final outbound = await loadOutboundHabit();
+    if (outbound['is_enabled'] == true) {
+      final alertTimeStr = outbound['alert_time']?.toString() ?? '07:45 AM';
       final parsed = parseTime(alertTimeStr);
-      final src = habit['source'] ?? 'Panvel';
-      final dst = habit['destination'] ?? 'Pune';
-      final dep = habit['departure_time'] ?? '08:00 AM';
+      final src = outbound['source'] ?? 'Panvel';
+      final dst = outbound['destination'] ?? 'Pune';
+      final dep = outbound['departure_time'] ?? '08:00 AM';
       await NotificationService().scheduleDailyCommuteAlert(
+        id: 1001,
         alertTime: parsed,
-        title: 'Mumbai–Pune Expressway Alert',
-        body: 'Pre-departure alert for $src to $dst commute ($dep). Check expressway conditions before departure.',
+        title: 'Morning Expressway Commute ($src → $dst)',
+        body: 'Pre-departure alert for your $dep commute. Tap to inspect live conditions.',
       );
     }
+
+    // 2. Initialize Return Commute Schedule (ID: 1002)
+    final returnHabit = await loadReturnHabit();
+    if (returnHabit['is_enabled'] == true) {
+      final alertTimeStr = returnHabit['alert_time']?.toString() ?? '05:30 PM';
+      final parsed = parseTime(alertTimeStr);
+      final src = returnHabit['source'] ?? 'Pune';
+      final dst = returnHabit['destination'] ?? 'Panvel';
+      final dep = returnHabit['departure_time'] ?? '06:00 PM';
+      await NotificationService().scheduleDailyCommuteAlert(
+        id: 1002,
+        alertTime: parsed,
+        title: 'Evening Return Commute ($src → $dst)',
+        body: 'Pre-departure alert for your $dep return commute. Tap to check road hazards before leaving.',
+      );
+    }
+
     await checkCommuteAlertWindow();
 
     // Check every 5 minutes while the app is alive
@@ -52,6 +79,97 @@ class CommuteHabitService {
 
   void dispose() {
     _scheduleTimer?.cancel();
+  }
+
+  Future<Map<String, dynamic>> loadOutboundHabit() async {
+    final habit = await loadHabit();
+    if (habit != null) {
+      outboundHabitNotifier.value = habit;
+      return habit;
+    }
+    const fallback = {
+      'source': 'Panvel',
+      'destination': 'Pune',
+      'departure_time': '08:00 AM',
+      'alert_time': '07:45 AM',
+      'travel_days': 'Daily',
+      'is_enabled': true,
+    };
+    outboundHabitNotifier.value = fallback;
+    return fallback;
+  }
+
+  Future<Map<String, dynamic>> loadReturnHabit() async {
+    try {
+      final raw = await ApiService.getStoredItem('return_commute_habit');
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+        returnHabitNotifier.value = decoded;
+        return decoded;
+      }
+    } catch (_) {}
+
+    const fallback = {
+      'source': 'Pune',
+      'destination': 'Panvel',
+      'departure_time': '06:00 PM',
+      'alert_time': '05:30 PM',
+      'travel_days': 'Daily',
+      'is_enabled': true,
+    };
+    returnHabitNotifier.value = fallback;
+    return fallback;
+  }
+
+  Future<bool> saveReturnHabit({
+    required String source,
+    required String destination,
+    required String departureTime,
+    required String alertTime,
+    String? travelDays,
+    bool isEnabled = true,
+  }) async {
+    final data = {
+      'source': source,
+      'destination': destination,
+      'departure_time': departureTime,
+      'alert_time': alertTime,
+      'travel_days': travelDays ?? 'Daily',
+      'is_enabled': isEnabled,
+    };
+    returnHabitNotifier.value = data;
+
+    try {
+      await ApiService.setStoredItem('return_commute_habit', jsonEncode(data));
+      if (isEnabled) {
+        final parsed = parseTime(alertTime);
+        await NotificationService().scheduleDailyCommuteAlert(
+          id: 1002,
+          alertTime: parsed,
+          title: 'Evening Return Commute ($source → $destination)',
+          body: 'Pre-departure alert for your $departureTime return commute. Check expressway conditions before departure.',
+        );
+      } else {
+        await NotificationService().cancelScheduledAlert(id: 1002);
+      }
+
+      // Sync return schedule to backend
+      try {
+        await ApiService.saveCommuteHabit(
+          scheduleType: 'return',
+          source: source,
+          destination: destination,
+          departureTime: departureTime,
+          alertTime: alertTime,
+          travelDays: travelDays,
+          isEnabled: isEnabled,
+        );
+      } catch (_) {}
+
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 
   /// Load learned commute habit
@@ -69,8 +187,8 @@ class CommuteHabitService {
     return commuteHabitNotifier.value;
   }
 
-  /// Save / customize commute habit
-  Future<bool> saveHabit({
+  /// Save Outbound commute schedule (Morning / Primary)
+  Future<bool> saveOutboundHabit({
     required String source,
     required String destination,
     required String departureTime,
@@ -87,21 +205,24 @@ class CommuteHabitService {
       'travel_days': travelDays ?? 'Daily',
       'is_enabled': isEnabled,
     };
+    outboundHabitNotifier.value = fallbackHabit;
     commuteHabitNotifier.value = fallbackHabit;
 
     try {
       if (isEnabled) {
         final parsed = parseTime(alertTime);
         await NotificationService().scheduleDailyCommuteAlert(
+          id: 1001,
           alertTime: parsed,
-          title: 'Mumbai–Pune Expressway Alert',
-          body: 'Pre-departure alert for $source to $destination commute ($departureTime). Check expressway conditions before departure.',
+          title: 'Morning Expressway Commute ($source → $destination)',
+          body: 'Pre-departure alert for your $departureTime commute. Check expressway conditions before departure.',
         );
       } else {
-        await NotificationService().cancelScheduledAlert();
+        await NotificationService().cancelScheduledAlert(id: 1001);
       }
 
       final res = await ApiService.saveCommuteHabit(
+        scheduleType: 'outbound',
         source: source,
         destination: destination,
         departureTime: departureTime,
@@ -110,7 +231,9 @@ class CommuteHabitService {
         isEnabled: isEnabled,
       );
       if (res['habit'] != null) {
-        commuteHabitNotifier.value = Map<String, dynamic>.from(res['habit']);
+        final saved = Map<String, dynamic>.from(res['habit']);
+        outboundHabitNotifier.value = saved;
+        commuteHabitNotifier.value = saved;
       }
       isLoadingNotifier.value = false;
       return true;
@@ -118,6 +241,25 @@ class CommuteHabitService {
       isLoadingNotifier.value = false;
       return true;
     }
+  }
+
+  /// Save / customize commute habit (defaults to Outbound)
+  Future<bool> saveHabit({
+    required String source,
+    required String destination,
+    required String departureTime,
+    required String alertTime,
+    String? travelDays,
+    bool isEnabled = true,
+  }) async {
+    return saveOutboundHabit(
+      source: source,
+      destination: destination,
+      departureTime: departureTime,
+      alertTime: alertTime,
+      travelDays: travelDays,
+      isEnabled: isEnabled,
+    );
   }
 
   /// Log every time the user checks a trip to continuously learn habits
@@ -217,9 +359,16 @@ class CommuteHabitService {
     return '$hourStr:$minuteStr';
   }
 
-  /// Check whether current time matches the alert time window
+  /// Check whether current time matches the alert time window for Outbound and Return
   Future<void> checkCommuteAlertWindow() async {
-    final habit = commuteHabitNotifier.value ?? await loadHabit();
+    final outbound = outboundHabitNotifier.value ?? await loadOutboundHabit();
+    await _evaluateHabitWindow(outbound);
+
+    final returnHabit = returnHabitNotifier.value ?? await loadReturnHabit();
+    await _evaluateHabitWindow(returnHabit);
+  }
+
+  Future<void> _evaluateHabitWindow(Map<String, dynamic>? habit) async {
     if (habit == null || habit['is_enabled'] != true) {
       return;
     }
@@ -254,6 +403,7 @@ class CommuteHabitService {
   Future<Map<String, dynamic>?> fetchAlert({
     String source = 'Panvel',
     String destination = 'Pune',
+    bool notifySystemTray = false,
   }) async {
     isLoadingNotifier.value = true;
     try {
@@ -268,28 +418,31 @@ class CommuteHabitService {
         hasUnreadAlertNotifier.value = true;
         isLoadingNotifier.value = false;
 
-        // Dispatch real system notification to Android notification drawer
-        try {
-          final String title = alertData['title']?.toString() ??
-              'Mumbai–Pune Commute Safety Alert';
-          final String body = alertData['body']?.toString() ??
-              'Corridor conditions evaluated.';
-          final int score = alertData['safety_score'] is int
-              ? alertData['safety_score'] as int
-              : int.tryParse(alertData['safety_score']?.toString() ?? '70') ?? 70;
-          final List<String> warnings = (alertData['regional_warnings'] as List?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              [];
+        // Dispatch system notification to notification drawer ONLY if explicitly requested
+        // Never send a system drawer notification when the user simply opens the app
+        if (notifySystemTray) {
+          try {
+            final String title = alertData['title']?.toString() ??
+                'Mumbai–Pune Commute Safety Alert';
+            final String body = alertData['body']?.toString() ??
+                'Corridor conditions evaluated.';
+            final int score = alertData['safety_score'] is int
+                ? alertData['safety_score'] as int
+                : int.tryParse(alertData['safety_score']?.toString() ?? '70') ?? 70;
+            final List<String> warnings = (alertData['regional_warnings'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [];
 
-          NotificationService().showCommuteNotification(
-            title: title,
-            body: body,
-            score: score,
-            warnings: warnings,
-          );
-        } catch (_) {
-          // Graceful fallback
+            NotificationService().showCommuteNotification(
+              title: title,
+              body: body,
+              score: score,
+              warnings: warnings,
+            );
+          } catch (_) {
+            // Graceful fallback
+          }
         }
 
         return alertData;

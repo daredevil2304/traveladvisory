@@ -923,11 +923,12 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getCommuteHabit({
     int? userId,
+    String scheduleType = 'outbound',
   }) async {
     final storedUserId = await getStoredUserId();
     final int resolvedUserId = userId ?? storedUserId ?? 1;
     final uri = Uri.parse(
-      '$baseUrl/notifications/commute-habit?user_id=$resolvedUserId',
+      '$baseUrl/notifications/commute-habit?user_id=$resolvedUserId&schedule_type=$scheduleType',
     );
 
     try {
@@ -956,6 +957,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> saveCommuteHabit({
     int? userId,
+    String scheduleType = 'outbound',
     required String source,
     required String destination,
     required String departureTime,
@@ -977,11 +979,12 @@ class ApiService {
             },
             body: jsonEncode({
               'user_id': resolvedUserId,
+              'schedule_type': scheduleType,
               'source': source,
               'destination': destination,
               'departure_time': departureTime,
               'alert_time': alertTime,
-              'travel_days': travelDays ?? 'Mon-Fri',
+              'travel_days': travelDays ?? 'Daily',
               'is_enabled': isEnabled,
             }),
           )
@@ -1067,5 +1070,23 @@ class ApiService {
     } catch (_) {
       // Fire-and-forget background logging
     }
+  }
+
+  // ============================================================
+  // SECURE STORAGE HELPERS FOR MULTI-SCHEDULE PERSISTENCE
+  // ============================================================
+
+  static Future<String?> getStoredItem(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setStoredItem(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (_) {}
   }
 }

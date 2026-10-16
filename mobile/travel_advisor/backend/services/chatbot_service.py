@@ -124,17 +124,30 @@ IMPORTANT RULES:
             context=context,
         )
 
-        response = groq_provider.generate(
-            prompt=prompt,
-            system_prompt=self._SYSTEM_PROMPT,
-        )
+        try:
+            response = groq_provider.generate(
+                prompt=prompt,
+                system_prompt=self._SYSTEM_PROMPT,
+            )
 
-        return ChatbotResponse(
-            answer=response.content,
-            provider=response.provider,
-            model=response.model,
-            trip_id=trip_id,
-        )
+            return ChatbotResponse(
+                answer=response.content,
+                provider=response.provider,
+                model=response.model,
+                trip_id=trip_id,
+            )
+        except Exception:
+            fallback = self._generate_fallback_answer(
+                trip=trip,
+                analysis=analysis_data,
+                message=message,
+            )
+            return ChatbotResponse(
+                answer=fallback,
+                provider="deterministic_intelligence",
+                model=None,
+                trip_id=trip_id,
+            )
 
     @staticmethod
     def _build_context(
@@ -376,6 +389,51 @@ Answer the user's question using the backend context below.
   explicitly say that the current analysis does not contain that
   information.
 """.strip()
+
+    @staticmethod
+    def _generate_fallback_answer(
+        trip: Trip,
+        analysis: dict[str, Any],
+        message: str,
+    ) -> str:
+        score = analysis.get("overall_safety_score") or analysis.get("safety_score") or 80
+        src = trip.source_name
+        dst = trip.destination_name
+        reasons = analysis.get("reasons") or []
+        problematic = analysis.get("problematic_segments") or []
+        precautions = analysis.get("precautions") or []
+
+        msg_lower = message.lower()
+        if "score" in msg_lower or "why" in msg_lower or "low" in msg_lower:
+            ans = f"Your journey from {src} to {dst} has an overall Safety Score of {score}/100. "
+            if reasons:
+                ans += f"Key factors affecting the score: {'; '.join(str(r) for r in reasons[:3])}."
+            else:
+                ans += "Corridor road conditions are generally stable with standard expressway precautions."
+            return ans
+
+        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower:
+            if problematic:
+                names = []
+                for p in problematic[:3]:
+                    d = p.get("segment_details") or {}
+                    if d.get("start") and d.get("end"):
+                        names.append(f"{d['start']} to {d['end']} (score: {p.get('safety_score', 'N/A')})")
+                    else:
+                        names.append(str(p.get("region", "Corridor section")))
+                return f"Sections requiring closer attention: {', '.join(names)}."
+            return f"All expressway segments between {src} and {dst} are clear with normal driving conditions."
+
+        if "precaution" in msg_lower or "tip" in msg_lower or "advice" in msg_lower:
+            if precautions:
+                return f"Recommended precautions: {'; '.join(str(p) for p in precautions[:3])}."
+            return "Maintain a safe following distance, stay alert on expressway curves and ghat sections, and check real-time weather updates."
+
+        resp = f"Journey from {src} to {dst}: Corridor Safety Score is {score}/100. "
+        if reasons:
+            resp += f"Noteworthy conditions: {'; '.join(str(r) for r in reasons[:2])}. "
+        resp += "Drive carefully and follow posted expressway speed limits."
+        return resp
 
 
 chatbot_service = ChatbotService()

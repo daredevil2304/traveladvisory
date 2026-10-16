@@ -286,24 +286,38 @@ class _ChatbotScreenState
       return;
     }
 
-    if (value.contains('Calendar')) {
-      _pickPlannerDate();
-      return;
-    }
+    final bool isLiveUpdatesActive = _isCollectingLiveUpdates ||
+        _step == _ConversationStep.liveUpdateRegion ||
+        _step == _ConversationStep.liveUpdateRain ||
+        _step == _ConversationStep.liveUpdateVisibility ||
+        _step == _ConversationStep.liveUpdateHazards ||
+        _step == _ConversationStep.liveUpdateTraffic;
 
-    if (value.contains('Clock')) {
-      _pickPlannerTime();
-      return;
+    final bool isPostAnalysis =
+        (_analysisComplete || _step == _ConversationStep.postAnalysis) &&
+            !isLiveUpdatesActive;
+
+    if (!isPostAnalysis && !isLiveUpdatesActive) {
+      if (value.contains('Calendar')) {
+        _pickPlannerDate();
+        return;
+      }
+
+      if (value.contains('Clock')) {
+        _pickPlannerTime();
+        return;
+      }
     }
 
     _addUserMessage(value);
 
-    if (_isCollectingLiveUpdates) {
+    if (isLiveUpdatesActive) {
       _handleLiveUpdateMessage(value);
       return;
     }
 
-    if (_analysisComplete) {
+    if (isPostAnalysis) {
+      _step = _ConversationStep.postAnalysis;
       _handlePostAnalysisMessage(
         value,
       );
@@ -325,6 +339,22 @@ class _ChatbotScreenState
   void _processMessage(
     String message,
   ) {
+    if (_step == _ConversationStep.liveUpdateRegion ||
+        _step == _ConversationStep.liveUpdateRain ||
+        _step == _ConversationStep.liveUpdateVisibility ||
+        _step == _ConversationStep.liveUpdateHazards ||
+        _step == _ConversationStep.liveUpdateTraffic ||
+        _isCollectingLiveUpdates) {
+      _handleLiveUpdateMessage(message);
+      return;
+    }
+
+    if (_analysisComplete || _step == _ConversationStep.postAnalysis) {
+      _step = _ConversationStep.postAnalysis;
+      _handlePostAnalysisMessage(message);
+      return;
+    }
+
     final String normalized =
         message
             .toLowerCase()
@@ -418,28 +448,44 @@ class _ChatbotScreenState
     }
   }
 
-  // ============================================================
-  // SOURCE CONFIRMATION
-  // ============================================================
+  static final RegExp _affirmativePattern = RegExp(
+    r'\b(yes|ya|yeah|yup|yep|sure|ok|okay|k|ha|haan|sahi|correct|right|proceed|start|fine|y|affirmative|alright|cool|done|go ahead)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _negativePattern = RegExp(
+    r'\b(no|na|nah|nope|nahin|change|different|cancel|stop|wrong|other|not this)\b',
+    caseSensitive: false,
+  );
 
   void _handleSourceConfirmation(
     String message,
   ) {
-    final bool accepted =
-        message == 'yes' ||
-        message.contains('yes');
+    final String clean = message.trim().toLowerCase();
+
+    // If user typed a direct city name like 'Panvel' or 'Mumbai'
+    final _RoutePoint? directPoint = _findRoutePoint(message);
+    if (directPoint != null && !_negativePattern.hasMatch(clean)) {
+      _source = directPoint.name;
+      _addBotMessage(
+        'Got it! Starting from ${directPoint.displayName}.',
+      );
+      _askDestination();
+      return;
+    }
+
+    final bool accepted = clean == 'y' ||
+        clean == 'yes' ||
+        clean == 'ya' ||
+        clean == 'ok' ||
+        _affirmativePattern.hasMatch(clean);
 
     if (accepted) {
       _askDestination();
       return;
     }
 
-    if (message.contains(
-          'change',
-        ) ||
-        message.contains(
-          'different',
-        )) {
+    if (_negativePattern.hasMatch(clean)) {
       _addBotMessage(
         'Sure. Which starting location would you like to use?',
         quickReplies:
@@ -1047,6 +1093,7 @@ final Map<String, dynamic> analysisData =
       _isAnalyzing = false;
       _journeyReady = false;
       _analysisComplete = true;
+      _step = _ConversationStep.postAnalysis;
     });
 
     _addAdvisoryToChat(analysisData);
@@ -1073,6 +1120,10 @@ final Map<String, dynamic> analysisData =
           if (_role == 'traveler') {
             _startLiveUpdatesQuestionnaire();
           } else {
+            setState(() {
+              _step = _ConversationStep.postAnalysis;
+              _analysisComplete = true;
+            });
             _addBotMessage(
               'Your journey analysis has been loaded. Feel welcome to ask questions regarding conditions along your planned corridor.',
               quickReplies: const [
@@ -2489,14 +2540,26 @@ List<String> _stringList(
         _isTyping ||
             _isAnalyzing;
 
-    String hintText = _analysisComplete
-        ? 'Ask about your journey...'
-        : 'Type your answer...';
+    final bool isLiveUpdatesActive = _isCollectingLiveUpdates ||
+        _step == _ConversationStep.liveUpdateRegion ||
+        _step == _ConversationStep.liveUpdateRain ||
+        _step == _ConversationStep.liveUpdateVisibility ||
+        _step == _ConversationStep.liveUpdateHazards ||
+        _step == _ConversationStep.liveUpdateTraffic;
 
-    if (_step == _ConversationStep.plannerDate) {
+    final bool isPostAnalysis =
+        (_analysisComplete || _step == _ConversationStep.postAnalysis) &&
+            !isLiveUpdatesActive;
+
+    String hintText;
+    if (isPostAnalysis) {
+      hintText = 'Ask any query...';
+    } else if (_step == _ConversationStep.plannerDate) {
       hintText = 'Tap calendar icon or type date...';
     } else if (_step == _ConversationStep.plannerTime) {
       hintText = 'Tap clock icon or pick departure time...';
+    } else {
+      hintText = 'Type your answer...';
     }
 
     return Container(
@@ -2531,6 +2594,9 @@ List<String> _stringList(
                   (_) =>
                       _sendMessage(),
               onTap: () {
+                if (isPostAnalysis) {
+                  return;
+                }
                 if (_step == _ConversationStep.plannerDate) {
                   _pickPlannerDate();
                 } else if (_step == _ConversationStep.plannerTime) {
@@ -2545,27 +2611,29 @@ List<String> _stringList(
               cursorColor: AppTheme.forestGreen,
               decoration:
                   InputDecoration(
-                prefixIcon: (_step == _ConversationStep.plannerDate)
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.calendar_month_rounded,
-                          color: AppTheme.forestGreen,
-                          size: 24,
-                        ),
-                        tooltip: 'Select Date on Calendar',
-                        onPressed: disabled ? null : _pickPlannerDate,
-                      )
-                    : (_step == _ConversationStep.plannerTime)
+                prefixIcon: isPostAnalysis
+                    ? null
+                    : (_step == _ConversationStep.plannerDate)
                         ? IconButton(
                             icon: const Icon(
-                              Icons.access_time_filled_rounded,
+                              Icons.calendar_month_rounded,
                               color: AppTheme.forestGreen,
                               size: 24,
                             ),
-                            tooltip: 'Pick Time on Clock',
-                            onPressed: disabled ? null : _pickPlannerTime,
+                            tooltip: 'Select Date on Calendar',
+                            onPressed: disabled ? null : _pickPlannerDate,
                           )
-                        : null,
+                        : (_step == _ConversationStep.plannerTime)
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.access_time_filled_rounded,
+                                  color: AppTheme.forestGreen,
+                                  size: 24,
+                                ),
+                                tooltip: 'Pick Time on Clock',
+                                onPressed: disabled ? null : _pickPlannerTime,
+                              )
+                            : null,
                 hintText: hintText,
                 filled: true,
                 fillColor:

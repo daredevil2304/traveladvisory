@@ -1,32 +1,115 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand colors: Executive Obsidian Navy, Royal Cobalt, and Warm Champagne Amber
-  static const Color forestGreen = Color(0xFF1E3A8A); // Deep Royal Sapphire
-  static const Color deepGreen = Color(0xFF0F172A); // Executive Obsidian Navy
-  static const Color royalCobalt = Color(0xFF2563EB); // Vibrant Expressway Blue
-  static const Color teal = Color(0xFF0D9488); // Precision Emerald Teal
-  static const Color amberGold = Color(0xFFD97706); // Warm Champagne Amber Accent
-  static const Color amberGoldLight = Color(0xFFFEF3C7); // Champagne Glow
-  static const Color mint = Color(0xFFEFF6FF); // Soft Ice-Blue Card Tint
-  static const Color lightMint = Color(0xFFF8FAFC); // Clean Slate Canvas
+  // Executive Multi-Tone Blues & Accents
+  static const Color midnightNavy = Color(0xFF0A1128); // Ultra-deep Obsidian Navy
+  static const Color deepNavy = Color(0xFF131F37); // Rich Slate Navy
+  static const Color royalSapphire = Color(0xFF1E3A8A); // Blue 900 - Regal Highway Blue
+  static const Color cobaltBlue = Color(0xFF1D4ED8); // Blue 700 - Vivid Primary
+  static const Color electricCobalt = Color(0xFF2563EB); // Blue 600 - Dynamic Action
+  static const Color azureSky = Color(0xFF0284C7); // Sky 600 - Telemetry & Badges
+  static const Color cyanAccent = Color(0xFF06B6D4); // Cyan 500 - Neon Highway Sensor
+  static const Color skyGlow = Color(0xFF38BDF8); // Sky 400 - Radiant Accent
+  static const Color lightIceBlue = Color(0xFFF0F7FF); // Clean Ice Blue Surface
+  static const Color frostBlue = Color(0xFFE0F2FE); // Highlight Badges
+  static const Color surfaceCanvas = Color(0xFFF4F7FB); // Executive Background Canvas
+  static const Color champagneAmber = Color(0xFFF59E0B); // Warm Metallic Gold
+  static const Color champagneGold = Color(0xFFD97706); // Amber Accent
+
+  // Legacy aliases for seamless backwards-compatibility
+  static const Color forestGreen = royalSapphire;
+  static const Color deepGreen = midnightNavy;
+  static const Color royalCobalt = electricCobalt;
+  static const Color teal = azureSky;
+  static const Color amberGold = Color(0xFFD97706);
+  static const Color amberGoldLight = Color(0xFFFEF3C7);
+  static const Color mint = lightIceBlue;
+  static const Color lightMint = surfaceCanvas;
 
   static const Color orange = Color(0xFFD97706);
-
-  static const Color darkNavy = Color(0xFF0F172A);
+  static const Color darkNavy = midnightNavy;
   static const Color textSecondary = Color(0xFF64748B);
 
-  static const Color primary = forestGreen;
-  static const Color secondary = royalCobalt;
-  static const Color accent = amberGold;
-  static const Color textPrimary = darkNavy;
+  static const Color primary = royalSapphire;
+  static const Color secondary = electricCobalt;
+  static const Color accent = champagneGold;
+  static const Color textPrimary = midnightNavy;
   static const Color white = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE2E8F0);
+  static const Color borderSubtle = Color(0xFFE2E8F0);
+  static const Color borderFocused = Color(0xFF93C5FD);
   static const Color danger = Color(0xFFEF4444);
   static const Color crimsonRed = Color(0xFFEF4444);
-  static const Color alertAmber = Color(0xFFD97706);
-  static const Color emeraldGreen = Color(0xFF059669);
+  static const Color alertAmber = champagneAmber;
+  static const Color emeraldGreen = Color(0xFF10B981);
+  static const Color emeraldLight = Color(0xFFD1FAE5);
   static const Color subtleGrey = Color(0xFF94A3B8);
+
+  // Executive Multi-Tone Gradients
+  static const LinearGradient heroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF0A1128),
+      Color(0xFF1E3A8A),
+      Color(0xFF2563EB),
+    ],
+  );
+
+  static const LinearGradient commandGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF0B132B),
+      Color(0xFF1C3782),
+      Color(0xFF0284C7),
+    ],
+  );
+
+  static const LinearGradient cardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xFFF8FAFC),
+    ],
+  );
+
+  static const LinearGradient activeTabGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [
+      Color(0xFF1E3A8A),
+      Color(0xFF2563EB),
+    ],
+  );
+
+  static const LinearGradient amberSunGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFF59E0B),
+      Color(0xFFD97706),
+    ],
+  );
+
+  static const LinearGradient indigoMoonGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF0A1128),
+      Color(0xFF1E3A8A),
+    ],
+  );
+
+  static const LinearGradient alertPillGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFEFF6FF),
+      Color(0xFFDBEAFE),
+    ],
+  );
 
   static ThemeData get lightTheme {
     return ThemeData(

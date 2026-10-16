@@ -26,6 +26,12 @@ class CommuteHabit(Base):
         index=True,
     )
 
+    schedule_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="outbound",
+    )
+
     source_name: Mapped[str] = mapped_column(
         String(150),
         nullable=False,

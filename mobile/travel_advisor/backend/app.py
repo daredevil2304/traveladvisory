@@ -58,6 +58,70 @@ app.include_router(
 
 
 # ================================================================
+# BACKGROUND COMMUTE ALERT SCHEDULER
+# ================================================================
+
+import asyncio
+from database import SessionLocal
+from services.timezone_service import get_ist_now
+from services.commute_notification_service import commute_notification_service
+
+
+async def _commute_alert_worker():
+    """
+    Background worker running every 60 seconds.
+    Evaluates enabled commute habits matching current IST time and active travel days,
+    generates proactive corridor alerts, and logs checks automatically.
+    """
+    while True:
+        try:
+            now = get_ist_now()
+            current_time_str = now.strftime("%H:%M")
+            with SessionLocal() as db:
+                habits = (
+                    db.query(CommuteHabit)
+                    .filter(CommuteHabit.is_enabled == True)
+                    .all()
+                )
+                for habit in habits:
+                    alert_time = habit.alert_time.strip()
+                    # Normalise to HH:MM if in 12h format e.g. "07:45 AM"
+                    if "AM" in alert_time.upper() or "PM" in alert_time.upper():
+                        parts = alert_time.replace("AM", "").replace("PM", "").strip().split(":")
+                        if len(parts) == 2:
+                            try:
+                                h = int(parts[0])
+                                m = int(parts[1])
+                                if "PM" in alert_time.upper() and h < 12:
+                                    h += 12
+                                elif "AM" in alert_time.upper() and h == 12:
+                                    h = 0
+                                alert_time = f"{h:02d}:{m:02d}"
+                            except ValueError:
+                                pass
+
+                    if alert_time[:5] == current_time_str:
+                        if commute_notification_service.is_scheduled_current_day(habit.travel_days, now):
+                            try:
+                                commute_notification_service.generate_commute_alert(
+                                    db=db,
+                                    user_id=habit.user_id,
+                                    source=habit.source_name,
+                                    destination=habit.destination_name,
+                                )
+                            except Exception:
+                                pass
+        except Exception:
+            pass
+        await asyncio.sleep(60)
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(_commute_alert_worker())
+
+
+# ================================================================
 # HEALTH CHECK
 # ================================================================
 

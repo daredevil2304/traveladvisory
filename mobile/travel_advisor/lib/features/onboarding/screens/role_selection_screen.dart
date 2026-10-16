@@ -374,51 +374,124 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-              Text(
-                'Choose your profile.',
-                style: Theme.of(context).textTheme.headlineMedium,
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                    SizedBox(width: 6),
+                    Text(
+                      'AI JOURNEY CONFIGURATION',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1D4ED8),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Choose how you are travelling so we can personalize your journey experience.',
-                style: Theme.of(context).textTheme.bodyLarge,
+              const SizedBox(height: 12),
+              const Text(
+                'Select Your Profile Mode',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.darkNavy,
+                  letterSpacing: -0.5,
+                ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 6),
+              const Text(
+                'Personalize corridor telemetry, live road radar feeds, and forecasting models to match your travel needs.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
 
-              // TRAVELER
+              // TRAVELER PERSONA
               _buildRoleCard(
                 role: 'traveler',
                 icon: Icons.directions_car_rounded,
-                title: 'Traveler',
+                title: 'Immediate Traveler',
                 description:
-                    'Travelling immediately along the corridor.',
+                    'Travelling right now along the corridor with live road sensor feeds & instant hazard alerts.',
+                chips: const ['⚡ Live Radar', '🚨 Incident Alerts', '🌦️ Live Weather'],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // PLANNER
+              // PLANNER PERSONA
               _buildRoleCard(
                 role: 'planner',
                 icon: Icons.event_note_rounded,
-                title: 'Planner',
+                title: 'Future Journey Planner',
                 description:
-                    'I am planning a journey for a future date.',
+                    'Planning departure for a future date. Generates predictive risk forecasts and optimal departure timing.',
+                chips: const ['📅 7-Day Forecast', '⏰ Departure Advisor', '📊 Safety Trends'],
               ),
 
               const Spacer(),
 
               // CONTINUE BUTTON
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 56,
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x302563EB),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   onPressed: _isLoggingOut ? null : _continue,
-                  child: const Text('CONTINUE'),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'CONTINUE TO ROUTE SETUP',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -430,7 +503,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   // ============================================================
-  // ROLE CARD
+  // ROLE CARD (PERSONA SELECTION)
   // ============================================================
 
   Widget _buildRoleCard({
@@ -438,6 +511,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     required IconData icon,
     required String title,
     required String description,
+    required List<String> chips,
   }) {
     final bool selected = _selectedRole == role;
 
@@ -450,63 +524,135 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               });
             },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppTheme.white,
-          borderRadius: BorderRadius.circular(18),
+          color: selected ? const Color(0xFFF0F7FF) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? AppTheme.forestGreen : AppTheme.border,
+            color: selected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
             width: selected ? 2 : 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: selected
+                  ? const Color(0x202563EB)
+                  : const Color(0x060F172A),
+              blurRadius: selected ? 16 : 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: selected ? AppTheme.forestGreen : AppTheme.mint,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(
-                icon,
-                color: selected ? AppTheme.white : AppTheme.forestGreen,
-                size: 27,
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: selected
+                        ? const LinearGradient(
+                            colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : const LinearGradient(
+                            colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: selected ? Colors.white : const Color(0xFF475569),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          color: selected
+                              ? const Color(0xFF1E3A8A)
+                              : AppTheme.darkNavy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        role == 'traveler' ? 'Active Real-Time Mode' : 'Predictive Forecast Mode',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? const Color(0xFF2563EB)
+                              : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Circular Radio Indicator
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFFCBD5E1),
+                      width: selected ? 6 : 2,
+                    ),
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppTheme.textSecondary,
+                height: 1.4,
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.darkNavy,
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: chips.map((c) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFFDBEAFE)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    c,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? const Color(0xFF1E40AF)
+                          : const Color(0xFF64748B),
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
+                );
+              }).toList(),
             ),
-            if (selected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: AppTheme.forestGreen,
-                size: 26,
-              ),
           ],
         ),
       ),
