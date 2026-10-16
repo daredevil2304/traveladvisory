@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
@@ -14,8 +15,11 @@ class CorridorDashboardScreen extends StatefulWidget {
       _CorridorDashboardScreenState();
 }
 
-class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
+class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
+    with WidgetsBindingObserver {
   final CommuteHabitService _habitService = CommuteHabitService();
+
+  Timer? _telemetryTimer;
 
   bool _isLoggingOut = false;
   bool _isLoadingReports = false;
@@ -248,7 +252,37 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDashboardData();
+    _startPeriodicTelemetryTimer();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _telemetryTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Whenever user opens or returns to the app, immediately fetch fresh traffic & telemetry
+      _fetchLiveCorridorTelemetry(forceRefresh: true);
+      _startPeriodicTelemetryTimer();
+    } else if (state == AppLifecycleState.paused) {
+      _telemetryTimer?.cancel();
+    }
+  }
+
+  void _startPeriodicTelemetryTimer() {
+    _telemetryTimer?.cancel();
+    // Update live road traffic and expressway telemetry every 5 minutes while app is being used
+    _telemetryTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (mounted) {
+        _fetchLiveCorridorTelemetry(forceRefresh: true);
+      }
+    });
   }
 
   void _swapRoutePoints() {
@@ -375,7 +409,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           _isLoadingReports = false;
         });
       }
-      await _fetchLiveCorridorTelemetry();
+      await _fetchLiveCorridorTelemetry(forceRefresh: true);
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingReports = false);
@@ -383,9 +417,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     }
   }
 
-  Future<void> _fetchLiveCorridorTelemetry() async {
+  Future<void> _fetchLiveCorridorTelemetry({bool forceRefresh = false}) async {
     try {
-      final telemetry = await ApiService.getCorridorTelemetry();
+      final telemetry = await ApiService.getCorridorTelemetry(forceRefresh: forceRefresh);
       if (telemetry != null && mounted) {
         setState(() {
           if (telemetry['corridor_safety_score'] is int) {

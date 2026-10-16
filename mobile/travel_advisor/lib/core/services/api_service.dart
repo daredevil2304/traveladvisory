@@ -1094,8 +1094,9 @@ class ApiService {
   // LIVE CORRIDOR TELEMETRY (OPENWEATHER + GOOGLE MAPS TRAFFIC)
   // ============================================================
 
-  static Future<Map<String, dynamic>?> getCorridorTelemetry() async {
-    final uri = Uri.parse('$baseUrl/trip/corridor-telemetry');
+  static Future<Map<String, dynamic>?> getCorridorTelemetry({bool forceRefresh = false}) async {
+    final urlStr = forceRefresh ? '$baseUrl/trip/corridor-telemetry?refresh=true' : '$baseUrl/trip/corridor-telemetry';
+    final uri = Uri.parse(urlStr);
     try {
       final response = await http
           .get(

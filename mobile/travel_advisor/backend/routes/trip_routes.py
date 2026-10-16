@@ -574,14 +574,15 @@ def submit_trip_observation(
 @router.get(
     "/corridor-telemetry",
 )
-def get_corridor_telemetry():
+def get_corridor_telemetry(refresh: bool = False):
     """
     Get dynamic expressway sector telemetry across all 8 monitoring points,
     combining live OpenWeather and Google Maps road traffic intelligence.
+    Supports refresh=true to bypass cache on app open or periodic timer.
     """
     try:
         from services.google_maps_traffic_service import google_maps_traffic_service
-        return google_maps_traffic_service.get_corridor_telemetry()
+        return google_maps_traffic_service.get_corridor_telemetry(force_refresh=refresh)
     except Exception as exc:
         raise HTTPException(
             status_code=500,
