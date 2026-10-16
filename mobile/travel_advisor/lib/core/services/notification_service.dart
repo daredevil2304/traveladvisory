@@ -216,6 +216,31 @@ class NotificationService {
         );
       }
 
+      // Also schedule a companion one-shot alarm for the immediate next occurrence
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id: id + 10000,
+          title: title,
+          body: body,
+          scheduledDate: tzScheduled,
+          notificationDetails: NotificationDetails(android: androidDetails),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: 'commute_scheduled_alert_oneshot',
+        );
+      } catch (_) {
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            id: id + 10000,
+            title: title,
+            body: body,
+            scheduledDate: tzScheduled,
+            notificationDetails: NotificationDetails(android: androidDetails),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: 'commute_scheduled_alert_oneshot',
+          );
+        } catch (_) {}
+      }
+
       debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute}');
       return true;
     } catch (e) {
@@ -228,8 +253,10 @@ class NotificationService {
   Future<void> cancelScheduledAlert({int id = 1001}) async {
     try {
       await _notificationsPlugin.cancel(id: id);
+      await _notificationsPlugin.cancel(id: id + 10000);
     } catch (e) {
       debugPrint('Error canceling scheduled alert: $e');
     }
   }
 }
+

@@ -211,7 +211,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         color: const Color(0xFFEF4444),
                         title: '2. Live Road Feeds',
                         desc:
-                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments in IST, active for 6 hours.',
+                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments, active for 6 hours.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
@@ -222,7 +222,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         color: const Color(0xFF0284C7),
                         title: '3. Corridor Hub & Commute Alerts',
                         desc:
-                            'Set your recurring commute route, departure time, and alert notice in IST. Receive proactive notifications with safety scores before you depart.',
+                            'Set your recurring commute route, departure time, and alert notice. Receive proactive notifications with safety scores before you depart.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(

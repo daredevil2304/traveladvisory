@@ -415,7 +415,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                                           size: 14, color: AppTheme.forestGreen),
                                       SizedBox(width: 4),
                                       Text(
-                                        'Departure (IST)',
+                                        'Departure',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -485,7 +485,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                                           size: 14, color: AppTheme.forestGreen),
                                       SizedBox(width: 4),
                                       Text(
-                                        'Alert Notice (IST)',
+                                        'Alert Notice',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -1072,13 +1072,13 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                     _buildHabitRow(
                       icon: Icons.departure_board,
                       label: 'Departure Time',
-                      value: '$depTime IST',
+                      value: '$depTime',
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
                       icon: Icons.alarm,
                       label: 'Proactive Alert Time',
-                      value: '$alertTime IST (15 min prior)',
+                      value: '$alertTime (15 min prior)',
                       highlight: true,
                     ),
                   ],

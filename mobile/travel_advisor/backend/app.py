@@ -18,6 +18,21 @@ from routes.report_routes import router as report_router
 
 Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+
+try:
+    with engine.connect() as _migration_conn:
+        _migration_conn.execute(
+            text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(20) DEFAULT 'outbound';")
+        )
+        _migration_conn.execute(
+            text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS travel_days VARCHAR(50) DEFAULT 'Daily';")
+        )
+        _migration_conn.commit()
+except Exception as _migration_err:
+    print(f"Database migration notice: {_migration_err}")
+
+
 
 # ================================================================
 # FASTAPI APPLICATION

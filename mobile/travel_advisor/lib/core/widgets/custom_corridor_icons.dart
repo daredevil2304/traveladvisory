@@ -390,3 +390,67 @@ class _HazardPainter extends CustomPainter {
   bool shouldRepaint(covariant _HazardPainter oldDelegate) =>
       oldDelegate.category != category || oldDelegate.color != color;
 }
+
+/// 6. Route Swap Arrow Icon (Bold directional arrows: Start Point ⇄ Destination)
+class RouteSwapArrowIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const RouteSwapArrowIcon({
+    super.key,
+    this.size = 20,
+    this.color = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _RouteSwapPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _RouteSwapPainter extends CustomPainter {
+  final Color color;
+  _RouteSwapPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.8, size.width * 0.1)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final w = size.width;
+    final h = size.height;
+
+    // Top arrow pointing Right (→)
+    final yTop = h * 0.36;
+    canvas.drawLine(Offset(w * 0.12, yTop), Offset(w * 0.85, yTop), strokePaint);
+    final topHead = Path();
+    topHead.moveTo(w * 0.58, yTop - h * 0.20);
+    topHead.lineTo(w * 0.88, yTop);
+    topHead.lineTo(w * 0.58, yTop + h * 0.20);
+    canvas.drawPath(topHead, strokePaint);
+
+    // Bottom arrow pointing Left (←)
+    final yBottom = h * 0.64;
+    canvas.drawLine(Offset(w * 0.88, yBottom), Offset(w * 0.15, yBottom), strokePaint);
+    final bottomHead = Path();
+    bottomHead.moveTo(w * 0.42, yBottom - h * 0.20);
+    bottomHead.lineTo(w * 0.12, yBottom);
+    bottomHead.lineTo(w * 0.42, yBottom + h * 0.20);
+    canvas.drawPath(bottomHead, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RouteSwapPainter oldDelegate) => oldDelegate.color != color;
+}
+

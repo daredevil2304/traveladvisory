@@ -161,7 +161,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
       ][dt.month - 1];
       final String hour = dt.hour.toString().padLeft(2, '0');
       final String minute = dt.minute.toString().padLeft(2, '0');
-      return '${dt.day} $month ${dt.year}, $hour:$minute IST';
+      return '${dt.day} $month ${dt.year}, $hour:$minute';
     } catch (_) {
       return dateRaw.toString();
     }

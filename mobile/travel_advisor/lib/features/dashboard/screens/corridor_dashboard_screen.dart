@@ -472,7 +472,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         SnackBar(
           content: Text(
             success
-                ? '$slotName saved! ($formattedDep / Alert $formattedAlert IST)'
+                ? '$slotName saved! ($formattedDep / Alert $formattedAlert)'
                 : 'Failed to save $slotName.',
           ),
           backgroundColor:
@@ -718,7 +718,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                         color: const Color(0xFFEF4444),
                         title: '2. Live Road Feeds',
                         desc:
-                            'Real-time crowd reports covering visibility, rain, road surface, and traffic conditions in IST across all expressway segments.',
+                            'Real-time crowd reports covering visibility, rain, road surface, and traffic conditions across all expressway segments.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
@@ -729,7 +729,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                         color: const Color(0xFF0284C7),
                         title: '3. Corridor Hub & Commute Alerts',
                         desc:
-                            'Configure your regular commute route, departure time, and proactive notification alert in IST. Test real notifications directly.',
+                            'Configure your regular commute route, departure time, and proactive notification alert. Test real notifications directly.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
@@ -1138,15 +1138,15 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.near_me_rounded, size: 12, color: Color(0xFF1D4ED8)),
+                    Icon(Icons.person_pin_circle_rounded, size: 14, color: Color(0xFF1D4ED8)),
                     SizedBox(width: 5),
                     Text(
-                      'HIGHWAY TRANSIT GATEWAY',
+                      'Profile Selection',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1D4ED8),
-                        letterSpacing: 0.6,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -1162,94 +1162,14 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Route Boarding Ribbon (Mumbai ── 🚗 ── Pune)
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ORIGIN (BOM)',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Mumbai / Panvel',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.darkNavy,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 16,
-                    color: Color(0xFF1E3A8A),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'DESTINATION (PUN)',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Pune / Wakad',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.darkNavy,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          const Text(
+            'Select your travel persona: choose Traveler for real-time corridor navigation and community hazard alerts, or Planner to evaluate advance forecasts and schedule alerts.',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 14),
           // Action button
@@ -1766,12 +1686,18 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildTelemetryKpiCard(
-                icon: Icons.speed_rounded,
-                iconColor: const Color(0xFF2563EB),
-                value: '82 km/h',
-                label: 'Expressway Flow',
-                badgeText: 'Fluid',
-                badgeColor: const Color(0xFF2563EB),
+                icon: Icons.traffic_rounded,
+                iconColor: _liveReportsPreview.isEmpty
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+                value: _liveReportsPreview.isEmpty
+                    ? 'Clear'
+                    : '${_liveReportsPreview.length} Active',
+                label: 'Corridor Traffic',
+                badgeText: _liveReportsPreview.isEmpty ? 'Free Flow' : 'Caution',
+                badgeColor: _liveReportsPreview.isEmpty
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
               ),
             ),
           ],
@@ -2378,7 +2304,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     final rawCreated = rep['created_at']?.toString() ?? '';
     if (rawCreated.contains('T')) {
       final timePart = rawCreated.split('T')[1].substring(0, 5);
-      timeStr = '$timePart IST ($ageMinutes min ago)';
+      timeStr = '$timePart ($ageMinutes min ago)';
     }
 
     final hazards =
@@ -2570,7 +2496,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Configure multiple notification schedules for your daily travels. Set independent alert times for your morning outbound trip and your evening return journey in IST.',
+            'Configure multiple notification schedules for your daily travels. Set independent alert times for your morning outbound trip and your evening return journey.',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
@@ -2717,8 +2643,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                       : _corridorPoints[1],
                   decoration: InputDecoration(
                     labelText: _selectedScheduleSlot == 0
-                        ? 'Origin (Morning)'
-                        : 'Office / Origin (Return)',
+                        ? 'Start Point (Morning)'
+                        : 'Start Point (Return)',
                     labelStyle: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -2765,24 +2691,32 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
               const SizedBox(width: 6),
               GestureDetector(
                 onTap: _swapRoutePoints,
-                child: Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF93C5FD)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x101D4ED8),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
+                child: Tooltip(
+                  message: 'Swap Start Point and Destination',
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.swap_horiz_rounded,
-                    color: Color(0xFF1D4ED8),
-                    size: 22,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x301E3A8A),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: RouteSwapArrowIcon(
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -2953,14 +2887,14 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           ],
           const SizedBox(height: 14),
 
-          // SCHEDULE TIMES (12-HOUR AM/PM SELECTION IN IST)
+          // SCHEDULE TIMES (12-HOUR AM/PM SELECTION)
           Row(
             children: [
               Expanded(
                 child: _buildTimeSelectorCard(
                   label: _selectedScheduleSlot == 0
-                      ? 'Morning Departure (IST)'
-                      : 'Evening Departure (IST)',
+                      ? 'Morning Departure'
+                      : 'Evening Departure',
                   time: _currentDepartureTime,
                   isDeparture: true,
                 ),
@@ -2968,7 +2902,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildTimeSelectorCard(
-                  label: 'Alert Notice Time (IST)',
+                  label: 'Alert Notice Time',
                   time: _currentAlertTime,
                   isDeparture: false,
                 ),
@@ -3361,7 +3295,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
         SnackBar(
           content: Text(
             bothOk
-                ? 'All commute schedules saved! (Outbound: $outDep IST / Return: $retDep IST)'
+                ? 'All commute schedules saved! (Outbound: $outDep / Return: $retDep)'
                 : 'Failed to save all schedules.',
           ),
           backgroundColor:
@@ -3524,7 +3458,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                               ),
                             ),
                             Text(
-                              'Evaluation Timestamp: $alertTime IST',
+                              'Evaluation Timestamp: $alertTime',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey.shade700,
