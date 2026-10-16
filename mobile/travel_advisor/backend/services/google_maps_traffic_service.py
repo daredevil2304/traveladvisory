@@ -270,19 +270,31 @@ class GoogleMapsTrafficService:
                 "desc": f"{base_desc} Current status: {traffic['status_label']}. Advised cruising speed: {traffic['speed_advice']}.",
             })
 
-        # Calculate high level corridor metrics
-        if total_delay > 15:
-            corridor_score = 82
-            corridor_badge = "Moderate Delay"
-            traffic_summary = f"Delays (+{total_delay}m)"
-        elif any_delay:
-            corridor_score = 92
-            corridor_badge = "Fluid"
-            traffic_summary = "Minor Slowdown"
+        # Calculate high-level corridor metrics prioritizing Google Maps live traffic
+        if total_delay >= 20:
+            corridor_score = 75
+            corridor_badge = "Congestion"
+            traffic_summary = f"+{total_delay}m Delay"
+            traffic_badge = "Heavy"
+            traffic_color = "#EF4444"
+        elif total_delay >= 6:
+            corridor_score = 88
+            corridor_badge = "Caution"
+            traffic_summary = f"+{total_delay}m Slow"
+            traffic_badge = "Caution"
+            traffic_color = "#F59E0B"
+        elif total_delay > 0:
+            corridor_score = 95
+            corridor_badge = "Optimal"
+            traffic_summary = f"+{total_delay}m Normal"
+            traffic_badge = "Fluid"
+            traffic_color = "#10B981"
         else:
             corridor_score = 98
             corridor_badge = "Optimal"
-            traffic_summary = "Clear / Free Flow"
+            traffic_summary = "Free Flow"
+            traffic_badge = "Fluid"
+            traffic_color = "#10B981"
 
         result = {
             "status": "success",
@@ -291,6 +303,8 @@ class GoogleMapsTrafficService:
             "ghat_temperature": ghat_temp,
             "ghat_condition": ghat_cond,
             "corridor_traffic_summary": traffic_summary,
+            "corridor_traffic_badge": traffic_badge,
+            "corridor_traffic_color": traffic_color,
             "total_corridor_delay_min": total_delay,
             "nodes": nodes_data,
         }

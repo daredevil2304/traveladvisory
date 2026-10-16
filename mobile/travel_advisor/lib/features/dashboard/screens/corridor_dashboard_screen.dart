@@ -46,8 +46,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   String _corridorSafetyBadge = 'Optimal';
   String _ghatTemperature = '28°C';
   String _ghatCondition = 'Clear';
-  String _corridorTrafficSummary = 'Clear';
-  String _corridorTrafficBadge = 'Free Flow';
+  String _corridorTrafficSummary = 'Free Flow';
+  String _corridorTrafficBadge = 'Fluid';
+  Color _corridorTrafficColor = const Color(0xFF10B981);
 
   static const List<Map<String, dynamic>> _defaultExpresswayNodes = [
     {
@@ -404,9 +405,12 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           }
           if (telemetry['corridor_traffic_summary'] != null) {
             _corridorTrafficSummary = telemetry['corridor_traffic_summary'].toString();
-            _corridorTrafficBadge = _corridorTrafficSummary.contains('Delay')
-                ? 'Caution'
-                : 'Free Flow';
+          }
+          if (telemetry['corridor_traffic_badge'] != null) {
+            _corridorTrafficBadge = telemetry['corridor_traffic_badge'].toString();
+          }
+          if (telemetry['corridor_traffic_color'] != null) {
+            _corridorTrafficColor = _resolveStatusColor(telemetry['corridor_traffic_color']);
           }
           final rawNodes = telemetry['nodes'] as List?;
           if (rawNodes != null && rawNodes.isNotEmpty) {
@@ -1749,21 +1753,13 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
               child: _buildTelemetryKpiCard(
                 customIcon: CorridorTrafficLightIcon(
                   size: 15,
-                  color: _liveReportsPreview.isEmpty
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFF59E0B),
+                  color: _corridorTrafficColor,
                 ),
-                iconColor: _liveReportsPreview.isEmpty
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-                value: _liveReportsPreview.isEmpty
-                    ? _corridorTrafficSummary
-                    : '${_liveReportsPreview.length} Active',
+                iconColor: _corridorTrafficColor,
+                value: _corridorTrafficSummary,
                 label: 'Corridor Traffic',
-                badgeText: _liveReportsPreview.isEmpty ? _corridorTrafficBadge : 'Caution',
-                badgeColor: _liveReportsPreview.isEmpty
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
+                badgeText: _corridorTrafficBadge,
+                badgeColor: _corridorTrafficColor,
               ),
             ),
           ],
