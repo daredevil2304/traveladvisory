@@ -705,12 +705,12 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: scoreColor.withOpacity(0.12),
+                color: scoreColor.withValues(alpha: 0.12),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(color: scoreColor.withOpacity(0.4), width: 1.5),
+            border: Border.all(color: scoreColor.withValues(alpha: 0.4), width: 1.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -719,7 +719,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: scoreColor.withOpacity(0.1),
+                  color: scoreColor.withValues(alpha: 0.1),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Row(
@@ -788,7 +788,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: scoreColor, width: 4),
-                            color: scoreColor.withOpacity(0.08),
+                            color: scoreColor.withValues(alpha: 0.08),
                           ),
                           child: Center(
                             child: Column(
@@ -807,7 +807,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                                   '/100',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: scoreColor.withOpacity(0.8),
+                                    color: scoreColor.withValues(alpha: 0.8),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1052,7 +1052,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppTheme.forestGreen.withOpacity(0.06),
+                  color: AppTheme.forestGreen.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(

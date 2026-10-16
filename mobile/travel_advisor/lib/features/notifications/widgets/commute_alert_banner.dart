@@ -38,17 +38,17 @@ class CommuteAlertBanner extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                scoreColor.withOpacity(0.12),
+                scoreColor.withValues(alpha: 0.12),
                 Colors.white,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scoreColor.withOpacity(0.4), width: 1.5),
+            border: Border.all(color: scoreColor.withValues(alpha: 0.4), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: scoreColor.withOpacity(0.1),
+                color: scoreColor.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -129,7 +129,7 @@ class CommuteAlertBanner extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: scoreColor.withOpacity(0.3)),
+                            border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             w.toString(),

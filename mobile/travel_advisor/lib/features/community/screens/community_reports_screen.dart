@@ -280,12 +280,12 @@ class _CommunityReportsScreenState
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFF22C55E).withOpacity(0.3),
+            color: const Color(0xFF22C55E).withValues(alpha: 0.3),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -296,7 +296,7 @@ class _CommunityReportsScreenState
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF22C55E).withOpacity(0.12),
+                color: const Color(0xFF22C55E).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -358,7 +358,7 @@ class _CommunityReportsScreenState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFDC2626).withOpacity(0.12),
+                color: const Color(0xFFDC2626).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -392,12 +392,12 @@ class _CommunityReportsScreenState
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: badgeColor.withOpacity(0.35),
+          color: badgeColor.withValues(alpha: 0.35),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: badgeColor.withOpacity(0.06),
+            color: badgeColor.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -478,7 +478,7 @@ class _CommunityReportsScreenState
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.08),
+                    color: badgeColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -671,13 +671,13 @@ class _CommunityReportsScreenState
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isRisky
-              ? const Color(0xFFDC2626).withOpacity(0.25)
+              ? const Color(0xFFDC2626).withValues(alpha: 0.25)
               : Colors.grey.shade200,
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -692,8 +692,8 @@ class _CommunityReportsScreenState
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isRisky
-                      ? const Color(0xFFDC2626).withOpacity(0.1)
-                      : AppTheme.forestGreen.withOpacity(0.1),
+                      ? const Color(0xFFDC2626).withValues(alpha: 0.1)
+                      : AppTheme.forestGreen.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -831,10 +831,10 @@ class _CommunityReportsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withValues(alpha: 0.3),
         ),
       ),
       child: Row(

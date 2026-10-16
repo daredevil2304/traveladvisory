@@ -663,7 +663,7 @@ class _TripDetailsScreenState
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0F2942).withOpacity(0.18),
+                        color: const Color(0xFF0F2942).withValues(alpha: 0.18),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -674,7 +674,7 @@ class _TripDetailsScreenState
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
