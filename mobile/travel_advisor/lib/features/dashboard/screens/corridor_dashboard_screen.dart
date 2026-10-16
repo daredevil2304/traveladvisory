@@ -55,7 +55,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Mumbai',
       'code': 'BOM',
-      'weather': '32°C Clear',
+      'weather': '31°C Clear',
       'status': 'Normal Flow',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-80 km/h',
@@ -64,7 +64,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Panvel',
       'code': 'PNV',
-      'weather': '31°C Clear',
+      'weather': '29°C Clear',
       'status': 'Expressway Entry',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '80-100 km/h',
@@ -73,7 +73,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Khalapur',
       'code': 'KHL',
-      'weather': '31°C Clear',
+      'weather': '28°C Clear',
       'status': 'Toll Plaza',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '100 km/h',
@@ -82,7 +82,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Khopoli',
       'code': 'KHP',
-      'weather': '31°C Clear',
+      'weather': '28°C Clear',
       'status': 'Ghat Approach',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-70 km/h',
@@ -100,7 +100,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Lonavala',
       'code': 'LNV',
-      'weather': '28°C Clear',
+      'weather': '25°C Clear',
       'status': 'Plateau Section',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '70-80 km/h',
@@ -109,7 +109,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Kamshet',
       'code': 'KMS',
-      'weather': '28°C Clear',
+      'weather': '25°C Clear',
       'status': 'Open Plains',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '90-100 km/h',
@@ -118,7 +118,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     {
       'name': 'Pune',
       'code': 'PUN',
-      'weather': '29°C Clear',
+      'weather': '28°C Clear',
       'status': 'Corridor End',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-80 km/h',
@@ -531,10 +531,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     setState(() => _isSavingSchedule = true);
     if (_currentNotificationsEnabled) {
       await NotificationService().requestPermission();
-      final canExact = await NotificationService().canScheduleExactAlarms();
-      if (!canExact) {
-        await NotificationService().requestExactAlarmsPermission();
-      }
     }
 
     final formattedDep =
@@ -545,7 +541,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     final bool success;
     final String slotName;
     if (_selectedScheduleSlot == 0) {
-      slotName = 'Outbound Schedule';
+      slotName = 'Morning Commute Schedule';
       success = await _habitService.saveOutboundHabit(
         source: src,
         destination: dst,
@@ -837,7 +833,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                         color: const Color(0xFF1E40AF),
                         title: '4. Dual Commute Schedules',
                         desc:
-                            'Configure both Outbound (morning departure) and Return (evening heading back) commute alert schedules with independent times and custom active days.',
+                            'Configure both Morning Commute (primary departure) and Evening Return commute alert schedules with independent times and custom active days.',
                       ),
                     ],
                   ),
@@ -2734,7 +2730,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 12),
           const Text(
-            'Configure multiple notification schedules for your daily travels. Set independent alert times for your morning outbound trip and your evening return journey.',
+            'Configure multiple notification schedules for your daily travels. Set independent alert times for your morning commute and your evening return journey.',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
@@ -2743,7 +2739,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // DIRECTION SCHEDULE TOGGLE (Outbound vs Return)
+          // DIRECTION SCHEDULE TOGGLE (Morning vs Return)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -2792,7 +2788,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Outbound Commute',
+                            'Morning Commute',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: _selectedScheduleSlot == 0
@@ -3018,7 +3014,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
 
           // COMMUTE DAYS SELECTION
           Text(
-            'Active Days for ${_selectedScheduleSlot == 0 ? "Outbound" : "Return"} Commute:',
+            'Active Days for ${_selectedScheduleSlot == 0 ? "Morning" : "Return"} Commute:',
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -3165,7 +3161,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_selectedScheduleSlot == 0 ? "Outbound" : "Return"} Device Push Alerts',
+                        '${_selectedScheduleSlot == 0 ? "Morning" : "Return"} Device Push Alerts',
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
@@ -3173,7 +3169,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                         ),
                       ),
                       Text(
-                        'AlarmManager ID: ${_selectedScheduleSlot == 0 ? "1001" : "1002"} • Local scheduled notice',
+                        'Scheduled normal notification • Slot #${_selectedScheduleSlot == 0 ? "1001" : "1002"}',
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppTheme.textSecondary,
@@ -3189,10 +3185,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                     setState(() => _currentNotificationsEnabled = val);
                     if (val) {
                       await NotificationService().requestPermission();
-                      final canExact = await NotificationService().canScheduleExactAlarms();
-                      if (!canExact) {
-                        await NotificationService().requestExactAlarmsPermission();
-                      }
                     }
                   },
                 ),
@@ -3230,7 +3222,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
                 const SizedBox(height: 8),
                 _buildScheduleSummaryRow(
-                  slotTitle: '🌅 Outbound Commute',
+                  slotTitle: '🌅 Morning Commute',
                   route: '$_outboundSource → $_outboundDestination',
                   times:
                       '${CommuteHabitService.formatTime12h(_outboundDepartureTime)} (Alert: ${CommuteHabitService.formatTime12h(_outboundAlertTime)})',
@@ -3301,7 +3293,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                               const Icon(Icons.check_rounded, size: 16, color: Colors.white),
                               const SizedBox(width: 6),
                               Text(
-                                'Save ${_selectedScheduleSlot == 0 ? "Outbound" : "Return"}',
+                                'Save ${_selectedScheduleSlot == 0 ? "Morning" : "Return"}',
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w800,
@@ -3374,7 +3366,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               onPressed: _isSavingSchedule ? null : _saveAllCommuteSchedules,
               icon: const Icon(Icons.done_all_rounded, size: 16, color: Color(0xFF1D4ED8)),
               label: const Text(
-                'Save Both Outbound & Return Schedules',
+                'Save Both Morning & Return Schedules',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -3422,7 +3414,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                slotTitle.contains('Outbound')
+                (slotTitle.contains('Morning') || slotTitle.contains('Outbound'))
                     ? Icons.wb_sunny_rounded
                     : Icons.nights_stay_rounded,
                 size: 14,
@@ -3505,10 +3497,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     setState(() => _isSavingSchedule = true);
     if (_outboundNotificationsEnabled || _returnNotificationsEnabled) {
       await NotificationService().requestPermission();
-      final canExact = await NotificationService().canScheduleExactAlarms();
-      if (!canExact) {
-        await NotificationService().requestExactAlarmsPermission();
-      }
     }
 
     final outDep = CommuteHabitService.formatTime12h(_outboundDepartureTime);
@@ -3541,7 +3529,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         SnackBar(
           content: Text(
             bothOk
-                ? 'All commute schedules saved! (Outbound: $outDep / Return: $retDep)'
+                ? 'All commute schedules saved! (Morning: $outDep / Return: $retDep)'
                 : 'Failed to save all schedules.',
           ),
           backgroundColor:

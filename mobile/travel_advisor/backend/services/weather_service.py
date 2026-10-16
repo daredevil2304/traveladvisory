@@ -25,9 +25,14 @@ MUNICIPAL_STATION_COORDINATES: dict[str, tuple[float, float]] = {
     "khopoli": (18.7877, 73.3438),
     "khandala": (18.7607, 73.3768),
     "bhor ghat": (18.7607, 73.3768),
+    "bhor": (18.7607, 73.3768),
+    "bhorghat": (18.7607, 73.3768),
+    "ghat": (18.7607, 73.3768),
+    "khandala ghat": (18.7607, 73.3768),
     "lonavala": (18.7546, 73.4062),
     "kamshet": (18.7629, 73.5576),
-    "pune": (18.5204, 73.8567),
+    "pune": (18.5314, 73.8446),
+    "shivajinagar": (18.5314, 73.8446),
 }
 
 
@@ -173,10 +178,11 @@ class WeatherService:
             city_key = city_name.strip().lower()
             if city_key in MUNICIPAL_STATION_COORDINATES:
                 query_lat, query_lon = MUNICIPAL_STATION_COORDINATES[city_key]
-        elif (abs(latitude - 19.0144) < 0.05 and abs(longitude - 72.8479) < 0.05):
-            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["mumbai"]
-        elif (abs(latitude - 18.5196) < 0.05 and abs(longitude - 73.8553) < 0.05):
-            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["pune"]
+        else:
+            for station_name, (s_lat, s_lon) in MUNICIPAL_STATION_COORDINATES.items():
+                if abs(latitude - s_lat) < 0.05 and abs(longitude - s_lon) < 0.05:
+                    query_lat, query_lon = s_lat, s_lon
+                    break
 
         self.validate_coordinates(
             latitude=query_lat,
@@ -284,10 +290,11 @@ class WeatherService:
             city_key = city_name.strip().lower()
             if city_key in MUNICIPAL_STATION_COORDINATES:
                 query_lat, query_lon = MUNICIPAL_STATION_COORDINATES[city_key]
-        elif (abs(latitude - 19.0144) < 0.05 and abs(longitude - 72.8479) < 0.05):
-            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["mumbai"]
-        elif (abs(latitude - 18.5196) < 0.05 and abs(longitude - 73.8553) < 0.05):
-            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["pune"]
+        else:
+            for station_name, (s_lat, s_lon) in MUNICIPAL_STATION_COORDINATES.items():
+                if abs(latitude - s_lat) < 0.05 and abs(longitude - s_lon) < 0.05:
+                    query_lat, query_lon = s_lat, s_lon
+                    break
 
         self.validate_coordinates(
             latitude=query_lat,

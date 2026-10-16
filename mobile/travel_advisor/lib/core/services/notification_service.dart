@@ -79,38 +79,14 @@ class NotificationService {
     return false;
   }
 
-  /// Check whether app can schedule exact notifications (Android 12+)
+  /// Check whether app can schedule notifications (Android 12+)
   Future<bool> canScheduleExactAlarms() async {
-    try {
-      final androidImpl =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-
-      if (androidImpl != null) {
-        final canExact = await androidImpl.canScheduleExactNotifications();
-        return canExact ?? false;
-      }
-    } catch (e) {
-      debugPrint('Error checking exact alarm permission: $e');
-    }
     return true;
   }
 
-  /// Request exact alarm permission (opens system settings on Android 13+)
+  /// Request exact alarm permission (no-op since normal notifications are used)
   Future<bool> requestExactAlarmsPermission() async {
-    try {
-      final androidImpl =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-
-      if (androidImpl != null) {
-        final granted = await androidImpl.requestExactAlarmsPermission();
-        return granted ?? false;
-      }
-    } catch (e) {
-      debugPrint('Error requesting exact alarm permission: $e');
-    }
-    return false;
+    return true;
   }
 
   /// Show a real system notification in the notification shade
@@ -186,10 +162,6 @@ class NotificationService {
       }
 
       await requestPermission();
-      final canExact = await canScheduleExactAlarms();
-      if (!canExact) {
-        await requestExactAlarmsPermission();
-      }
 
       tz.initializeTimeZones();
       tz.Location location;
@@ -218,6 +190,7 @@ class NotificationService {
           ? '$body\n\nActive Hazards:\n• ${warnings.join("\n• ")}'
           : body;
 
+      // Use normal notification details matching the working test alert
       final AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
         _channel.id,
@@ -225,9 +198,8 @@ class NotificationService {
         channelDescription: _channel.description,
         importance: Importance.max,
         priority: Priority.max,
-        category: AndroidNotificationCategory.alarm,
+        category: AndroidNotificationCategory.reminder,
         visibility: NotificationVisibility.public,
-        audioAttributesUsage: AudioAttributesUsage.alarm,
         ticker: 'Mumbai–Pune Commute Safety Alert',
         channelShowBadge: true,
         styleInformation: BigTextStyleInformation(
@@ -241,46 +213,8 @@ class NotificationService {
       await cancelScheduledAlert(id: id);
 
       bool scheduled = false;
-      // 1. High priority: AndroidScheduleMode.alarmClock (wakes device from deep sleep/Doze at exact minute)
+      // 1. Primary: inexactAllowWhileIdle (works without exact alarm / Alarms & Reminders permission)
       try {
-        await _notificationsPlugin.zonedSchedule(
-          id: id,
-          title: title,
-          body: body,
-          scheduledDate: scheduledTz,
-          notificationDetails: NotificationDetails(android: androidDetails),
-          androidScheduleMode: AndroidScheduleMode.alarmClock,
-          matchDateTimeComponents: DateTimeComponents.time,
-          payload: 'commute_scheduled_alert',
-        );
-        scheduled = true;
-        debugPrint('Successfully scheduled alert #$id via alarmClock at $scheduledTz');
-      } catch (e) {
-        debugPrint('alarmClock failed: $e, trying exactAllowWhileIdle');
-      }
-
-      // 2. Secondary: AndroidScheduleMode.exactAllowWhileIdle
-      if (!scheduled) {
-        try {
-          await _notificationsPlugin.zonedSchedule(
-            id: id,
-            title: title,
-            body: body,
-            scheduledDate: scheduledTz,
-            notificationDetails: NotificationDetails(android: androidDetails),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-            matchDateTimeComponents: DateTimeComponents.time,
-            payload: 'commute_scheduled_alert',
-          );
-          scheduled = true;
-          debugPrint('Successfully scheduled alert #$id via exactAllowWhileIdle at $scheduledTz');
-        } catch (e) {
-          debugPrint('exactAllowWhileIdle failed: $e, falling back to inexactAllowWhileIdle');
-        }
-      }
-
-      // 3. Fallback: AndroidScheduleMode.inexactAllowWhileIdle
-      if (!scheduled) {
         await _notificationsPlugin.zonedSchedule(
           id: id,
           title: title,
@@ -291,10 +225,33 @@ class NotificationService {
           matchDateTimeComponents: DateTimeComponents.time,
           payload: 'commute_scheduled_alert',
         );
-        debugPrint('Scheduled alert #$id via inexactAllowWhileIdle at $scheduledTz');
+        scheduled = true;
+        debugPrint('Successfully scheduled normal alert #$id via inexactAllowWhileIdle at $scheduledTz');
+      } catch (e) {
+        debugPrint('inexactAllowWhileIdle failed: $e, falling back to inexact');
       }
 
-      debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute} (next trigger: $scheduledTz)');
+      // 2. Secondary fallback: inexact
+      if (!scheduled) {
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            id: id,
+            title: title,
+            body: body,
+            scheduledDate: scheduledTz,
+            notificationDetails: NotificationDetails(android: androidDetails),
+            androidScheduleMode: AndroidScheduleMode.inexact,
+            matchDateTimeComponents: DateTimeComponents.time,
+            payload: 'commute_scheduled_alert',
+          );
+          scheduled = true;
+          debugPrint('Scheduled normal alert #$id via inexact at $scheduledTz');
+        } catch (e) {
+          debugPrint('inexact scheduling error: $e');
+        }
+      }
+
+      debugPrint('Scheduled daily normal commute alert #$id at ${alertTime.hour}:${alertTime.minute} (next trigger: $scheduledTz)');
       return true;
     } catch (e) {
       debugPrint('Failed to schedule daily commute alert: $e');

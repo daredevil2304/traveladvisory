@@ -65,7 +65,7 @@ ROUTE_POINT_COORDINATES: dict[str, tuple[float, float]] = {
     "Khandala": (18.7607, 73.3768),
     "Lonavala": (18.7546, 73.4062),
     "Kamshet": (18.7629, 73.5576),
-    "Pune": (18.5204, 73.8567),
+    "Pune": (18.5314, 73.8446),
 }
 
 
@@ -81,9 +81,18 @@ LOCATION_ALIASES: dict[str, str] = {
     "khalapur": "Khalapur",
     "khopoli": "Khopoli",
     "khandala": "Khandala",
+    "bhor ghat": "Khandala",
+    "bhor": "Khandala",
+    "bhorghat": "Khandala",
+    "ghat": "Khandala",
+    "khandala ghat": "Khandala",
     "lonavala": "Lonavala",
     "kamshet": "Kamshet",
     "pune": "Pune",
+    "shivajinagar": "Pune",
+    "kiwale": "Pune",
+    "wakad": "Pune",
+    "hinjewadi": "Pune",
 }
 
 
