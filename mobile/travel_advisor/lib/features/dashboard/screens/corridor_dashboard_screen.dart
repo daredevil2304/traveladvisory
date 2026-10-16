@@ -1255,7 +1255,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
 
           // Main Title
           const Text(
-            'Select Your Travel Persona',
+            'Profile Selection',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
@@ -1264,178 +1264,15 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
 
           const Text(
-            'Tailor expressway telemetry, hazard feeds, and predictive advice to your journey:',
+            'Select your travel profile to tailor expressway telemetry, hazard feeds, and predictive advice to your journey:',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
-              height: 1.4,
+              height: 1.45,
             ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Interactive Persona Cards (Traveler & Planner side-by-side)
-          Row(
-            children: [
-              // Traveler Card
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.locationPermission,
-                      arguments: {'role': 'traveler'},
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.directions_car_rounded,
-                                size: 16,
-                                color: Color(0xFF16A34A),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: const Text(
-                                'EN ROUTE',
-                                style: TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF15803D),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Traveler',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Live Radar & Hazards',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // Planner Card
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.locationPermission,
-                      arguments: {'role': 'planner'},
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.event_note_rounded,
-                                size: 16,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDBEAFE),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: const Text(
-                                'PRE-TRIP',
-                                style: TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1D4ED8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Planner',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Forecasts & Advisories',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
 
           const SizedBox(height: 16),
@@ -1443,7 +1280,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           // Primary Full-Width Action Button
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 50,
             child: Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(

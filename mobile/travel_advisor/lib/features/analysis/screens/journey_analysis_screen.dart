@@ -189,10 +189,10 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppTheme.forestGreen.withOpacity(0.1),
+                    color: AppTheme.forestGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppTheme.forestGreen.withOpacity(0.3),
+                      color: AppTheme.forestGreen.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -494,7 +494,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
           final String title = _resolveSegmentTitle(segment);
 
           final safetyResult = segment['safety_score_result'];
-          final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
+          final dynamic rawScore = (safetyResult is Map)
+              ? (safetyResult['safety_score'] ?? safetyResult['score'])
+              : segment['safety_score'];
           final int score = (rawScore != null) ? (rawScore as num).toInt() : 80;
           final Color scoreColor = _getScoreColor(score);
 
@@ -507,6 +509,17 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               condText = '$cond • ${temp is num ? temp.round() : temp}°C';
             } else {
               condText = cond;
+            }
+          }
+
+          final liveTraffic = segment['live_traffic'];
+          String trafficText = '';
+          if (liveTraffic is Map && liveTraffic['status_label'] != null) {
+            final delay = liveTraffic['delay_minutes'] ?? 0;
+            if (delay > 0) {
+              trafficText = ' • +${delay}m delay';
+            } else {
+              trafficText = ' • Free Flow';
             }
           }
 
@@ -550,7 +563,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        condText,
+                        '$condText$trafficText',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -684,7 +697,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final String title = _resolveSegmentTitle(segment);
 
     final safetyResult = segment['safety_score_result'];
-    final dynamic rawScore = (safetyResult is Map) ? safetyResult['score'] : null;
+    final dynamic rawScore = (safetyResult is Map)
+        ? (safetyResult['safety_score'] ?? safetyResult['score'])
+        : segment['safety_score'];
     final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
     final Color scoreColor = _getScoreColor(score ?? 80);
 
@@ -698,6 +713,15 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       } else {
         weatherSummary = cond;
       }
+    }
+
+    final liveTraffic = segment['live_traffic'];
+    String trafficSummary = '';
+    if (liveTraffic is Map && liveTraffic['status_label'] != null) {
+      final delay = liveTraffic['delay_minutes'] ?? 0;
+      final delayStr = (delay > 0) ? '+${delay}m delay' : 'Free Flow';
+      final speed = liveTraffic['speed_advice'] ?? '';
+      trafficSummary = ' • $delayStr ($speed)';
     }
 
     final reasonsRaw = (safetyResult is Map) ? safetyResult['reasons'] : segment['reasons'];
@@ -752,7 +776,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  weatherSummary,
+                                  '$weatherSummary$trafficSummary',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppTheme.textSecondary,

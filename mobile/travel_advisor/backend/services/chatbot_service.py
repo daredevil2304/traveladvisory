@@ -325,7 +325,7 @@ IMPORTANT RULES:
                 label = f"{start} to {end}" if (start and end) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
 
                 score_info = seg.get("safety_score_result") or {}
-                seg_score = score_info.get("score")
+                seg_score = score_info.get("safety_score") or score_info.get("score") or seg.get("safety_score")
                 seg_reasons = score_info.get("reasons") or []
 
                 weather = seg.get("weather_result") or {}
@@ -354,6 +354,13 @@ IMPORTANT RULES:
                 else:
                     lines.append("  Safety Score: unavailable")
                 lines.append(f"  Live Weather: {', '.join(weather_desc)}")
+
+                live_traffic = seg.get("live_traffic")
+                if isinstance(live_traffic, dict) and live_traffic.get("status_label"):
+                    delay_m = live_traffic.get("delay_minutes", 0)
+                    delay_str = f"+{delay_m}m delay" if delay_m > 0 else "Free Flow"
+                    lines.append(f"  Live Traffic: {live_traffic.get('status_label')} ({delay_str}, advised speed {live_traffic.get('speed_advice')})")
+
                 if seg_reasons:
                     lines.append(f"  Advisories: {'; '.join(str(r) for r in seg_reasons[:3])}")
 

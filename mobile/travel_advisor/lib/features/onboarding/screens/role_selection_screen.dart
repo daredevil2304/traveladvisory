@@ -428,10 +428,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               _buildRoleCard(
                 role: 'traveler',
                 icon: Icons.directions_car_rounded,
-                title: 'Immediate Traveler',
+                title: 'Traveler',
+                subtitle: 'Live Radar & Hazards',
+                badgeText: 'EN ROUTE',
                 description:
-                    'Travelling right now along the corridor with live road sensor feeds & instant hazard alerts.',
-                chips: const ['⚡ Live Radar', '🚨 Incident Alerts', '🌦️ Live Weather'],
+                    'Travelling right now along the corridor with live Google Maps traffic, road sensor feeds & instant hazard alerts.',
+                chips: const ['⚡ Live Radar', '🚨 Incident Alerts', '🌦️ Live Weather', '🚦 Live Traffic'],
               ),
 
               const SizedBox(height: 14),
@@ -440,10 +442,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               _buildRoleCard(
                 role: 'planner',
                 icon: Icons.event_note_rounded,
-                title: 'Future Journey Planner',
+                title: 'Planner',
+                subtitle: 'Forecasts & Advisories',
+                badgeText: 'PRE-TRIP',
                 description:
-                    'Planning departure for a future date. Generates predictive risk forecasts and optimal departure timing.',
-                chips: const ['📅 7-Day Forecast', '⏰ Departure Advisor', '📊 Safety Trends'],
+                    'Planning departure for a future date. Generates predictive risk forecasts, Ghat elevation risks, and optimal departure timing.',
+                chips: const ['📅 7-Day Forecast', '⏰ Departure Advisor', '📊 Safety Trends', '🏔️ Terrain Guidance'],
               ),
 
               const Spacer(),
@@ -510,10 +514,26 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     required String role,
     required IconData icon,
     required String title,
+    required String subtitle,
+    required String badgeText,
     required String description,
     required List<String> chips,
   }) {
     final bool selected = _selectedRole == role;
+    final bool isTraveler = role == 'traveler';
+
+    // Distinctive color palettes matching the flagship dashboard cards
+    final Color accentColor = isTraveler ? const Color(0xFF10B981) : const Color(0xFF2563EB);
+    final Color selectedBg = isTraveler ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF);
+    final Color selectedBorder = isTraveler ? const Color(0xFF10B981) : const Color(0xFF2563EB);
+    final Color badgeBg = isTraveler ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
+    final Color badgeTextColor = isTraveler ? const Color(0xFF15803D) : const Color(0xFF1D4ED8);
+    final Color chipBg = selected
+        ? (isTraveler ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE))
+        : const Color(0xFFF1F5F9);
+    final Color chipTextColor = selected
+        ? (isTraveler ? const Color(0xFF065F46) : const Color(0xFF1E40AF))
+        : const Color(0xFF64748B);
 
     return GestureDetector(
       onTap: _isLoggingOut
@@ -528,16 +548,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F7FF) : Colors.white,
+          color: selected ? selectedBg : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+            color: selected ? selectedBorder : const Color(0xFFE2E8F0),
             width: selected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: selected
-                  ? const Color(0x202563EB)
+                  ? accentColor.withValues(alpha: 0.18)
                   : const Color(0x060F172A),
               blurRadius: selected ? 16 : 8,
               offset: const Offset(0, 4),
@@ -553,22 +573,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    gradient: selected
-                        ? const LinearGradient(
-                            colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : const LinearGradient(
-                            colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                    color: selected
+                        ? accentColor.withValues(alpha: 0.15)
+                        : (isTraveler ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF)),
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? accentColor.withValues(alpha: 0.4)
+                          : (isTraveler ? const Color(0xFFBBF7D0) : const Color(0xFFBFDBFE)),
+                    ),
                   ),
                   child: Icon(
                     icon,
-                    color: selected ? Colors.white : const Color(0xFF475569),
+                    color: accentColor,
                     size: 24,
                   ),
                 ),
@@ -583,33 +600,56 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           fontSize: 16.5,
                           fontWeight: FontWeight.w800,
                           color: selected
-                              ? const Color(0xFF1E3A8A)
+                              ? (isTraveler ? const Color(0xFF065F46) : const Color(0xFF1E3A8A))
                               : AppTheme.darkNavy,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        role == 'traveler' ? 'Active Real-Time Mode' : 'Predictive Forecast Mode',
+                        subtitle,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: selected
-                              ? const Color(0xFF2563EB)
+                              ? accentColor
                               : AppTheme.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
+                // Flagship Badge Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: selected
+                          ? accentColor.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: badgeTextColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 // Circular Radio Indicator
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: selected
-                          ? const Color(0xFF2563EB)
+                          ? accentColor
                           : const Color(0xFFCBD5E1),
                       width: selected ? 6 : 2,
                     ),
@@ -635,9 +675,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFFDBEAFE)
-                        : const Color(0xFFF1F5F9),
+                    color: chipBg,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -645,9 +683,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: selected
-                          ? const Color(0xFF1E40AF)
-                          : const Color(0xFF64748B),
+                      color: chipTextColor,
                     ),
                   ),
                 );
