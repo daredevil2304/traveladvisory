@@ -25,6 +25,11 @@ class Settings(BaseSettings):
         "https://api.openweathermap.org/data/2.5"
     )
 
+    google_maps_api_key: str = ""
+    google_maps_base_url: str = (
+        "https://maps.googleapis.com/maps/api"
+    )
+
     fast2sms_api_key: str = (
         "CwY8RxEqFXteDpTUvr4Bo3ahnsuzKkOZ2GSciQP9NAfLd65jlWtnxc5bYFhCvdImTSkZjz9p3V1GwXL0"
     )

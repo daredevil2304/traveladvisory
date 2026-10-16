@@ -454,3 +454,407 @@ class _RouteSwapPainter extends CustomPainter {
   bool shouldRepaint(covariant _RouteSwapPainter oldDelegate) => oldDelegate.color != color;
 }
 
+/// 7. Corridor Safety Shield Icon (Security shield with inner checkmark)
+class CorridorSafetyShieldIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const CorridorSafetyShieldIcon({
+    super.key,
+    this.size = 20,
+    this.color = const Color(0xFF10B981),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _ShieldPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _ShieldPainter extends CustomPainter {
+  final Color color;
+  _ShieldPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.6, size.width * 0.09)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+
+    final w = size.width;
+    final h = size.height;
+
+    final shieldPath = Path();
+    shieldPath.moveTo(w * 0.5, h * 0.12);
+    shieldPath.lineTo(w * 0.84, h * 0.22);
+    shieldPath.quadraticBezierTo(w * 0.84, h * 0.62, w * 0.5, h * 0.90);
+    shieldPath.quadraticBezierTo(w * 0.16, h * 0.62, w * 0.16, h * 0.22);
+    shieldPath.close();
+
+    canvas.drawPath(shieldPath, fillPaint);
+    canvas.drawPath(shieldPath, strokePaint);
+
+    // Inner checkmark
+    final checkPath = Path();
+    checkPath.moveTo(w * 0.35, h * 0.50);
+    checkPath.lineTo(w * 0.46, h * 0.62);
+    checkPath.lineTo(w * 0.66, h * 0.38);
+    canvas.drawPath(checkPath, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShieldPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 8. Ghat Sector Mountain Icon (Sahyadri mountain peaks with sun)
+class GhatMountainIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const GhatMountainIcon({
+    super.key,
+    this.size = 20,
+    this.color = const Color(0xFF0284C7),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _MountainPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _MountainPainter extends CustomPainter {
+  final Color color;
+  _MountainPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.6, size.width * 0.09)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+
+    final w = size.width;
+    final h = size.height;
+
+    // Small background sun
+    final sunCenter = Offset(w * 0.72, h * 0.28);
+    final sunPaint = Paint()
+      ..color = color.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(sunCenter, w * 0.13, sunPaint);
+
+    // Main mountain peak
+    final mainPeak = Path();
+    mainPeak.moveTo(w * 0.08, h * 0.84);
+    mainPeak.lineTo(w * 0.44, h * 0.24);
+    mainPeak.lineTo(w * 0.82, h * 0.84);
+    mainPeak.close();
+    canvas.drawPath(mainPeak, fillPaint);
+    canvas.drawPath(mainPeak, strokePaint);
+
+    // Second smaller peak on the right
+    final secondPeak = Path();
+    secondPeak.moveTo(w * 0.52, h * 0.84);
+    secondPeak.lineTo(w * 0.76, h * 0.44);
+    secondPeak.lineTo(w * 0.94, h * 0.84);
+    secondPeak.close();
+    canvas.drawPath(secondPeak, fillPaint);
+    canvas.drawPath(secondPeak, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MountainPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 9. Corridor Traffic Signal Icon (Traffic lights)
+class CorridorTrafficLightIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const CorridorTrafficLightIcon({
+    super.key,
+    this.size = 20,
+    this.color = const Color(0xFF10B981),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _TrafficLightPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _TrafficLightPainter extends CustomPainter {
+  final Color color;
+  _TrafficLightPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final housingPaint = Paint()
+      ..color = color.withValues(alpha: 0.18)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.4, w * 0.08)
+      ..strokeCap = StrokeCap.round;
+
+    // Traffic signal vertical housing
+    final housingRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(w * 0.5, h * 0.5), width: w * 0.48, height: h * 0.88),
+      Radius.circular(w * 0.16),
+    );
+    canvas.drawRRect(housingRect, housingPaint);
+    canvas.drawRRect(housingRect, borderPaint);
+
+    // 3 lights (Red, Amber, Green)
+    final lightRadius = w * 0.10;
+    final lightFill = Paint()..style = PaintingStyle.fill;
+
+    // Top light
+    lightFill.color = const Color(0xFFEF4444);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.28), lightRadius, lightFill);
+
+    // Middle light
+    lightFill.color = const Color(0xFFF59E0B);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.50), lightRadius, lightFill);
+
+    // Bottom light (Green / active)
+    lightFill.color = const Color(0xFF10B981);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.72), lightRadius, lightFill);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrafficLightPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 10. Sector Map Pin Icon (Location marker with inner circle)
+class SectorMapPinIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const SectorMapPinIcon({
+    super.key,
+    this.size = 14,
+    this.color = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _MapPinPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _MapPinPainter extends CustomPainter {
+  final Color color;
+  _MapPinPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final pinPath = Path();
+    pinPath.moveTo(w * 0.5, h * 0.94);
+    pinPath.cubicTo(w * 0.18, h * 0.58, w * 0.12, h * 0.40, w * 0.12, h * 0.32);
+    pinPath.arcToPoint(
+      Offset(w * 0.88, h * 0.32),
+      radius: Radius.circular(w * 0.38),
+      largeArc: true,
+    );
+    pinPath.cubicTo(w * 0.88, h * 0.40, w * 0.82, h * 0.58, w * 0.5, h * 0.94);
+    pinPath.close();
+
+    canvas.drawPath(pinPath, fillPaint);
+
+    // Center cutout dot
+    final centerDotPaint = Paint()
+      ..color = const Color(0xFF1D4ED8)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(w * 0.5, h * 0.34), w * 0.16, centerDotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapPinPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 11. Weather Sun Metric Icon (Sun disc with rays)
+class WeatherSunMetricIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const WeatherSunMetricIcon({
+    super.key,
+    this.size = 13,
+    this.color = const Color(0xFF1D4ED8),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _SunPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _SunPainter extends CustomPainter {
+  final Color color;
+  _SunPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w * 0.5, h * 0.5);
+
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.2, w * 0.09)
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Center sun disc
+    canvas.drawCircle(center, w * 0.24, fillPaint);
+
+    // 8 rays
+    final rayLen = w * 0.12;
+    final innerR = w * 0.32;
+    for (int i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      final x1 = center.dx + innerR * math.cos(angle);
+      final y1 = center.dy + innerR * math.sin(angle);
+      final x2 = center.dx + (innerR + rayLen) * math.cos(angle);
+      final y2 = center.dy + (innerR + rayLen) * math.sin(angle);
+      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), strokePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SunPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 12. Speedometer Metric Icon (Gauge dial with needle)
+class SpeedometerMetricIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const SpeedometerMetricIcon({
+    super.key,
+    this.size = 13,
+    this.color = const Color(0xFF1D4ED8),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _SpeedometerPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _SpeedometerPainter extends CustomPainter {
+  final Color color;
+  _SpeedometerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w * 0.5, h * 0.65);
+    final radius = w * 0.38;
+
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.3, w * 0.09)
+      ..strokeCap = StrokeCap.round;
+
+    // Gauge arc
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi * 0.85,
+      math.pi * 1.30,
+      false,
+      strokePaint,
+    );
+
+    // Gauge needle pointing up-right (~60-70 km/h)
+    final needleEnd = Offset(center.dx + radius * 0.55 * math.cos(-math.pi * 0.30),
+                             center.dy + radius * 0.55 * math.sin(-math.pi * 0.30));
+    canvas.drawLine(center, needleEnd, strokePaint);
+
+    // Center pivot
+    final pivotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, w * 0.09, pivotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeedometerPainter oldDelegate) => oldDelegate.color != color;
+}
+
+

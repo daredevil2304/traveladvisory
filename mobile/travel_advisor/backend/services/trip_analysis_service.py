@@ -7,7 +7,9 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models.trip import Trip
+from services.google_maps_traffic_service import google_maps_traffic_service
 from services.route_segment_service import (
+    ROUTE_POINT_COORDINATES,
     get_route_summary,
     get_segment_coordinates,
     resolve_route_segments,
@@ -175,6 +177,17 @@ class TripAnalysisService:
 
         segment_results: list[dict[str, Any]] = []
 
+        is_traveler = (trip.role or "").lower() == "traveler"
+        seg_endpoints = {
+            "R1": ("Mumbai", "Panvel"),
+            "R2": ("Panvel", "Khalapur"),
+            "R3": ("Khalapur", "Khopoli"),
+            "R4": ("Khopoli", "Khandala"),
+            "R5": ("Khandala", "Lonavala"),
+            "R6": ("Lonavala", "Kamshet"),
+            "R7": ("Kamshet", "Pune"),
+        }
+
         for region in route_segments:
             result = self._evaluate_segment(
                 db=db,
@@ -182,8 +195,35 @@ class TripAnalysisService:
                 region=region,
             )
 
+            res_dict = result.to_dict()
+
+            # LIVE TRAFFIC ONLY FOR TRAVELER SECTION (NOT PLANNER)
+            if is_traveler:
+                start_name, end_name = seg_endpoints.get(region.upper(), ("Panvel", "Pune"))
+                start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
+                end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
+                traffic = google_maps_traffic_service.get_segment_traffic(
+                    start_coords=start_c,
+                    end_coords=end_c,
+                    start_name=start_name,
+                    end_name=end_name,
+                )
+                res_dict["live_traffic"] = traffic
+
+                # If notable congestion or delay, surface as a traveler evidence reason
+                if traffic.get("delay_minutes", 0) >= 3 or traffic.get("congestion_level") in ("moderate", "heavy", "standstill"):
+                    traffic_msg = f"Traffic flow: {traffic.get('status_label')} (~{traffic.get('delay_minutes')}m delay, cruising speed {traffic.get('speed_advice')})"
+                    safety_score_res = res_dict.get("safety_score_result")
+                    if isinstance(safety_score_res, dict):
+                        current_reasons = safety_score_res.get("reasons")
+                        if isinstance(current_reasons, list):
+                            current_reasons.append(traffic_msg)
+            else:
+                # Strictly excluded for Planner trips (relies on weather forecasts only)
+                res_dict["live_traffic"] = None
+
             segment_results.append(
-                result.to_dict()
+                res_dict
             )
 
         # =========================================================

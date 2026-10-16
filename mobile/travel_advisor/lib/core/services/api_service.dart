@@ -1089,4 +1089,30 @@ class ApiService {
       await _secureStorage.write(key: key, value: value);
     } catch (_) {}
   }
+
+  // ============================================================
+  // LIVE CORRIDOR TELEMETRY (OPENWEATHER + GOOGLE MAPS TRAFFIC)
+  // ============================================================
+
+  static Future<Map<String, dynamic>?> getCorridorTelemetry() async {
+    final uri = Uri.parse('$baseUrl/trip/corridor-telemetry');
+    try {
+      final response = await http
+          .get(
+            uri,
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -41,7 +41,15 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   // Selected expressway node in interactive corridor strip (Default: Bhor Ghat)
   int _selectedExpresswayNodeIndex = 4;
 
-  static const List<Map<String, dynamic>> _expresswayNodes = [
+  // Dynamic corridor telemetry KPI state variables
+  int _corridorSafetyScore = 96;
+  String _corridorSafetyBadge = 'Optimal';
+  String _ghatTemperature = '28°C';
+  String _ghatCondition = 'Clear';
+  String _corridorTrafficSummary = 'Clear';
+  String _corridorTrafficBadge = 'Free Flow';
+
+  static const List<Map<String, dynamic>> _defaultExpresswayNodes = [
     {
       'name': 'Mumbai',
       'code': 'BOM',
@@ -115,6 +123,19 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
       'desc': 'Expressway terminal at Kiwale / Dehu Road Bypass leading into Hinjewadi & Wakad.',
     },
   ];
+
+  // Dynamic nodes list that is populated from OpenWeather & Google Maps traffic APIs
+  late List<Map<String, dynamic>> _expresswayNodes = List.from(_defaultExpresswayNodes);
+
+  Color _resolveStatusColor(dynamic val) {
+    if (val is Color) return val;
+    if (val is String) {
+      final hex = val.replaceAll('#', '');
+      final parsed = int.tryParse(hex, radix: 16);
+      if (parsed != null) return Color(0xFF000000 | parsed);
+    }
+    return const Color(0xFF10B981);
+  }
 
   // Selected commute schedule slot (0: Outbound Commute, 1: Return Commute)
   int _selectedScheduleSlot = 0;
@@ -332,6 +353,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           _isLoadingReports = false;
         });
       }
+
+      // 4. Load Dynamic Corridor Telemetry (OpenWeather + Google Maps Traffic)
+      await _fetchLiveCorridorTelemetry();
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingReports = false);
@@ -353,11 +377,48 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           _isLoadingReports = false;
         });
       }
+      await _fetchLiveCorridorTelemetry();
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingReports = false);
       }
     }
+  }
+
+  Future<void> _fetchLiveCorridorTelemetry() async {
+    try {
+      final telemetry = await ApiService.getCorridorTelemetry();
+      if (telemetry != null && mounted) {
+        setState(() {
+          if (telemetry['corridor_safety_score'] is int) {
+            _corridorSafetyScore = telemetry['corridor_safety_score'] as int;
+          }
+          if (telemetry['corridor_safety_badge'] != null) {
+            _corridorSafetyBadge = telemetry['corridor_safety_badge'].toString();
+          }
+          if (telemetry['ghat_temperature'] != null) {
+            _ghatTemperature = telemetry['ghat_temperature'].toString();
+          }
+          if (telemetry['ghat_condition'] != null) {
+            _ghatCondition = telemetry['ghat_condition'].toString();
+          }
+          if (telemetry['corridor_traffic_summary'] != null) {
+            _corridorTrafficSummary = telemetry['corridor_traffic_summary'].toString();
+            _corridorTrafficBadge = _corridorTrafficSummary.contains('Delay')
+                ? 'Caution'
+                : 'Free Flow';
+          }
+          final rawNodes = telemetry['nodes'] as List?;
+          if (rawNodes != null && rawNodes.isNotEmpty) {
+            _expresswayNodes = rawNodes.map((e) {
+              final m = Map<String, dynamic>.from(e as Map);
+              m['statusColor'] = _resolveStatusColor(m['statusColor']);
+              return m;
+            }).toList();
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // ============================================================
@@ -1664,37 +1725,42 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
           children: [
             Expanded(
               child: _buildTelemetryKpiCard(
-                icon: Icons.shield_rounded,
+                customIcon: const CorridorSafetyShieldIcon(size: 15, color: Color(0xFF10B981)),
                 iconColor: const Color(0xFF10B981),
-                value: '96/100',
+                value: '$_corridorSafetyScore/100',
                 label: 'Corridor Safety',
-                badgeText: 'Optimal',
-                badgeColor: const Color(0xFF10B981),
+                badgeText: _corridorSafetyBadge,
+                badgeColor: _corridorSafetyScore >= 90 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _buildTelemetryKpiCard(
-                icon: Icons.terrain_rounded,
+                customIcon: const GhatMountainIcon(size: 15, color: Color(0xFF0284C7)),
                 iconColor: const Color(0xFF0284C7),
-                value: '19°C',
+                value: _ghatTemperature,
                 label: 'Ghat Sector',
-                badgeText: 'Clear/Mist',
+                badgeText: _ghatCondition,
                 badgeColor: const Color(0xFF0284C7),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _buildTelemetryKpiCard(
-                icon: Icons.traffic_rounded,
+                customIcon: CorridorTrafficLightIcon(
+                  size: 15,
+                  color: _liveReportsPreview.isEmpty
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFF59E0B),
+                ),
                 iconColor: _liveReportsPreview.isEmpty
                     ? const Color(0xFF10B981)
                     : const Color(0xFFF59E0B),
                 value: _liveReportsPreview.isEmpty
-                    ? 'Clear'
+                    ? _corridorTrafficSummary
                     : '${_liveReportsPreview.length} Active',
                 label: 'Corridor Traffic',
-                badgeText: _liveReportsPreview.isEmpty ? 'Free Flow' : 'Caution',
+                badgeText: _liveReportsPreview.isEmpty ? _corridorTrafficBadge : 'Caution',
                 badgeColor: _liveReportsPreview.isEmpty
                     ? const Color(0xFF10B981)
                     : const Color(0xFFF59E0B),
@@ -1784,7 +1850,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   itemBuilder: (context, idx) {
                     final node = _expresswayNodes[idx];
                     final isSelected = _selectedExpresswayNodeIndex == idx;
-                    final Color dotColor = node['statusColor'] as Color;
+                    final Color dotColor = _resolveStatusColor(node['statusColor']);
 
                     return GestureDetector(
                       onTap: () {
@@ -1904,7 +1970,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                                 color: const Color(0xFF1D4ED8),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.place_rounded, size: 14, color: Colors.white),
+                              child: const SectorMapPinIcon(size: 14, color: Colors.white),
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -1929,7 +1995,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: selectedNode['statusColor'] as Color,
+                              color: _resolveStatusColor(selectedNode['statusColor']),
                             ),
                           ),
                         ),
@@ -1939,12 +2005,12 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                     Row(
                       children: [
                         _buildSectorMetricPill(
-                          icon: Icons.wb_sunny_outlined,
+                          customIcon: const WeatherSunMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
                           label: selectedNode['weather'] as String,
                         ),
                         const SizedBox(width: 6),
                         _buildSectorMetricPill(
-                          icon: Icons.speed_rounded,
+                          customIcon: const SpeedometerMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
                           label: 'Adv: ${selectedNode['speedAdvice']}',
                         ),
                       ],
@@ -2183,7 +2249,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   }
 
   Widget _buildTelemetryKpiCard({
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required Color iconColor,
     required String value,
     required String label,
@@ -2216,7 +2283,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 14, color: iconColor),
+                child: customIcon ?? Icon(icon, size: 14, color: iconColor),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -2261,7 +2328,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   }
 
   Widget _buildSectorMetricPill({
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required String label,
   }) {
     return Container(
@@ -2274,7 +2342,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF1D4ED8)),
+          customIcon ?? Icon(icon, size: 12, color: const Color(0xFF1D4ED8)),
           const SizedBox(width: 4),
           Text(
             label,
