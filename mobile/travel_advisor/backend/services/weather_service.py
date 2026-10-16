@@ -9,6 +9,28 @@ import requests
 from config import settings
 
 
+# Canonical municipal weather station coordinates for corridor cities.
+# OpenWeather's generic 'q=City,IN' query can resolve to maritime/harbor stations
+# with coastal cooling (e.g. South Bombay / Wadala 19.0144, 72.8479 returning 28-29°C),
+# whereas official municipal station observations shown on openweathermap.org use the
+# Santacruz IMD / city center coordinates (19.0760, 72.8777 returning 31-32°C).
+MUNICIPAL_STATION_COORDINATES: dict[str, tuple[float, float]] = {
+    "mumbai": (19.0760, 72.8777),
+    "bombay": (19.0760, 72.8777),
+    "sion": (19.0760, 72.8777),
+    "kurla": (19.0760, 72.8777),
+    "santacruz": (19.0760, 72.8777),
+    "panvel": (18.9888, 73.1101),
+    "khalapur": (18.8167, 73.2667),
+    "khopoli": (18.7877, 73.3438),
+    "khandala": (18.7607, 73.3768),
+    "bhor ghat": (18.7607, 73.3768),
+    "lonavala": (18.7546, 73.4062),
+    "kamshet": (18.7629, 73.5576),
+    "pune": (18.5204, 73.8567),
+}
+
+
 @dataclass(frozen=True)
 class WeatherData:
     """
@@ -141,13 +163,24 @@ class WeatherService:
     ) -> WeatherData:
         """
         Retrieve current weather from OpenWeather.
-        Supports querying by canonical city name (e.g. "Mumbai,IN") for exact
-        official station observations, or falling back to coordinates.
+        Supports querying by canonical municipal station coordinates (e.g. Santacruz
+        station for Mumbai matching openweathermap.org), or falling back to coordinates.
         """
+        query_lat = latitude
+        query_lon = longitude
+
+        if city_name and isinstance(city_name, str) and city_name.strip():
+            city_key = city_name.strip().lower()
+            if city_key in MUNICIPAL_STATION_COORDINATES:
+                query_lat, query_lon = MUNICIPAL_STATION_COORDINATES[city_key]
+        elif (abs(latitude - 19.0144) < 0.05 and abs(longitude - 72.8479) < 0.05):
+            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["mumbai"]
+        elif (abs(latitude - 18.5196) < 0.05 and abs(longitude - 73.8553) < 0.05):
+            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["pune"]
 
         self.validate_coordinates(
-            latitude=latitude,
-            longitude=longitude,
+            latitude=query_lat,
+            longitude=query_lon,
         )
 
         api_key = settings.openweather_api_key.strip()
@@ -162,8 +195,13 @@ class WeatherService:
             "/weather"
         )
 
-        # If city_name is provided, attempt official municipal station lookup first
-        if city_name and isinstance(city_name, str) and city_name.strip():
+        # For unmapped city names, attempt city lookup first
+        if (
+            city_name
+            and isinstance(city_name, str)
+            and city_name.strip()
+            and city_name.strip().lower() not in MUNICIPAL_STATION_COORDINATES
+        ):
             canonical_q = f"{city_name.strip()},IN"
             params_city = {
                 "q": canonical_q,
@@ -180,15 +218,15 @@ class WeatherService:
                     payload = response.json()
                     return self._parse_openweather_response(
                         payload=payload,
-                        requested_latitude=latitude,
-                        requested_longitude=longitude,
+                        requested_latitude=query_lat,
+                        requested_longitude=query_lon,
                     )
             except Exception:
                 pass
 
         params = {
-            "lat": latitude,
-            "lon": longitude,
+            "lat": query_lat,
+            "lon": query_lon,
             "appid": api_key,
             "units": "metric",
         }
@@ -223,8 +261,8 @@ class WeatherService:
 
         return self._parse_openweather_response(
             payload=payload,
-            requested_latitude=latitude,
-            requested_longitude=longitude,
+            requested_latitude=query_lat,
+            requested_longitude=query_lon,
         )
 
     def get_forecast_weather(
@@ -237,22 +275,39 @@ class WeatherService:
         """
         Retrieve 5-day / 3-hour forecast from OpenWeather and pick
         the forecast interval closest to target_time in IST.
-        Supports querying by city_name for exact city station forecast.
+        Supports querying by municipal station coordinates for exact city station forecast.
         """
+        query_lat = latitude
+        query_lon = longitude
+
+        if city_name and isinstance(city_name, str) and city_name.strip():
+            city_key = city_name.strip().lower()
+            if city_key in MUNICIPAL_STATION_COORDINATES:
+                query_lat, query_lon = MUNICIPAL_STATION_COORDINATES[city_key]
+        elif (abs(latitude - 19.0144) < 0.05 and abs(longitude - 72.8479) < 0.05):
+            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["mumbai"]
+        elif (abs(latitude - 18.5196) < 0.05 and abs(longitude - 73.8553) < 0.05):
+            query_lat, query_lon = MUNICIPAL_STATION_COORDINATES["pune"]
+
         self.validate_coordinates(
-            latitude=latitude,
-            longitude=longitude,
+            latitude=query_lat,
+            longitude=query_lon,
         )
 
         api_key = settings.openweather_api_key.strip()
         if not api_key:
-            return self.get_current_weather(latitude, longitude, city_name=city_name)
+            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
         url = f"{settings.openweather_base_url.rstrip('/')}/forecast"
 
         response = None
-        # Try city query first if provided
-        if city_name and isinstance(city_name, str) and city_name.strip():
+        # Try city query first if provided and not in municipal coordinates
+        if (
+            city_name
+            and isinstance(city_name, str)
+            and city_name.strip()
+            and city_name.strip().lower() not in MUNICIPAL_STATION_COORDINATES
+        ):
             try:
                 resp = requests.get(
                     url,
@@ -270,8 +325,8 @@ class WeatherService:
 
         if response is None:
             params = {
-                "lat": latitude,
-                "lon": longitude,
+                "lat": query_lat,
+                "lon": query_lon,
                 "appid": api_key,
                 "units": "metric",
             }
@@ -283,19 +338,19 @@ class WeatherService:
                     timeout=self.REQUEST_TIMEOUT_SECONDS,
                 )
             except requests.RequestException:
-                return self.get_current_weather(latitude, longitude, city_name=city_name)
+                return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
         if response.status_code != 200:
-            return self.get_current_weather(latitude, longitude, city_name=city_name)
+            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
         try:
             payload = response.json()
         except ValueError:
-            return self.get_current_weather(latitude, longitude, city_name=city_name)
+            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
         forecast_list = payload.get("list")
         if not isinstance(forecast_list, list) or not forecast_list:
-            return self.get_current_weather(latitude, longitude, city_name=city_name)
+            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
         # If target_time is specified, select the entry with closest timestamp
         selected_entry = forecast_list[0]
@@ -312,8 +367,8 @@ class WeatherService:
 
         parsed = self._parse_openweather_response(
             payload=selected_entry,
-            requested_latitude=latitude,
-            requested_longitude=longitude,
+            requested_latitude=query_lat,
+            requested_longitude=query_lon,
         )
         return WeatherData(
             latitude=parsed.latitude,

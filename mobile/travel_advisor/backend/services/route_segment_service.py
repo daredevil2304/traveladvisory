@@ -58,14 +58,14 @@ ROUTE_SEGMENTS: tuple[RouteSegment, ...] = (
 # ================================================================
 
 ROUTE_POINT_COORDINATES: dict[str, tuple[float, float]] = {
-    "Mumbai": (19.0144, 72.8479),
+    "Mumbai": (19.0760, 72.8777),
     "Panvel": (18.9888, 73.1101),
     "Khalapur": (18.8167, 73.2667),
     "Khopoli": (18.7877, 73.3438),
     "Khandala": (18.7607, 73.3768),
     "Lonavala": (18.7546, 73.4062),
     "Kamshet": (18.7629, 73.5576),
-    "Pune": (18.5196, 73.8553),
+    "Pune": (18.5204, 73.8567),
 }
 
 

@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 # Node definitions for the 8 primary expressway monitoring points: (name, code, city_query, coords, base_desc)
 EXPRESSWAY_MONITORING_NODES = (
-    ("Mumbai", "BOM", "Mumbai", (19.0144, 72.8479), "Eastern Freeway & Mankhurd-Vashi flyover approaches. Metropolitan corridor flow."),
+    ("Mumbai", "BOM", "Mumbai", (19.0760, 72.8777), "Eastern Freeway & Mankhurd-Vashi flyover approaches. Metropolitan corridor flow."),
     ("Panvel", "PNV", "Panvel", (18.9888, 73.1101), "NE-1 Expressway entry & Kalamboli junction. 6 wide asphalt lanes open."),
     ("Khalapur", "KHL", "Khalapur", (18.8167, 73.2667), "Khalapur toll gates & food plaza area. High-visibility open corridor stretch."),
     ("Khopoli", "KHP", "Khopoli", (18.7877, 73.3438), "Base of the Sahyadri mountains. Heavy vehicle lane discipline monitored."),
     ("Bhor Ghat", "GHT", "Khandala", (18.7607, 73.3768), "Steep gradient & hairpin curves. Low gear mandatory, maintain 50m braking distance."),
     ("Lonavala", "LNV", "Lonavala", (18.7546, 73.4062), "Khandala viaduct & tunnel bypasses. Smooth asphalt surface and high altitude plateau."),
     ("Kamshet", "KMS", "Kamshet", (18.7629, 73.5576), "Talegaon expressway run with twin tunnels. Free-flowing cruising section."),
-    ("Pune", "PUN", "Pune", (18.5196, 73.8553), "Expressway terminal at Kiwale / Dehu Road Bypass leading into Hinjewadi & Wakad."),
+    ("Pune", "PUN", "Pune", (18.5204, 73.8567), "Expressway terminal at Kiwale / Dehu Road Bypass leading into Hinjewadi & Wakad."),
 )
 
 

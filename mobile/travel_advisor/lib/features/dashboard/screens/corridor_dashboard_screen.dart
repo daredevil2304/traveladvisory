@@ -51,7 +51,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Mumbai',
       'code': 'BOM',
-      'weather': '29°C Clear',
+      'weather': '32°C Clear',
       'status': 'Normal Flow',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-80 km/h',
