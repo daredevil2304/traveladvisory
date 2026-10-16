@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -150,28 +149,28 @@ class NotificationService {
 
       await requestPermission();
 
-      final now = DateTime.now();
-      var scheduled = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        alertTime.hour,
-        alertTime.minute,
-      );
-
-      if (scheduled.isBefore(now)) {
-        scheduled = scheduled.add(const Duration(days: 1));
+      tz.initializeTimeZones();
+      tz.Location location;
+      try {
+        location = tz.getLocation('Asia/Kolkata');
+      } catch (_) {
+        location = tz.local;
       }
 
-      final tzLocation = tz.local;
-      final tzScheduled = tz.TZDateTime(
-        tzLocation,
-        scheduled.year,
-        scheduled.month,
-        scheduled.day,
+      final tz.TZDateTime nowTz = tz.TZDateTime.now(location);
+      var scheduledTz = tz.TZDateTime(
+        location,
+        nowTz.year,
+        nowTz.month,
+        nowTz.day,
         alertTime.hour,
         alertTime.minute,
       );
+
+      // Advance to tomorrow if the time has already passed today
+      if (scheduledTz.isBefore(nowTz) || scheduledTz.isAtSameMomentAs(nowTz)) {
+        scheduledTz = scheduledTz.add(const Duration(days: 1));
+      }
 
       final String bigSummary = warnings.isNotEmpty
           ? '$body\n\nActive Hazards:\n• ${warnings.join("\n• ")}'
@@ -192,23 +191,27 @@ class NotificationService {
         ),
       );
 
+      // Cancel previous scheduled alarms for this id before rescheduling
+      await cancelScheduledAlert(id: id);
+
       try {
         await _notificationsPlugin.zonedSchedule(
           id: id,
           title: title,
           body: body,
-          scheduledDate: tzScheduled,
+          scheduledDate: scheduledTz,
           notificationDetails: NotificationDetails(android: androidDetails),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.time,
           payload: 'commute_scheduled_alert',
         );
-      } catch (_) {
+      } catch (e) {
+        debugPrint('exactAllowWhileIdle fallback to inexact: $e');
         await _notificationsPlugin.zonedSchedule(
           id: id,
           title: title,
           body: body,
-          scheduledDate: tzScheduled,
+          scheduledDate: scheduledTz,
           notificationDetails: NotificationDetails(android: androidDetails),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.time,
@@ -216,32 +219,7 @@ class NotificationService {
         );
       }
 
-      // Also schedule a companion one-shot alarm for the immediate next occurrence
-      try {
-        await _notificationsPlugin.zonedSchedule(
-          id: id + 10000,
-          title: title,
-          body: body,
-          scheduledDate: tzScheduled,
-          notificationDetails: NotificationDetails(android: androidDetails),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: 'commute_scheduled_alert_oneshot',
-        );
-      } catch (_) {
-        try {
-          await _notificationsPlugin.zonedSchedule(
-            id: id + 10000,
-            title: title,
-            body: body,
-            scheduledDate: tzScheduled,
-            notificationDetails: NotificationDetails(android: androidDetails),
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            payload: 'commute_scheduled_alert_oneshot',
-          );
-        } catch (_) {}
-      }
-
-      debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute}');
+      debugPrint('Scheduled daily alert #$id at ${alertTime.hour}:${alertTime.minute} (next trigger: $scheduledTz)');
       return true;
     } catch (e) {
       debugPrint('Failed to schedule daily commute alert: $e');

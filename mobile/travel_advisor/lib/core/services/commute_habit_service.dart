@@ -30,8 +30,6 @@ class CommuteHabitService {
   Timer? _scheduleTimer;
   Timer? _outboundTimer;
   Timer? _returnTimer;
-  String? _lastOutboundNotificationDate;
-  String? _lastReturnNotificationDate;
   bool _initialized = false;
 
   /// Initialize service and check for active commute alerts
@@ -115,12 +113,6 @@ class CommuteHabitService {
     final timer = Timer(delay, () async {
       final nowT = DateTime.now();
       if (isScheduledDay(travelDays, nowT.weekday)) {
-        final todayStr = '${nowT.year}-${nowT.month}-${nowT.day}';
-        if (slot == 0) {
-          _lastOutboundNotificationDate = todayStr;
-        } else {
-          _lastReturnNotificationDate = todayStr;
-        }
         await fetchAlert(
           source: src,
           destination: dst,
@@ -468,28 +460,11 @@ class CommuteHabitService {
 
     final targetMinutesSinceMidnight = alertTime.hour * 60 + alertTime.minute;
     final currentMinutesSinceMidnight = now.hour * 60 + now.minute;
-
     final diff = currentMinutesSinceMidnight - targetMinutesSinceMidnight;
-    final isOutbound =
-        habit['schedule_type'] == 'outbound' || habit['id'] == 1001;
-    final todayStr = '${now.year}-${now.month}-${now.day}';
-    final alreadyNotified = isOutbound
-        ? _lastOutboundNotificationDate == todayStr
-        : _lastReturnNotificationDate == todayStr;
 
-    // Dispatches proactive alert notification to system drawer when the alert time strikes
-    if (diff >= 0 && diff <= 10 && !alreadyNotified) {
-      if (isOutbound) {
-        _lastOutboundNotificationDate = todayStr;
-      } else {
-        _lastReturnNotificationDate = todayStr;
-      }
-      await fetchAlert(
-        source: habit['source'] ?? 'Panvel',
-        destination: habit['destination'] ?? 'Pune',
-        notifySystemTray: true,
-      );
-    } else if (diff >= -5 && diff <= 45) {
+    // Keep the in-app active alert banner updated silently.
+    // NEVER dispatch a notification to the system notification drawer when opening the app.
+    if (diff >= -15 && diff <= 60) {
       if (activeAlertNotifier.value == null) {
         await fetchAlert(
           source: habit['source'] ?? 'Panvel',
