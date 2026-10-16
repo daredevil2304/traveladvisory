@@ -529,7 +529,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                         'Automatically evaluates corridor safety prior to departure',
                       ),
                       value: isEnabled,
-                      activeColor: AppTheme.forestGreen,
+                      activeThumbColor: AppTheme.forestGreen,
                       onChanged: (val) {
                         setModalState(() => isEnabled = val);
                       },
@@ -1072,7 +1072,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                     _buildHabitRow(
                       icon: Icons.departure_board,
                       label: 'Departure Time',
-                      value: '$depTime',
+                      value: depTime,
                     ),
                     const Divider(height: 16),
                     _buildHabitRow(
@@ -1095,7 +1095,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   ),
                   Switch(
                     value: isEnabled,
-                    activeColor: AppTheme.forestGreen,
+                    activeThumbColor: AppTheme.forestGreen,
                     onChanged: (val) async {
                       await _habitService.saveHabit(
                         source: src,

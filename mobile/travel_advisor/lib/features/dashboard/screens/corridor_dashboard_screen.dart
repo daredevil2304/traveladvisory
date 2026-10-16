@@ -500,6 +500,10 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     setState(() => _isSavingSchedule = true);
     if (_currentNotificationsEnabled) {
       await NotificationService().requestPermission();
+      final canExact = await NotificationService().canScheduleExactAlarms();
+      if (!canExact) {
+        await NotificationService().requestExactAlarmsPermission();
+      }
     }
 
     final formattedDep =
@@ -3055,6 +3059,10 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                     setState(() => _currentNotificationsEnabled = val);
                     if (val) {
                       await NotificationService().requestPermission();
+                      final canExact = await NotificationService().canScheduleExactAlarms();
+                      if (!canExact) {
+                        await NotificationService().requestExactAlarmsPermission();
+                      }
                     }
                   },
                 ),
@@ -3367,6 +3375,10 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     setState(() => _isSavingSchedule = true);
     if (_outboundNotificationsEnabled || _returnNotificationsEnabled) {
       await NotificationService().requestPermission();
+      final canExact = await NotificationService().canScheduleExactAlarms();
+      if (!canExact) {
+        await NotificationService().requestExactAlarmsPermission();
+      }
     }
 
     final outDep = CommuteHabitService.formatTime12h(_outboundDepartureTime);
