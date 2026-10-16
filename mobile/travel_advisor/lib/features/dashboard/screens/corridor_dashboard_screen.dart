@@ -54,7 +54,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Mumbai',
       'code': 'BOM',
-      'weather': '28°C Clear',
+      'weather': '29°C Clear',
       'status': 'Normal Flow',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-80 km/h',
@@ -63,7 +63,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Panvel',
       'code': 'PNV',
-      'weather': '27°C Hazy',
+      'weather': '31°C Clear',
       'status': 'Expressway Entry',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '80-100 km/h',
@@ -72,7 +72,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Khalapur',
       'code': 'KHL',
-      'weather': '25°C Clear',
+      'weather': '31°C Clear',
       'status': 'Toll Plaza',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '100 km/h',
@@ -81,16 +81,16 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Khopoli',
       'code': 'KHP',
-      'weather': '23°C Cloudy',
+      'weather': '31°C Clear',
       'status': 'Ghat Approach',
-      'statusColor': Color(0xFFF59E0B),
+      'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-70 km/h',
       'desc': 'Base of the Sahyadri mountains. Heavy vehicle lane discipline strictly monitored.',
     },
     {
       'name': 'Bhor Ghat',
       'code': 'GHT',
-      'weather': '19°C Mist',
+      'weather': '28°C Clear',
       'status': 'Mountain Sector',
       'statusColor': Color(0xFFF59E0B),
       'speedAdvice': '40-50 km/h',
@@ -99,7 +99,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Lonavala',
       'code': 'LNV',
-      'weather': '21°C Mild',
+      'weather': '28°C Clear',
       'status': 'Plateau Section',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '70-80 km/h',
@@ -108,7 +108,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Kamshet',
       'code': 'KMS',
-      'weather': '24°C Sunny',
+      'weather': '28°C Clear',
       'status': 'Open Plains',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '90-100 km/h',
@@ -117,7 +117,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
     {
       'name': 'Pune',
       'code': 'PUN',
-      'weather': '26°C Clear',
+      'weather': '29°C Clear',
       'status': 'Corridor End',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-80 km/h',

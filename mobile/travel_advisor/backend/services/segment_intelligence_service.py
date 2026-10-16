@@ -147,6 +147,8 @@ class SegmentIntelligenceService:
         # 3. OpenWeather
         # =========================================================
 
+        start_city = segment_details.get("start") if isinstance(segment_details, dict) else None
+
         (
             weather_result,
             weather_dimensions,
@@ -154,6 +156,7 @@ class SegmentIntelligenceService:
             latitude=latitude,
             longitude=longitude,
             target_datetime=travel_datetime,
+            city_name=start_city,
         )
 
         # =========================================================
@@ -303,6 +306,7 @@ class SegmentIntelligenceService:
         latitude: float,
         longitude: float,
         target_datetime: datetime | None = None,
+        city_name: str | None = None,
     ) -> tuple[
         dict[str, Any] | None,
         dict[str, Any] | None,
@@ -326,6 +330,7 @@ class SegmentIntelligenceService:
                         latitude=latitude,
                         longitude=longitude,
                         target_time=target_datetime,
+                        city_name=city_name,
                     )
                 )
             else:
@@ -333,6 +338,7 @@ class SegmentIntelligenceService:
                     weather_service.get_current_weather(
                         latitude=latitude,
                         longitude=longitude,
+                        city_name=city_name,
                     )
                 )
 

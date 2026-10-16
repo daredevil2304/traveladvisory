@@ -365,7 +365,9 @@ class CommuteNotificationService:
             weather = None
             try:
                 coords = get_route_point_coordinates(seg_metadata.start)
-                weather = weather_service.get_current_weather(coords[0], coords[1])
+                weather = weather_service.get_current_weather(
+                    coords[0], coords[1], city_name=seg_metadata.start
+                )
             except Exception:
                 pass
 

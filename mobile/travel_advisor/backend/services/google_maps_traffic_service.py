@@ -12,16 +12,16 @@ from services.weather_service import weather_service
 
 logger = logging.getLogger(__name__)
 
-# Node definitions for the 8 primary expressway monitoring points
+# Node definitions for the 8 primary expressway monitoring points: (name, code, city_query, coords, base_desc)
 EXPRESSWAY_MONITORING_NODES = (
-    ("Mumbai", "BOM", (19.04650, 72.86330), "Eastern Freeway & Mankhurd-Vashi flyover approaches. Metropolitan corridor flow."),
-    ("Panvel", "PNV", (18.98878, 73.11013), "NE-1 Expressway entry & Kalamboli junction. 6 wide asphalt lanes open."),
-    ("Khalapur", "KHL", (18.81670, 73.26670), "Khalapur toll gates & food plaza area. High-visibility open corridor stretch."),
-    ("Khopoli", "KHP", (18.78770, 73.34380), "Base of the Sahyadri mountains. Heavy vehicle lane discipline monitored."),
-    ("Bhor Ghat", "GHT", (18.77001, 73.38300), "Steep gradient & hairpin curves. Low gear mandatory, maintain 50m braking distance."),
-    ("Lonavala", "LNV", (18.75460, 73.40620), "Khandala viaduct & tunnel bypasses. Smooth asphalt surface and high altitude plateau."),
-    ("Kamshet", "KMS", (18.76290, 73.55760), "Talegaon expressway run with twin tunnels. Free-flowing cruising section."),
-    ("Pune", "PUN", (18.52050, 73.85650), "Expressway terminal at Kiwale / Dehu Road Bypass leading into Hinjewadi & Wakad."),
+    ("Mumbai", "BOM", "Mumbai", (19.0144, 72.8479), "Eastern Freeway & Mankhurd-Vashi flyover approaches. Metropolitan corridor flow."),
+    ("Panvel", "PNV", "Panvel", (18.9888, 73.1101), "NE-1 Expressway entry & Kalamboli junction. 6 wide asphalt lanes open."),
+    ("Khalapur", "KHL", "Khalapur", (18.8167, 73.2667), "Khalapur toll gates & food plaza area. High-visibility open corridor stretch."),
+    ("Khopoli", "KHP", "Khopoli", (18.7877, 73.3438), "Base of the Sahyadri mountains. Heavy vehicle lane discipline monitored."),
+    ("Bhor Ghat", "GHT", "Khandala", (18.7607, 73.3768), "Steep gradient & hairpin curves. Low gear mandatory, maintain 50m braking distance."),
+    ("Lonavala", "LNV", "Lonavala", (18.7546, 73.4062), "Khandala viaduct & tunnel bypasses. Smooth asphalt surface and high altitude plateau."),
+    ("Kamshet", "KMS", "Kamshet", (18.7629, 73.5576), "Talegaon expressway run with twin tunnels. Free-flowing cruising section."),
+    ("Pune", "PUN", "Pune", (18.5196, 73.8553), "Expressway terminal at Kiwale / Dehu Road Bypass leading into Hinjewadi & Wakad."),
 )
 
 
@@ -40,7 +40,7 @@ class GoogleMapsTrafficService:
     def __init__(self) -> None:
         self._traffic_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._telemetry_cache: tuple[float, dict[str, Any]] | None = None
-        self._cache_ttl_seconds = 180  # 3 minutes cache to optimize API quota
+        self._cache_ttl_seconds = 60  # 1 minute cache for real-time telemetry updates
 
     def get_segment_traffic(
         self,
@@ -226,13 +226,14 @@ class GoogleMapsTrafficService:
         any_delay = False
         total_delay = 0
 
-        for name, code, coords, base_desc in EXPRESSWAY_MONITORING_NODES:
-            # 1. Real Weather from OpenWeather
-            weather_str = "27°C Clear"
+        for idx, (name, code, city_query, coords, base_desc) in enumerate(EXPRESSWAY_MONITORING_NODES):
+            # 1. Real Weather from OpenWeather (using official municipal station)
+            weather_str = "28°C Clear"
             try:
                 w_data = weather_service.get_current_weather(
                     latitude=coords[0],
                     longitude=coords[1],
+                    city_name=city_query,
                 )
                 if w_data and w_data.temperature_c is not None:
                     temp_round = round(w_data.temperature_c)
@@ -245,9 +246,10 @@ class GoogleMapsTrafficService:
                 logger.debug(f"OpenWeather fetch for {name} notice: {w_exc}")
 
             # 2. Real Traffic from Google Maps / Radar
-            next_idx = (EXPRESSWAY_MONITORING_NODES.index((name, code, coords, base_desc)) + 1) % len(EXPRESSWAY_MONITORING_NODES)
-            next_coords = EXPRESSWAY_MONITORING_NODES[next_idx][2]
-            next_name = EXPRESSWAY_MONITORING_NODES[next_idx][0]
+            next_idx = (idx + 1) % len(EXPRESSWAY_MONITORING_NODES)
+            next_node = EXPRESSWAY_MONITORING_NODES[next_idx]
+            next_name = next_node[0]
+            next_coords = next_node[3]
 
             traffic = self.get_segment_traffic(
                 start_coords=coords,

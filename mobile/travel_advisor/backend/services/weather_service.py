@@ -137,9 +137,12 @@ class WeatherService:
         self,
         latitude: float,
         longitude: float,
+        city_name: str | None = None,
     ) -> WeatherData:
         """
         Retrieve current weather from OpenWeather.
+        Supports querying by canonical city name (e.g. "Mumbai,IN") for exact
+        official station observations, or falling back to coordinates.
         """
 
         self.validate_coordinates(
@@ -158,6 +161,30 @@ class WeatherService:
             f"{settings.openweather_base_url.rstrip('/')}"
             "/weather"
         )
+
+        # If city_name is provided, attempt official municipal station lookup first
+        if city_name and isinstance(city_name, str) and city_name.strip():
+            canonical_q = f"{city_name.strip()},IN"
+            params_city = {
+                "q": canonical_q,
+                "appid": api_key,
+                "units": "metric",
+            }
+            try:
+                response = requests.get(
+                    url,
+                    params=params_city,
+                    timeout=self.REQUEST_TIMEOUT_SECONDS,
+                )
+                if response.status_code == 200:
+                    payload = response.json()
+                    return self._parse_openweather_response(
+                        payload=payload,
+                        requested_latitude=latitude,
+                        requested_longitude=longitude,
+                    )
+            except Exception:
+                pass
 
         params = {
             "lat": latitude,
@@ -205,10 +232,12 @@ class WeatherService:
         latitude: float,
         longitude: float,
         target_time: datetime | None = None,
+        city_name: str | None = None,
     ) -> WeatherData:
         """
         Retrieve 5-day / 3-hour forecast from OpenWeather and pick
         the forecast interval closest to target_time in IST.
+        Supports querying by city_name for exact city station forecast.
         """
         self.validate_coordinates(
             latitude=latitude,
@@ -217,36 +246,56 @@ class WeatherService:
 
         api_key = settings.openweather_api_key.strip()
         if not api_key:
-            return self.get_current_weather(latitude, longitude)
+            return self.get_current_weather(latitude, longitude, city_name=city_name)
 
         url = f"{settings.openweather_base_url.rstrip('/')}/forecast"
-        params = {
-            "lat": latitude,
-            "lon": longitude,
-            "appid": api_key,
-            "units": "metric",
-        }
 
-        try:
-            response = requests.get(
-                url,
-                params=params,
-                timeout=self.REQUEST_TIMEOUT_SECONDS,
-            )
-        except requests.RequestException:
-            return self.get_current_weather(latitude, longitude)
+        response = None
+        # Try city query first if provided
+        if city_name and isinstance(city_name, str) and city_name.strip():
+            try:
+                resp = requests.get(
+                    url,
+                    params={
+                        "q": f"{city_name.strip()},IN",
+                        "appid": api_key,
+                        "units": "metric",
+                    },
+                    timeout=self.REQUEST_TIMEOUT_SECONDS,
+                )
+                if resp.status_code == 200:
+                    response = resp
+            except Exception:
+                pass
+
+        if response is None:
+            params = {
+                "lat": latitude,
+                "lon": longitude,
+                "appid": api_key,
+                "units": "metric",
+            }
+
+            try:
+                response = requests.get(
+                    url,
+                    params=params,
+                    timeout=self.REQUEST_TIMEOUT_SECONDS,
+                )
+            except requests.RequestException:
+                return self.get_current_weather(latitude, longitude, city_name=city_name)
 
         if response.status_code != 200:
-            return self.get_current_weather(latitude, longitude)
+            return self.get_current_weather(latitude, longitude, city_name=city_name)
 
         try:
             payload = response.json()
         except ValueError:
-            return self.get_current_weather(latitude, longitude)
+            return self.get_current_weather(latitude, longitude, city_name=city_name)
 
         forecast_list = payload.get("list")
         if not isinstance(forecast_list, list) or not forecast_list:
-            return self.get_current_weather(latitude, longitude)
+            return self.get_current_weather(latitude, longitude, city_name=city_name)
 
         # If target_time is specified, select the entry with closest timestamp
         selected_entry = forecast_list[0]
