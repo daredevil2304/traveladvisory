@@ -38,9 +38,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   // Active segmented tab index (0: Road Radar, 1: Commute Setup, 2: Saved Reports)
   int _selectedTabIndex = 0;
 
-  // Selected expressway node in interactive corridor strip (Default: Bhor Ghat)
-  int _selectedExpresswayNodeIndex = 4;
-
   // Dynamic corridor telemetry KPI state variables
   int _corridorSafetyScore = 96;
   String _corridorSafetyBadge = 'Optimal';
@@ -1762,9 +1759,196 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
   // SECTION 2: LIVE ROAD UPDATES & CORRIDOR HUB
   // ============================================================
 
-  Widget _buildLiveUpdatesSection() {
-    final selectedNode = _expresswayNodes[_selectedExpresswayNodeIndex];
+  void _showSectorCopilotDialog(Map<String, dynamic> node) {
+    final String sectorName = node['name'] as String? ?? 'Corridor';
+    final String sectorCode = node['code'] as String? ?? 'NE-1';
+    final String status = node['status'] as String? ?? 'Normal';
+    final Color dotColor = _resolveStatusColor(node['statusColor']);
 
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.route_rounded,
+                            size: 18, color: Color(0xFF1D4ED8)),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '$sectorName ($sectorCode)',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.darkNavy,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: dotColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: dotColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildSectorMetricPill(
+                    customIcon: const WeatherSunMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
+                    label: node['weather'] as String? ?? 'Clear',
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSectorMetricPill(
+                    customIcon: const SpeedometerMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
+                    label: 'Adv: ${node['speedAdvice'] ?? '80 km/h'}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Option 1: Traveler Copilot
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.locationPermission,
+                    arguments: {'role': 'traveler', 'sector': sectorName},
+                  );
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.navigation_rounded,
+                          size: 20, color: Color(0xFF16A34A)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Traveler Copilot (En Route)',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF166534),
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Live GPS radar, real-time hazards & lane guidance',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 13, color: Color(0xFF16A34A)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Option 2: Planner Copilot
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.locationPermission,
+                    arguments: {'role': 'planner', 'sector': sectorName},
+                  );
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.calendar_month_rounded,
+                          size: 20, color: Color(0xFF2563EB)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Planner Copilot (Pre-Trip)',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E40AF),
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Departure window forecast & route risk modeling',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF1D4ED8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 13, color: Color(0xFF2563EB)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLiveUpdatesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1811,19 +1995,19 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
 
         const SizedBox(height: 14),
 
-        // 2. INTERACTIVE HIGHWAY CORRIDOR RIBBON (All 8 Nodes)
+        // 2. MINIMAL HIGHWAY ROUTE STRIP (All 8 Nodes - Clean Pulse)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x060F172A),
-                blurRadius: 12,
-                offset: Offset(0, 3),
+                blurRadius: 10,
+                offset: Offset(0, 2),
               ),
             ],
           ),
@@ -1835,10 +2019,10 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF1D4ED8)),
+                      Icon(Icons.alt_route_rounded, size: 15, color: Color(0xFF1D4ED8)),
                       SizedBox(width: 6),
                       Text(
-                        'EXPRESSWAY SECTOR TELEMETRY',
+                        'EXPRESSWAY ROUTE PULSE',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -1865,68 +2049,44 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               const Text(
-                'Tap any highway node to view real-time road conditions & advisory:',
+                'Tap any sector to analyze route risks with AI Copilot:',
                 style: TextStyle(
                   fontSize: 11.5,
                   color: AppTheme.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
-              // Horizontal Scrollable Sector Ribbon
+              const SizedBox(height: 10),
+              // Compact Horizontal Route Ribbon
               SizedBox(
-                height: 74,
+                height: 58,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _expresswayNodes.length,
                   separatorBuilder: (context, idx) => Center(
                     child: Container(
-                      width: 14,
+                      width: 10,
                       height: 2,
-                      color: const Color(0xFFCBD5E1),
+                      color: const Color(0xFFE2E8F0),
                     ),
                   ),
                   itemBuilder: (context, idx) {
                     final node = _expresswayNodes[idx];
-                    final isSelected = _selectedExpresswayNodeIndex == idx;
                     final Color dotColor = _resolveStatusColor(node['statusColor']);
 
                     return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedExpresswayNodeIndex = idx;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        width: 76,
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                      onTap: () => _showSectorCopilotDialog(node),
+                      child: Container(
+                        width: 72,
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 5),
                         decoration: BoxDecoration(
-                          gradient: isSelected
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF0A1128), Color(0xFF1D4ED8)],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                )
-                              : null,
-                          color: isSelected ? null : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(14),
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF2563EB)
-                                : const Color(0xFFE2E8F0),
-                            width: isSelected ? 1.5 : 1,
+                            color: const Color(0xFFE2E8F0),
+                            width: 1,
                           ),
-                          boxShadow: isSelected
-                              ? const [
-                                  BoxShadow(
-                                    color: Color(0x301D4ED8),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ]
-                              : null,
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1945,38 +2105,23 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                                 const SizedBox(width: 4),
                                 Text(
                                   node['code'] as String,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
-                                    color: isSelected
-                                        ? const Color(0xFFBAE6FD)
-                                        : const Color(0xFF64748B),
+                                    color: Color(0xFF475569),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              node['name'] as String,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppTheme.darkNavy,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
                             const SizedBox(height: 2),
                             Text(
-                              (node['weather'] as String).split(' ').first,
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white.withValues(alpha: 0.8)
-                                    : const Color(0xFF64748B),
+                              node['name'] as String,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.darkNavy,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -1985,86 +2130,37 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen> {
                   },
                 ),
               ),
-
-              const SizedBox(height: 12),
-
-              // SELECTED SECTOR DEEP-DIVE CARD
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F7FF),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFBAE6FD)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1D4ED8),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const SectorMapPinIcon(size: 14, color: Colors.white),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${selectedNode['name']} Sector (${selectedNode['code']})',
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFF93C5FD)),
-                          ),
-                          child: Text(
-                            selectedNode['status'] as String,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: _resolveStatusColor(selectedNode['statusColor']),
-                            ),
+              const SizedBox(height: 8),
+              // Direct AI Copilot Prompt Bar
+              InkWell(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.roleSelection);
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, size: 13, color: Color(0xFF1D4ED8)),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Need deep corridor risk & lane guidance? Consult AI Copilot',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E40AF),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _buildSectorMetricPill(
-                          customIcon: const WeatherSunMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
-                          label: selectedNode['weather'] as String,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildSectorMetricPill(
-                          customIcon: const SpeedometerMetricIcon(size: 13, color: Color(0xFF1D4ED8)),
-                          label: 'Adv: ${selectedNode['speedAdvice']}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      selectedNode['desc'] as String,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF334155),
-                        height: 1.35,
                       ),
-                    ),
-                  ],
+                      Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF1D4ED8)),
+                    ],
+                  ),
                 ),
               ),
             ],
