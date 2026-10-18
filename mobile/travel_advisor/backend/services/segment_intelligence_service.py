@@ -108,6 +108,10 @@ class SegmentIntelligenceService:
         latitude: float,
         longitude: float,
         travel_datetime: datetime,
+        is_planner: bool = False,
+        live_traffic: dict[str, Any] | None = None,
+        terrain_score: float | None = None,
+        terrain_reasons: list[str] | None = None,
     ) -> SegmentIntelligenceResult:
         """
         Evaluate one route segment.
@@ -128,26 +132,11 @@ class SegmentIntelligenceService:
             normalized_region
         )
 
-        # =========================================================
-        # 2. Historical ML
-        # =========================================================
-
-        historical_prediction = (
-            self._get_historical_prediction(
-                region=normalized_region,
-                travel_datetime=travel_datetime,
-            )
-        )
-
-        historical_result = (
-            historical_prediction.to_dict()
-        )
-
-        # =========================================================
-        # 3. OpenWeather
-        # =========================================================
-
         start_city = segment_details.get("start") if isinstance(segment_details, dict) else None
+
+        # =========================================================
+        # 2. OpenWeather (Current for Traveler, Forecast for Planner)
+        # =========================================================
 
         (
             weather_result,
@@ -157,54 +146,58 @@ class SegmentIntelligenceService:
             longitude=longitude,
             target_datetime=travel_datetime,
             city_name=start_city,
+            is_planner=is_planner,
         )
 
         # =========================================================
-        # 4. Recent traveler reports
+        # 3. Regional ML Prediction (Cost-Weighted XGBoost)
+        # Uses atmospheric readings from weather_result
         # =========================================================
 
-        reports = (
-            traveler_report_retrieval_service.get_recent_reports(
-                db=db,
+        historical_prediction = (
+            self._get_historical_prediction(
                 region=normalized_region,
-                reference_datetime=travel_datetime,
-                lookback_hours=self.REPORT_LOOKBACK_HOURS,
+                travel_datetime=travel_datetime,
+                weather_data=weather_result,
             )
         )
 
-        serialized_reports = (
-            traveler_report_retrieval_service.serialize_reports(
-                reports
-            )
+        historical_result = (
+            historical_prediction.to_dict()
         )
 
-        report_dimensions = (
-            self._build_report_dimensions(
-                serialized_reports
+        # =========================================================
+        # 4. Recent traveler reports (Traveler mode only)
+        # =========================================================
+
+        if not is_planner:
+            reports = (
+                traveler_report_retrieval_service.get_recent_reports(
+                    db=db,
+                    region=normalized_region,
+                    reference_datetime=travel_datetime,
+                    lookback_hours=self.REPORT_LOOKBACK_HOURS,
+                )
             )
-        )
+
+            serialized_reports = (
+                traveler_report_retrieval_service.serialize_reports(
+                    reports
+                )
+            )
+
+            report_dimensions = (
+                self._build_report_dimensions(
+                    serialized_reports
+                )
+            )
+        else:
+            reports = []
+            serialized_reports = []
+            report_dimensions = None
 
         # =========================================================
         # 5. Dimension-aware fusion
-        # =========================================================
-        #
-        # IMPORTANT:
-        #
-        # We do NOT collapse the sources into one condition.
-        #
-        # Example:
-        #
-        # Weather:
-        #   rain       = Light Rain
-        #   visibility = Very Clear
-        #   fog        = None
-        #
-        # Traveler:
-        #   rain       = Light Rain
-        #   visibility = Poor
-        #   unusual    = Landslide/Rockfall
-        #
-        # Each dimension remains independent.
         # =========================================================
 
         fusion = data_fusion_service.fuse(
@@ -220,17 +213,7 @@ class SegmentIntelligenceService:
         fusion_result = fusion.to_dict()
 
         # =========================================================
-        # 6. Segment Safety Score
-        # =========================================================
-        #
-        # The Safety Score engine receives:
-        #
-        #   ML prediction
-        #   normalized weather dimensions
-        #   aggregated traveler dimensions
-        #   fusion/evidence information
-        #
-        # Missing ML models are NOT converted into a fake score.
+        # 6. Segment Safety Score (Fair multi-source formula)
         # =========================================================
 
         safety_score = (
@@ -239,6 +222,10 @@ class SegmentIntelligenceService:
                 weather_result=weather_dimensions,
                 traveler_result=report_dimensions,
                 fusion_result=fusion_result,
+                traffic_result=live_traffic,
+                is_planner=is_planner,
+                terrain_score=terrain_score,
+                terrain_reasons=terrain_reasons,
             )
         )
 
@@ -281,20 +268,19 @@ class SegmentIntelligenceService:
         self,
         region: str,
         travel_datetime: datetime,
+        weather_data: dict[str, Any] | None = None,
     ) -> PredictionResult:
         """
         Get the regional ML prediction.
 
-        Feature construction remains deferred until the supplied
-        regional models and their feature/output contract are known.
-
-        No prediction is fabricated when the model is unavailable.
+        Passes atmospheric context (temp, humidity, pressure) and temporal
+        factors (month, hour in IST) to the regional XGBoost model.
         """
 
         return prediction_service.predict(
             region=region,
             travel_datetime=travel_datetime,
-            features=None,
+            features=weather_data,
         )
 
     # =============================================================
@@ -307,17 +293,20 @@ class SegmentIntelligenceService:
         longitude: float,
         target_datetime: datetime | None = None,
         city_name: str | None = None,
+        is_planner: bool = False,
     ) -> tuple[
         dict[str, Any] | None,
         dict[str, Any] | None,
     ]:
         """
         Retrieve and normalize OpenWeather information.
-        Uses 5-day forecast when target_datetime is in the future.
+        When is_planner is True, ALWAYS queries the 5-day forecast.
+        When target_datetime is in the future, queries the 5-day forecast.
+        Otherwise queries current live weather.
         """
         try:
-            is_future = False
-            if target_datetime is not None:
+            is_future = is_planner
+            if not is_future and target_datetime is not None:
                 from services.timezone_service import get_ist_now
                 diff_seconds = (target_datetime - get_ist_now()).total_seconds()
                 # If target is at least 30 minutes in the future, use forecast
@@ -411,6 +400,12 @@ class SegmentIntelligenceService:
 
         if weather.temperature_c is not None:
             dimensions["temperature_c"] = weather.temperature_c
+
+        if weather.humidity_percent is not None:
+            dimensions["humidity_percent"] = weather.humidity_percent
+
+        if weather.pressure_hpa is not None:
+            dimensions["pressure_hpa"] = weather.pressure_hpa
 
         if weather.wind_speed_kmh is not None:
             dimensions["wind_speed_kmh"] = weather.wind_speed_kmh

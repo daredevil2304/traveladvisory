@@ -387,7 +387,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       }
 
       // 4. Load Dynamic Corridor Telemetry (OpenWeather + Google Maps Traffic)
-      await _fetchLiveCorridorTelemetry();
+      await _fetchLiveCorridorTelemetry(forceRefresh: true);
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingReports = false);
@@ -2788,7 +2788,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Morning Commute',
+                            'Morning (Mumbai → Pune)',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: _selectedScheduleSlot == 0
@@ -2845,7 +2845,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Return Commute',
+                            'Return (Pune → Mumbai)',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: _selectedScheduleSlot == 1
@@ -3222,7 +3222,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
                 const SizedBox(height: 8),
                 _buildScheduleSummaryRow(
-                  slotTitle: '🌅 Morning Commute',
+                  slotTitle: '🌅 Morning Commute (Forward: Mumbai → Pune)',
                   route: '$_outboundSource → $_outboundDestination',
                   times:
                       '${CommuteHabitService.formatTime12h(_outboundDepartureTime)} (Alert: ${CommuteHabitService.formatTime12h(_outboundAlertTime)})',
@@ -3233,7 +3233,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
                 const SizedBox(height: 8),
                 _buildScheduleSummaryRow(
-                  slotTitle: '🌇 Return Commute',
+                  slotTitle: '🌇 Return Commute (Reverse: Pune → Mumbai)',
                   route: '$_returnSource → $_returnDestination',
                   times:
                       '${CommuteHabitService.formatTime12h(_returnDepartureTime)} (Alert: ${CommuteHabitService.formatTime12h(_returnAlertTime)})',

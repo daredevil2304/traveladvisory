@@ -56,6 +56,7 @@ class WeatherData:
     visibility_km: float | None = None
 
     weather_condition: str | None = None
+    pressure_hpa: float | None = None
     source: str = "openweather"
 
     def to_dict(self) -> dict:
@@ -69,6 +70,7 @@ class WeatherData:
             "wind_speed_kmh": self.wind_speed_kmh,
             "visibility_km": self.visibility_km,
             "weather_condition": self.weather_condition,
+            "pressure_hpa": self.pressure_hpa,
             "source": self.source,
         }
 
@@ -134,6 +136,7 @@ class WeatherService:
         wind_speed_kmh: float | None = None,
         visibility_km: float | None = None,
         weather_condition: str | None = None,
+        pressure_hpa: float | None = None,
     ) -> WeatherData:
         """
         Create standardized WeatherData.
@@ -157,6 +160,7 @@ class WeatherService:
             wind_speed_kmh=wind_speed_kmh,
             visibility_km=visibility_km,
             weather_condition=weather_condition,
+            pressure_hpa=pressure_hpa,
             source=self.provider_name,
         )
 
@@ -387,6 +391,7 @@ class WeatherService:
             wind_speed_kmh=parsed.wind_speed_kmh,
             visibility_km=parsed.visibility_km,
             weather_condition=parsed.weather_condition,
+            pressure_hpa=parsed.pressure_hpa,
             source="openweather_forecast",
         )
 
@@ -412,6 +417,10 @@ class WeatherService:
 
         humidity_percent = self._to_float(
             main.get("humidity")
+        )
+
+        pressure_hpa = self._to_float(
+            main.get("pressure")
         )
 
         visibility_meters = self._to_float(
@@ -475,6 +484,7 @@ class WeatherService:
             wind_speed_kmh=wind_speed_kmh,
             visibility_km=visibility_km,
             weather_condition=weather_condition,
+            pressure_hpa=pressure_hpa,
         )
 
     @staticmethod

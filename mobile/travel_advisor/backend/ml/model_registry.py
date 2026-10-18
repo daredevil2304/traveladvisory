@@ -86,6 +86,12 @@ def get_registered_model(region: str) -> Path | None:
     if not model_files:
         return None
 
+    # For R7, prefer the primary Pune model if present
+    if region.strip().upper() == "R7":
+        for mf in model_files:
+            if "pune" in mf.name.lower():
+                return mf
+
     return model_files[0]
 
 

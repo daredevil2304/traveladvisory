@@ -27,28 +27,38 @@ class SafetyScoreResult:
     weather_score: float | None
     traveler_score: float | None
     evidence_score: float | None
+    traffic_score: float | None = None
+    terrain_score: float | None = None
 
-    available_sources: list[str]
-    missing_sources: list[str]
+    available_sources: list[str] = ()
+    missing_sources: list[str] = ()
 
-    dimension_scores: dict[str, float]
-    reasons: list[str]
+    dimension_scores: dict[str, float] = None
+    reasons: list[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "safety_score": self.safety_score,
             "confidence": self.confidence,
             "status": self.status,
+            "ml_score": self.ml_score,
+            "weather_score": self.weather_score,
+            "traveler_score": self.traveler_score,
+            "evidence_score": self.evidence_score,
+            "traffic_score": self.traffic_score,
+            "terrain_score": self.terrain_score,
             "components": {
                 "ml_score": self.ml_score,
                 "weather_score": self.weather_score,
                 "traveler_score": self.traveler_score,
                 "evidence_score": self.evidence_score,
+                "traffic_score": self.traffic_score,
+                "terrain_score": self.terrain_score,
             },
-            "available_sources": self.available_sources,
-            "missing_sources": self.missing_sources,
-            "dimension_scores": self.dimension_scores,
-            "reasons": self.reasons,
+            "available_sources": list(self.available_sources or []),
+            "missing_sources": list(self.missing_sources or []),
+            "dimension_scores": self.dimension_scores or {},
+            "reasons": self.reasons or [],
         }
 
 
@@ -87,12 +97,40 @@ class SafetyScoreService:
     # is unavailable.
     # -------------------------------------------------------------
 
-    SOURCE_WEIGHTS = {
-        "ml": 0.50,
-        "weather": 0.50,
-        "traveler": 0.00,
-        "evidence": 0.00,
+    # -------------------------------------------------------------
+    # Calibrated Source Weights
+    # -------------------------------------------------------------
+    # Traveler Profile (En-route traveling right now):
+    #   ML Historical Model  = 30%
+    #   Live Weather          = 25%
+    #   Live Traffic          = 25%
+    #   Community Hazard Reports = 20%
+    # Dynamic normalization applies if community reports are absent
+    # (ML: 37.5%, Weather: 31.25%, Traffic: 31.25%).
+    # -------------------------------------------------------------
+    TRAVELER_SOURCE_WEIGHTS = {
+        "ml": 0.30,
+        "weather": 0.25,
+        "traffic": 0.25,
+        "traveler": 0.20,
     }
+
+    # -------------------------------------------------------------
+    # Planner Profile (Advance trip planning):
+    #   Traffic is strictly 0.00 (excluded).
+    #   ML Forecast Prediction = 45%
+    #   OpenWeather Forecast   = 35%
+    #   Terrain & Schedule     = 20%
+    # -------------------------------------------------------------
+    PLANNER_SOURCE_WEIGHTS = {
+        "ml": 0.45,
+        "weather": 0.35,
+        "terrain": 0.20,
+        "traffic": 0.00,
+        "traveler": 0.00,
+    }
+
+    SOURCE_WEIGHTS = TRAVELER_SOURCE_WEIGHTS
 
     # -------------------------------------------------------------
     # Weather condition safety values
@@ -127,31 +165,28 @@ class SafetyScoreService:
     # -------------------------------------------------------------
     # Traveler-reported unusual conditions
     # -------------------------------------------------------------
-    #
-    # These represent safety impact, not traffic impact.
-    # -------------------------------------------------------------
 
     UNUSUAL_CONDITION_SCORES = {
-    "none": 100.0,
-    "slippery_road": 65.0,
-    "slippery road": 65.0,
-    "debris on road": 45.0,
-    "debris_on_road": 45.0,
-    "road damage": 50.0,
-    "road_damage": 50.0,
-    "construction activity": 70.0,
-    "construction_activity": 70.0,
-    "fallen tree": 40.0,
-    "fallen_tree": 40.0,
-    "accident/incident": 40.0,
-    "accident_incident": 40.0,
-    "landslide/rockfall": 25.0,
-    "landslide_rockfall": 25.0,
-    "flooding": 20.0,
-    "road closure": 0.0,
-    "road_closure": 0.0,
-    "other": 60.0,
-}
+        "none": 100.0,
+        "slippery_road": 65.0,
+        "slippery road": 65.0,
+        "debris on road": 45.0,
+        "debris_on_road": 45.0,
+        "road damage": 50.0,
+        "road_damage": 50.0,
+        "construction activity": 70.0,
+        "construction_activity": 70.0,
+        "fallen tree": 40.0,
+        "fallen_tree": 40.0,
+        "accident/incident": 40.0,
+        "accident_incident": 40.0,
+        "landslide/rockfall": 25.0,
+        "landslide_rockfall": 25.0,
+        "flooding": 20.0,
+        "road closure": 0.0,
+        "road_closure": 0.0,
+        "other": 60.0,
+    }
 
     # -------------------------------------------------------------
     # Public API
@@ -164,62 +199,71 @@ class SafetyScoreService:
         weather_result: dict[str, Any] | None = None,
         traveler_result: dict[str, Any] | None = None,
         fusion_result: dict[str, Any] | None = None,
+        traffic_result: dict[str, Any] | None = None,
+        is_planner: bool = False,
+        terrain_score: float | None = None,
+        terrain_reasons: list[str] | None = None,
     ) -> SafetyScoreResult:
         """
-        Calculate a Safety Score for one route segment.
+        Calculate a fair, calibrated Safety Score for one route segment.
 
-        Parameters:
+        Traveler Profile:
+            - ML Historical Model (30%)
+            - Live Weather (25%)
+            - Live Traffic (25%)
+            - Community Reports (20%)
 
-            historical_result:
-                Output from the regional ML service.
-
-            weather_result:
-                Dimension-level normalized weather information.
-
-            traveler_result:
-                Aggregated traveler dimensions.
-
-            fusion_result:
-                Dimension-aware fusion output.
-
-        Traffic is intentionally ignored.
+        Planner Profile:
+            - ML Forecast Model (45%)
+            - Forecast Weather (35%)
+            - Terrain Geometry & Schedule (20%)
+            - Traffic is strictly 0% (excluded)
         """
 
-        # ---------------------------------------------------------
-        # 1. Calculate source-level components
-        # ---------------------------------------------------------
+        # 1. Component calculations
+        ml_score = self._calculate_ml_score(historical_result)
+        weather_score, weather_dimensions = self._calculate_weather_score(weather_result)
+        evidence_score = self._calculate_evidence_score(fusion_result)
 
-        ml_score = self._calculate_ml_score(
-            historical_result
-        )
+        dimension_scores: dict[str, float] = {}
+        dimension_scores.update(weather_dimensions)
 
-        weather_score, weather_dimensions = (
-            self._calculate_weather_score(
-                weather_result
-            )
-        )
+        if is_planner:
+            # Planner Mode: Traffic is strictly excluded (0% weight)
+            active_weights = self.PLANNER_SOURCE_WEIGHTS
+            traffic_score = None
+            traffic_dimensions = {}
+            traveler_score = None
+            traveler_dimensions = {}
+            terrain_val, terrain_dims = self._calculate_terrain_score(terrain_score)
+            dimension_scores.update(terrain_dims)
 
-        traveler_score, traveler_dimensions = (
-            self._calculate_traveler_score(
-                traveler_result
-            )
-        )
+            source_scores = {
+                "ml": ml_score,
+                "weather": weather_score,
+                "terrain": terrain_val,
+            }
+        else:
+            # Traveler Mode: Live traffic and community reports included
+            active_weights = self.TRAVELER_SOURCE_WEIGHTS
+            traffic_score, traffic_dimensions = self._calculate_traffic_score(traffic_result)
+            traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
+            terrain_val = None
+            terrain_dims = {}
+            dimension_scores.update(traveler_dimensions)
+            dimension_scores.update(traffic_dimensions)
 
-        evidence_score = self._calculate_evidence_score(
-            fusion_result
-        )
+            source_scores = {
+                "ml": ml_score,
+                "weather": weather_score,
+                "traffic": traffic_score,
+                "traveler": traveler_score,
+            }
 
-        # ---------------------------------------------------------
-        # 2. Determine source availability
-        # ---------------------------------------------------------
+        if ml_score is not None:
+            dimension_scores["ml_prediction"] = ml_score
 
-        source_scores = {
-            "ml": ml_score,
-            "weather": weather_score,
-            "traveler": traveler_score,
-            "evidence": evidence_score,
-        }
-
+        # 2. Determine available and missing sources
         available_sources = [
             source
             for source, score in source_scores.items()
@@ -232,51 +276,65 @@ class SafetyScoreService:
             if score is None
         ]
 
-        # ---------------------------------------------------------
         # 3. Calculate weighted score
-        # ---------------------------------------------------------
-
         safety_score = self._weighted_score(
-            source_scores
+            source_scores,
+            weights=active_weights,
         )
 
-        # ---------------------------------------------------------
-        # 4. Dimension-level information
-        # ---------------------------------------------------------
+        # 4. Critical Hazard Floor Override
+        # If an active catastrophic hazard is reported (road closure, severe landslide, flooding),
+        # cap the segment score at that hazard's floor so high scores elsewhere cannot mask it.
+        if traveler_dimensions.get("unusual_conditions") is not None:
+            unusual_val = traveler_dimensions["unusual_conditions"]
+            if unusual_val < 35.0 and safety_score is not None:
+                safety_score = min(safety_score, unusual_val)
 
-        dimension_scores = {}
-
-        dimension_scores.update(
-            weather_dimensions
-        )
-
-        dimension_scores.update(
-            traveler_dimensions
-        )
-
-        # ---------------------------------------------------------
         # 5. Generate human-readable reasons
-        # ---------------------------------------------------------
-
         reasons = self._generate_reasons(
             weather_result=weather_result,
             traveler_result=traveler_result,
             dimension_scores=dimension_scores,
         )
 
-        # ---------------------------------------------------------
-        # 6. Confidence
-        # ---------------------------------------------------------
+        # Append ML reason
+        if isinstance(historical_result, dict) and isinstance(historical_result.get("prediction"), dict):
+            p = historical_result["prediction"]
+            cat = p.get("severity_category", "Safe / Clear")
+            sev = p.get("hazard_severity", 0.0)
+            reasons.append(
+                f"Historical ML Model (XGBoost): Predicted {sev:.1f}/100 hazard severity ({cat})."
+            )
 
+        # Append Traffic reason (Traveler mode)
+        if not is_planner and isinstance(traffic_result, dict):
+            delay = traffic_result.get("delay_minutes", 0)
+            status_lbl = traffic_result.get("status_label", "Normal Flow")
+            speed_adv = traffic_result.get("speed_advice", "80-100 km/h")
+            if delay > 0 or traffic_result.get("congestion_level") in ("moderate", "heavy", "standstill"):
+                reasons.append(
+                    f"Traffic flow: {status_lbl} (~{delay}m delay, cruising speed {speed_adv})."
+                )
+            else:
+                reasons.append(
+                    f"Traffic flow: Optimal fluid transit ({speed_adv}, no delays reported)."
+                )
+
+        # Append Terrain & Planner reasons
+        if is_planner:
+            if terrain_reasons:
+                reasons.extend(terrain_reasons)
+            reasons.append(
+                "Advance planning mode: Real-time traffic is excluded; scoring is driven by atmospheric forecast (35%), regional historical ML model (45%), and corridor terrain geometry (20%)."
+            )
+
+        # 6. Confidence
         confidence = self._calculate_confidence(
             source_scores=source_scores,
             fusion_result=fusion_result,
         )
 
-        # ---------------------------------------------------------
         # 7. Status
-        # ---------------------------------------------------------
-
         status = self._determine_status(
             safety_score=safety_score,
             available_sources=available_sources,
@@ -291,6 +349,8 @@ class SafetyScoreService:
             weather_score=weather_score,
             traveler_score=traveler_score,
             evidence_score=evidence_score,
+            traffic_score=traffic_score,
+            terrain_score=terrain_val,
             available_sources=available_sources,
             missing_sources=missing_sources,
             dimension_scores=dimension_scores,
@@ -677,41 +737,77 @@ class SafetyScoreService:
         )
 
     # =============================================================
+    # TRAFFIC & TERRAIN HELPERS
+    # =============================================================
+
+    def _calculate_traffic_score(
+        self,
+        traffic_result: dict[str, Any] | None,
+    ) -> tuple[float | None, dict[str, float]]:
+        if not isinstance(traffic_result, dict):
+            return None, {}
+
+        # If explicit traffic_score already exists
+        if "traffic_score" in traffic_result and isinstance(traffic_result["traffic_score"], (int, float)):
+            ts = float(traffic_result["traffic_score"])
+            return ts, {"live_traffic": ts}
+
+        delay = traffic_result.get("delay_minutes", 0)
+        congestion = str(traffic_result.get("congestion_level", "free_flow")).lower()
+
+        if congestion == "standstill" or delay >= 25:
+            score = 40.0
+        elif congestion == "heavy" or delay >= 15:
+            score = 60.0
+        elif congestion == "moderate" or delay >= 6:
+            score = 75.0
+        elif delay >= 3:
+            score = 86.0
+        elif delay >= 1:
+            score = 94.0
+        else:
+            score = 98.0
+
+        return score, {"live_traffic": score}
+
+    def _calculate_terrain_score(
+        self,
+        terrain_score: float | None,
+    ) -> tuple[float | None, dict[str, float]]:
+        if terrain_score is None:
+            return None, {}
+        t_val = float(terrain_score)
+        return t_val, {"terrain_geometry": t_val}
+
+    # =============================================================
     # WEIGHTED SAFETY SCORE
     # =============================================================
 
     def _weighted_score(
         self,
         source_scores: dict[str, float | None],
+        weights: dict[str, float] | None = None,
     ) -> float | None:
         """
         Calculate weighted Safety Score using only available sources.
 
         Missing sources are excluded and the remaining weights are
         normalized.
-
-        Example:
-
-            ML unavailable
-            Weather available
-            Traveler available
-            Evidence available
-
-        The weather/traveler/evidence weights are automatically
-        renormalized instead of treating ML as zero.
         """
+        if weights is None:
+            weights = self.SOURCE_WEIGHTS
 
         available = {
             source: score
             for source, score in source_scores.items()
-            if score is not None
+            if score is not None and weights.get(source, 0.0) > 0.0
         }
 
         if not available:
             return None
 
         total_weight = sum(
-            self.SOURCE_WEIGHTS[source]
+            weights.get(source, 0.0)
             for source in available
         )
 
@@ -721,12 +817,10 @@ class SafetyScoreService:
         weighted_total = 0.0
 
         for source, score in available.items():
-
             normalized_weight = (
-                self.SOURCE_WEIGHTS[source]
+                weights.get(source, 0.0)
                 / total_weight
             )
-
             weighted_total += (
                 float(score)
                 * normalized_weight
@@ -740,7 +834,7 @@ class SafetyScoreService:
                     weighted_total,
                 ),
             ),
-            2,
+            1,
         )
 
     # =============================================================

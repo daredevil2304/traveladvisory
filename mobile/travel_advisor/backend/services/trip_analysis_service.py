@@ -177,7 +177,9 @@ class TripAnalysisService:
 
         segment_results: list[dict[str, Any]] = []
 
-        is_traveler = (trip.role or "").lower() == "traveler"
+        is_traveler = (trip.role or "").lower() in ("traveler", "traveller")
+        is_planner = not is_traveler
+
         seg_endpoints = {
             "R1": ("Mumbai", "Panvel"),
             "R2": ("Panvel", "Khalapur"),
@@ -188,16 +190,76 @@ class TripAnalysisService:
             "R7": ("Kamshet", "Pune"),
         }
 
-        # Calculate planned departure time of day (IST) for Planner mode
+        # Calculate planned departure time of day (IST)
+        from services.timezone_service import to_ist
         travel_dt = trip.travel_datetime or datetime.now(timezone.utc)
-        ist_hour = (travel_dt.hour + 5 + (travel_dt.minute + 30) // 60) % 24
+        ist_travel_dt = to_ist(travel_dt)
+        ist_hour = ist_travel_dt.hour
         is_night_travel = (ist_hour >= 22 or ist_hour <= 5)
 
         for region in route_segments:
+            reg_code = region.upper()
+            segment_traffic = None
+            seg_terrain_score = None
+            seg_terrain_reasons: list[str] = []
+
+            # =========================================================
+            # TRAVELER PROFILE: FETCH LIVE GOOGLE MAPS TRAFFIC
+            # =========================================================
+            if is_traveler:
+                start_name, end_name = seg_endpoints.get(reg_code, ("Panvel", "Pune"))
+                start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
+                end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
+                segment_traffic = google_maps_traffic_service.get_segment_traffic(
+                    start_coords=start_c,
+                    end_coords=end_c,
+                    start_name=start_name,
+                    end_name=end_name,
+                )
+            # =========================================================
+            # PLANNER PROFILE: ADVANCE FORECASTS & TERRAIN GEOMETRY
+            # (TRAFFIC IS STRICTLY EXCLUDED AS CURRENT FLOW IS IRRELEVANT)
+            # =========================================================
+            else:
+                # Inherent terrain geometry baseline caution for steep Ghat sectors
+                if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
+                    t_score = 90.0
+                    seg_terrain_reasons.append(
+                        "Terrain geometry: Steep Bhor Ghat mountain incline (R4); maintain low-gear engine braking and truck lane clearance."
+                    )
+                elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
+                    t_score = 94.0
+                    seg_terrain_reasons.append(
+                        "Terrain geometry: Mountain plateau crest transition (R5); watch for crosswinds and multi-axle freight maneuvering."
+                    )
+                elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
+                    t_score = 97.0
+                    seg_terrain_reasons.append(
+                        "Corridor alignment: Ghat foothill approach (R3); prepare for gradient changes."
+                    )
+                else:
+                    t_score = 100.0
+                    seg_terrain_reasons.append(
+                        "Corridor geometry: Standard flat expressway alignment with optimal sightlines."
+                    )
+
+                # Night driving factor for planned departure
+                if is_night_travel:
+                    t_score -= 5.0
+                    seg_terrain_reasons.append(
+                        f"Night travel window ({ist_hour:02d}:00 IST): Reduced ambient lighting and headlight glare on unlit expressway sections."
+                    )
+
+                seg_terrain_score = max(0.0, min(100.0, t_score))
+
             result = self._evaluate_segment(
                 db=db,
                 trip=trip,
                 region=region,
+                live_traffic=segment_traffic,
+                is_planner=is_planner,
+                terrain_score=seg_terrain_score,
+                terrain_reasons=seg_terrain_reasons,
             )
 
             res_dict = result.to_dict()
@@ -206,143 +268,13 @@ class TripAnalysisService:
                 safety_score_res = {}
                 res_dict["safety_score_result"] = safety_score_res
 
-            raw_base_score = safety_score_res.get("safety_score")
-            base_score = float(raw_base_score) if isinstance(raw_base_score, (int, float)) else 100.0
+            # Ensure convenience fields are present for UI screens
+            score_val = safety_score_res.get("safety_score")
+            res_dict["safety_score"] = score_val
+            res_dict["reasons"] = safety_score_res.get("reasons", [])
+            res_dict["live_traffic"] = segment_traffic
 
-            current_reasons = safety_score_res.get("reasons")
-            if not isinstance(current_reasons, list):
-                current_reasons = []
-                safety_score_res["reasons"] = current_reasons
-
-            if "dimension_scores" not in safety_score_res or not isinstance(safety_score_res["dimension_scores"], dict):
-                safety_score_res["dimension_scores"] = {}
-
-            is_ghat_sector = region.upper() in ("R3", "R4", "R5")
-
-            # =========================================================
-            # TRAVELER PROFILE: FACTOR IN LIVE GOOGLE MAPS TRAFFIC
-            # =========================================================
-            if is_traveler:
-                start_name, end_name = seg_endpoints.get(region.upper(), ("Panvel", "Pune"))
-                start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
-                end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
-                traffic = google_maps_traffic_service.get_segment_traffic(
-                    start_coords=start_c,
-                    end_coords=end_c,
-                    start_name=start_name,
-                    end_name=end_name,
-                )
-                res_dict["live_traffic"] = traffic
-
-                delay = traffic.get("delay_minutes", 0)
-                congestion = str(traffic.get("congestion_level", "free_flow")).lower()
-                speed_advice = traffic.get("speed_advice", "80-100 km/h")
-                status_label = traffic.get("status_label", "Normal Flow")
-
-                # Dynamic traffic deduction calibrated to corridor telemetry
-                if congestion == "standstill" or delay >= 25:
-                    traffic_score = 40.0
-                    base_deduction = 32.0
-                elif congestion == "heavy" or delay >= 15:
-                    traffic_score = 60.0
-                    base_deduction = 25.0
-                elif congestion == "moderate" or delay >= 6:
-                    traffic_score = 75.0
-                    base_deduction = 14.0
-                elif delay >= 3:
-                    traffic_score = 86.0
-                    base_deduction = 7.0
-                elif delay >= 1:
-                    traffic_score = 94.0
-                    base_deduction = 3.0
-                else:
-                    traffic_score = 98.0
-                    base_deduction = 0.0
-
-                # Ghat bottleneck multiplier: crawling on steep incline increases risk of brake fade & rollbacks
-                ghat_traffic_deduction = 0.0
-                if is_ghat_sector:
-                    if delay >= 15:
-                        ghat_traffic_deduction = 5.0
-                    elif delay >= 6:
-                        ghat_traffic_deduction = 3.0
-                    elif delay >= 3:
-                        ghat_traffic_deduction = 2.0
-
-                total_traffic_deduction = base_deduction + ghat_traffic_deduction
-
-                # Factor traffic into the segment safety score
-                adjusted_score = round(max(15.0, min(100.0, base_score - total_traffic_deduction)), 1)
-                safety_score_res["safety_score"] = adjusted_score
-                safety_score_res["traffic_score"] = traffic_score
-                safety_score_res["traffic_deduction"] = total_traffic_deduction
-                safety_score_res["dimension_scores"]["live_traffic"] = traffic_score
-
-                avail_sources = safety_score_res.get("available_sources")
-                if isinstance(avail_sources, list) and "live_traffic" not in avail_sources:
-                    avail_sources.append("live_traffic")
-
-                # Build crystal-clear reasons
-                if delay > 0 or congestion in ("moderate", "heavy", "standstill"):
-                    traffic_msg = f"Traffic flow: {status_label} (~{delay}m delay, cruising speed {speed_advice})"
-                    if is_ghat_sector and delay >= 6:
-                        traffic_msg += " • Incline bottleneck: slow crawl on steep Ghat gradient increases rear-end and rollback risk."
-                    current_reasons.append(traffic_msg)
-                elif traffic_score >= 95:
-                    current_reasons.append(f"Traffic flow: Optimal fluid transit ({speed_advice}, no delays reported).")
-
-                res_dict["safety_score"] = adjusted_score
-
-            # =========================================================
-            # PLANNER PROFILE: ADVANCE FORECASTS & TERRAIN GEOMETRY
-            # (TRAFFIC IS STRICTLY EXCLUDED AS CURRENT FLOW IS IRRELEVANT)
-            # =========================================================
-            else:
-                res_dict["live_traffic"] = None
-
-                # Inherent terrain geometry baseline caution for steep Ghat sectors
-                terrain_deduction = 0.0
-                reg_code = region.upper()
-                if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
-                    terrain_deduction = 10.0
-                    current_reasons.append(
-                        "Terrain geometry: Steep Bhor Ghat mountain incline (R4); maintain low-gear engine braking and truck lane clearance."
-                    )
-                elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
-                    terrain_deduction = 6.0
-                    current_reasons.append(
-                        "Terrain geometry: Mountain plateau crest transition (R5); watch for crosswinds and multi-axle freight maneuvering."
-                    )
-                elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
-                    terrain_deduction = 3.0
-                    current_reasons.append(
-                        "Corridor alignment: Ghat foothill approach (R3); prepare for gradient changes."
-                    )
-                else:
-                    current_reasons.append(
-                        "Corridor geometry: Standard flat expressway alignment with optimal sightlines."
-                    )
-
-                # Night driving factor for planned departure
-                night_deduction = 0.0
-                if is_night_travel:
-                    night_deduction = 5.0
-                    current_reasons.append(
-                        f"Night travel window ({ist_hour:02d}:00 IST): Reduced ambient lighting and headlight glare on unlit expressway sections."
-                    )
-
-                total_planner_deduction = terrain_deduction + night_deduction
-                adjusted_score = round(max(20.0, min(100.0, base_score - total_planner_deduction)), 1)
-                safety_score_res["safety_score"] = adjusted_score
-                safety_score_res["planner_terrain_deduction"] = terrain_deduction
-                if night_deduction > 0:
-                    safety_score_res["planner_night_deduction"] = night_deduction
-
-                res_dict["safety_score"] = adjusted_score
-
-            segment_results.append(
-                res_dict
-            )
+            segment_results.append(res_dict)
 
         # =========================================================
         # 5. TRIP-LEVEL AGGREGATION
@@ -415,13 +347,14 @@ class TripAnalysisService:
         db: Session,
         trip: Trip,
         region: str,
+        live_traffic: dict[str, Any] | None = None,
+        is_planner: bool = False,
+        terrain_score: float | None = None,
+        terrain_reasons: list[str] | None = None,
     ) -> SegmentIntelligenceResult:
         """
         Evaluate one route segment using that segment's
-        representative coordinates.
-
-        The coordinates come from route_segment_service rather
-        than using the trip's source coordinates for every region.
+        representative coordinates and intelligence inputs.
         """
 
         latitude, longitude = get_segment_coordinates(
@@ -434,6 +367,10 @@ class TripAnalysisService:
             latitude=latitude,
             longitude=longitude,
             travel_datetime=trip.travel_datetime,
+            live_traffic=live_traffic,
+            is_planner=is_planner,
+            terrain_score=terrain_score,
+            terrain_reasons=terrain_reasons,
         )
 
     # =============================================================

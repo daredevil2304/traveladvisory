@@ -21,6 +21,7 @@ class NormalizedWeather:
 
     temperature_c: float | None = None
     humidity_percent: float | None = None
+    pressure_hpa: float | None = None
     rainfall_mm: float | None = None
     wind_speed_kmh: float | None = None
     visibility_km: float | None = None
@@ -35,6 +36,7 @@ class NormalizedWeather:
             "weather_condition": self.weather_condition,
             "temperature_c": self.temperature_c,
             "humidity_percent": self.humidity_percent,
+            "pressure_hpa": self.pressure_hpa,
             "rainfall_mm": self.rainfall_mm,
             "wind_speed_kmh": self.wind_speed_kmh,
             "visibility_km": self.visibility_km,
@@ -117,6 +119,7 @@ class WeatherNormalizer:
             weather_condition=weather.weather_condition,
             temperature_c=weather.temperature_c,
             humidity_percent=weather.humidity_percent,
+            pressure_hpa=weather.pressure_hpa,
             rainfall_mm=weather.rainfall_mm,
             wind_speed_kmh=weather.wind_speed_kmh,
             visibility_km=weather.visibility_km,
