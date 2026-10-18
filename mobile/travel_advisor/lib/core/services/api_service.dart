@@ -561,8 +561,27 @@ class ApiService {
       final data =
           _handleResponse(response);
 
+      // Cache for offline / tunnel resilience
+      try {
+        await setStoredItem('cached_trip_analysis_$tripId', jsonEncode(data));
+        await setStoredItem('latest_trip_analysis', jsonEncode(data));
+      } catch (_) {}
+
       return data;
     } catch (e) {
+      // Check offline cache if network fails (e.g. driving through Bhor Ghat tunnels)
+      try {
+        final cached = await getStoredItem('cached_trip_analysis_$tripId') ??
+            await getStoredItem('latest_trip_analysis');
+        if (cached != null) {
+          final decoded = jsonDecode(cached);
+          if (decoded is Map<String, dynamic>) {
+            decoded['is_offline_cached'] = true;
+            return decoded;
+          }
+        }
+      } catch (_) {}
+
       if (e is ApiException) {
         rethrow;
       }

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
@@ -162,6 +163,20 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.share_outlined, color: AppTheme.darkNavy),
+            tooltip: 'Export Travel Brief',
+            onPressed: () {
+              _showTravelBriefSheet(context, analysis, source, destination);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.emergency_outlined, color: Color(0xFFDC2626)),
+            tooltip: 'Expressway Emergency SOS',
+            onPressed: () {
+              _showEmergencySheet(context, analysis['emergency_directory']);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
             tooltip: 'Saved Reports',
             onPressed: () {
@@ -176,6 +191,35 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // OFFLINE TUNNEL CACHE BANNER
+              if (analysis['is_offline_cached'] == true) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFF59E0B)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.offline_bolt_rounded, size: 20, color: Color(0xFFB45309)),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Offline Cache Active: Highway intelligence saved for tunnel & low-connectivity transit.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFB45309),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               // ROUTE TITLE
               Text(
                 '$source to $destination',
@@ -325,7 +369,18 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                 ),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
+
+              // PROACTIVE SMART DEPARTURE TIMING OPTIMIZER
+              if (analysis['departure_optimization'] != null) ...[
+                _buildDepartureOptimizerCard(analysis['departure_optimization']),
+                const SizedBox(height: 16),
+              ],
+
+              // CORRIDOR ELEVATION & RISK PROFILE
+              _buildElevationProfileCard(analysis['elevation_profile'], segmentResults),
+
+              const SizedBox(height: 32),
 
               // PROBLEMATIC REGIONS SECTION
               const Align(
@@ -1037,6 +1092,20 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
     final sectorAdvisory = _getSectorAdvisory(regCode, isRain: isRain);
 
+    // Safe Speed Advisory
+    final safeSpeedAdv = segment['safe_speed_advisory'];
+    int statutorySpeed = 80;
+    int recommendedSpeed = 80;
+    List<String> speedReasons = [];
+    if (safeSpeedAdv is Map) {
+      statutorySpeed = (safeSpeedAdv['statutory_speed_kmh'] as num?)?.toInt() ?? 80;
+      recommendedSpeed = (safeSpeedAdv['recommended_safe_speed_kmh'] as num?)?.toInt() ?? statutorySpeed;
+      if (safeSpeedAdv['advisory_reasons'] is List) {
+        speedReasons = (safeSpeedAdv['advisory_reasons'] as List).map((e) => e.toString()).toList();
+      }
+    }
+    final bool isSpeedReduced = recommendedSpeed < statutorySpeed;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -1151,6 +1220,71 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                           ),
                         ),
                       ],
+
+                      // Dynamic Safe Speed Limit Advisory Banner
+                      Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSpeedReduced ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSpeedReduced ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.speed_rounded,
+                              size: 16,
+                              color: isSpeedReduced ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Recommended Safe Speed: $recommendedSpeed km/h',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: isSpeedReduced ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                                        ),
+                                      ),
+                                      if (isSpeedReduced) ...[
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '(Statutory $statutorySpeed)',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Color(0xFF64748B),
+                                            decoration: TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  if (speedReasons.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        speedReasons.first,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSpeedReduced ? const Color(0xFF991B1B) : const Color(0xFF15803D),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                       const SizedBox(height: 12),
 
@@ -1568,6 +1702,761 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     if (score < 85) return 'Generally clear corridor conditions with standard precautions.';
     return 'Optimal travel conditions along the expressway corridor.';
   }
+
+  // ============================================================
+  // PROACTIVE SMART DEPARTURE TIMING OPTIMIZER CARD
+  // ============================================================
+
+  Widget _buildDepartureOptimizerCard(dynamic opt) {
+    if (opt is! Map) return const SizedBox.shrink();
+    final bool hasBetter = opt['has_better_alternative'] == true;
+    final String recText = opt['recommendation_text']?.toString() ?? '';
+    final List<dynamic> alts = (opt['alternative_windows'] is List) ? opt['alternative_windows'] : [];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasBetter ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
+          width: hasBetter ? 1.5 : 1.0,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: hasBetter ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasBetter ? Icons.auto_awesome_rounded : Icons.schedule_rounded,
+                  color: hasBetter ? AppTheme.electricCobalt : AppTheme.darkNavy,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasBetter ? 'SMART TIMING ADVICE' : 'DEPARTURE SCHEDULE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: hasBetter ? AppTheme.electricCobalt : AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasBetter ? 'Optimal Departure Window Available' : 'Scheduled Departure Verified',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.darkNavy,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            recText,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+              height: 1.4,
+            ),
+          ),
+          if (alts.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: alts.map((alt) {
+                  if (alt is! Map) return const SizedBox.shrink();
+                  final bool isCurrent = alt['is_current'] == true;
+                  final String time = alt['display_time'] ?? '';
+                  final double slotScore = (alt['safety_score'] as num?)?.toDouble() ?? 80.0;
+                  final String cond = alt['condition'] ?? '';
+                  final Color chipColor = _getScoreColor(slotScore.toInt());
+
+                  return Container(
+                    margin: const EdgeInsets.only(right: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isCurrent ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isCurrent ? AppTheme.electricCobalt : const Color(0xFFE2E8F0),
+                        width: isCurrent ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w700,
+                                color: isCurrent ? AppTheme.royalSapphire : AppTheme.darkNavy,
+                              ),
+                            ),
+                            if (isCurrent) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.royalSapphire,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'CHOSEN',
+                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              '${slotScore.toInt()}/100',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: chipColor,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              cond,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // CORRIDOR ELEVATION & MOUNTAIN PROFILE CARD
+  // ============================================================
+
+  Widget _buildElevationProfileCard(dynamic profileData, List<dynamic> segments) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.terrain_rounded, color: AppTheme.royalCobalt, size: 22),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CORRIDOR ELEVATION & TERRAIN PROFILE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Mumbai (8m) → Bhor Ghat Peak (624m) → Pune (560m)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.darkNavy,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 100,
+              width: double.infinity,
+              color: const Color(0xFFF8FAFC),
+              child: CustomPaint(
+                painter: ElevationChartPainter(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Panvel\n14m',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'Khopoli\n72m',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'Bhor Ghat\n550m',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'Lonavala\n624m (Peak)',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFDC2626)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'Talegaon\n585m',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'Pune\n560m',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // HIGHWAY EMERGENCY SOS DIRECTORY SHEET
+  // ============================================================
+
+  void _showEmergencySheet(BuildContext context, dynamic emergencyDir) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.8,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: const [
+                    Icon(Icons.emergency_rounded, color: Color(0xFFDC2626), size: 28),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Expressway Emergency & SOS Directory',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.darkNavy,
+                            ),
+                          ),
+                          Text(
+                            'Mumbai-Pune Expressway (NH-48) 24x7 Assistance',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  children: [
+                    const Text(
+                      '24x7 EMERGENCY DISPATCH HOTLINES',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildEmergencyContactTile(
+                      ctx,
+                      title: 'IRB Expressway Control Room (24x7)',
+                      phone: '9822498224',
+                      displayPhone: '98224 98224',
+                      desc: 'Ambulance, Heavy Towing Crane & Highway Patrol SOS',
+                      isHighPriority: true,
+                    ),
+                    _buildEmergencyContactTile(
+                      ctx,
+                      title: 'National Highway Patrol (MSRDC)',
+                      phone: '1033',
+                      displayPhone: '1033',
+                      desc: 'Toll-free Expressway Emergency Helpline',
+                      isHighPriority: true,
+                    ),
+                    _buildEmergencyContactTile(
+                      ctx,
+                      title: 'Maharashtra Highway Police Control',
+                      phone: '02025651515',
+                      displayPhone: '020-25651515',
+                      desc: 'State Highway Police HQ Control Room',
+                      isHighPriority: false,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'NEAREST TRAUMA CARE HOSPITALS',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTraumaTile(
+                      ctx,
+                      name: 'MGM Hospital & Medical College',
+                      location: 'Kamothe / Panvel (km 34)',
+                      phone: '02227437900',
+                      displayPhone: '022-27437900',
+                      badge: 'Level 1 Trauma',
+                    ),
+                    _buildTraumaTile(
+                      ctx,
+                      name: 'Jakhotia Trauma Care Hospital',
+                      location: 'Khopoli Phata (km 70 - Ghat Base)',
+                      phone: '02192263300',
+                      displayPhone: '02192-263300',
+                      badge: 'Ghat Entry Trauma',
+                    ),
+                    _buildTraumaTile(
+                      ctx,
+                      name: 'Sanjeevani Critical Care Hospital',
+                      location: 'Lonavala (km 88 - Ghat Crest)',
+                      phone: '02114273545',
+                      displayPhone: '02114-273545',
+                      badge: 'Mountain Crest Care',
+                    ),
+                    _buildTraumaTile(
+                      ctx,
+                      name: 'Lokmanya Hospital for Trauma',
+                      location: 'Nigdi / Pune (km 138)',
+                      phone: '02030717500',
+                      displayPhone: '020-30717500',
+                      badge: 'Neuro & Ortho Care',
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'AUTHORIZED REST & FUEL PLAZAS',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildPlazaTile(
+                      name: 'Khalapur Food Mall (Pune-bound, km 38)',
+                      amenities: 'Fuel • EV Fast Chargers • Medical Kit • Food Court',
+                    ),
+                    _buildPlazaTile(
+                      name: 'Ozarde Food Plaza (Mumbai-bound, km 78)',
+                      amenities: 'Fuel • Tire Mechanics • Towing Assistance • Restrooms',
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmergencyContactTile(
+    BuildContext ctx, {
+    required String title,
+    required String phone,
+    required String displayPhone,
+    required String desc,
+    required bool isHighPriority,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isHighPriority ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isHighPriority ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isHighPriority ? const Color(0xFFDC2626) : AppTheme.darkNavy,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.phone_in_talk_rounded, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.darkNavy),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  displayPhone,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: isHighPriority ? const Color(0xFFDC2626) : AppTheme.royalSapphire,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 20, color: AppTheme.darkNavy),
+            tooltip: 'Copy Number',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: phone));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Copied $displayPhone to clipboard!')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTraumaTile(
+    BuildContext ctx, {
+    required String name,
+    required String location,
+    required String phone,
+    required String displayPhone,
+    required String badge,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.darkNavy),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppTheme.royalCobalt),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(location, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                const SizedBox(height: 4),
+                Text(displayPhone, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.royalCobalt)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 18, color: AppTheme.darkNavy),
+            tooltip: 'Copy Number',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: phone));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Copied $name phone to clipboard!')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlazaTile({required String name, required String amenities}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.local_gas_station_rounded, size: 20, color: AppTheme.royalCobalt),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppTheme.darkNavy)),
+                const SizedBox(height: 2),
+                Text(amenities, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // EXECUTIVE TRAVEL ADVISORY BRIEF EXPORT
+  // ============================================================
+
+  void _showTravelBriefSheet(BuildContext context, Map<String, dynamic> analysis, String source, String destination) {
+    final int overallScore = (analysis['overall_safety_score'] as num?)?.toInt() ?? 80;
+    final String date = analysis['travel_date'] ?? 'Today';
+    final String time = analysis['travel_time'] ?? 'Now';
+    final List<dynamic> segments = (analysis['segment_results'] is List) ? analysis['segment_results'] : [];
+
+    final StringBuffer brief = StringBuffer();
+    brief.writeln('====================================');
+    brief.writeln('  MUMBAI-PUNE TRAVEL ADVISORY BRIEF');
+    brief.writeln('====================================');
+    brief.writeln('Route: $source → $destination');
+    brief.writeln('Departure: $date at $time');
+    brief.writeln('Overall Safety Score: $overallScore / 100 (${_getRiskLabel(overallScore)})');
+    brief.writeln('------------------------------------');
+    brief.writeln('CORRIDOR WAYPOINTS & SAFE SPEEDS:');
+    for (final s in segments) {
+      if (s is Map) {
+        final title = _resolveSegmentTitle(s);
+        final segScore = s['safety_score'] ?? '--';
+        final safeSpeed = s['safe_speed_advisory']?['recommended_safe_speed_kmh'] ?? 80;
+        final cond = s['weather_result']?['weather_condition'] ?? 'Clear';
+        brief.writeln('• $title: $segScore/100 | $cond | Safe Speed: $safeSpeed km/h');
+      }
+    }
+    brief.writeln('------------------------------------');
+    brief.writeln('EMERGENCY HOTLINES:');
+    brief.writeln('• IRB Expressway SOS: 98224 98224');
+    brief.writeln('• Highway Patrol: 1033');
+    brief.writeln('====================================');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.assignment_turned_in_rounded, color: AppTheme.royalCobalt),
+              SizedBox(width: 8),
+              Text('Travel Advisory Brief', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: const BoxConstraints(maxHeight: 340),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: SingleChildScrollView(
+              child: Text(
+                brief.toString(),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 11, height: 1.4),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.royalCobalt,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy to Clipboard'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: brief.toString()));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Travel Advisory Brief copied to clipboard!')),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class ElevationChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    final points = [
+      const Offset(0.02, 8.0),
+      const Offset(0.12, 14.0),
+      const Offset(0.28, 48.0),
+      const Offset(0.40, 72.0),
+      const Offset(0.55, 550.0),
+      const Offset(0.62, 624.0),
+      const Offset(0.74, 590.0),
+      const Offset(0.85, 582.0),
+      const Offset(0.98, 560.0),
+    ];
+
+    const double maxElevation = 680.0;
+    final Path path = Path();
+    final Path fillPath = Path();
+
+    Offset toCanvas(Offset p) {
+      final double x = p.dx * w;
+      final double y = h - ((p.dy / maxElevation) * (h - 22.0)) - 10.0;
+      return Offset(x, y);
+    }
+
+    final startPoint = toCanvas(points.first);
+    path.moveTo(startPoint.dx, startPoint.dy);
+    fillPath.moveTo(startPoint.dx, h);
+    fillPath.lineTo(startPoint.dx, startPoint.dy);
+
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = toCanvas(points[i]);
+      final p1 = toCanvas(points[i + 1]);
+      final controlX = (p0.dx + p1.dx) / 2;
+      path.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
+      fillPath.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
+    }
+
+    final endPoint = toCanvas(points.last);
+    fillPath.lineTo(endPoint.dx, h);
+    fillPath.close();
+
+    final Paint fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFF2563EB).withValues(alpha: 0.28),
+          const Color(0xFF1E3A8A).withValues(alpha: 0.02),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    canvas.drawPath(fillPath, fillPaint);
+
+    final Paint linePaint = Paint()
+      ..color = const Color(0xFF2563EB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, linePaint);
+
+    final Paint dotPaint = Paint()..color = const Color(0xFF1E3A8A);
+    final Paint dotInner = Paint()..color = Colors.white;
+
+    for (final p in points) {
+      final c = toCanvas(p);
+      canvas.drawCircle(c, 3.5, dotPaint);
+      canvas.drawCircle(c, 1.8, dotInner);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class SafetyMeterPainter extends CustomPainter {
