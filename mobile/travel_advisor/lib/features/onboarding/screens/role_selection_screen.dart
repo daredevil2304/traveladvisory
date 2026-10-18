@@ -429,11 +429,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 role: 'traveler',
                 icon: Icons.directions_car_rounded,
                 title: 'Traveler',
-                subtitle: 'Live Radar & Hazards',
+                subtitle: 'Live En-Route Travel',
                 badgeText: 'EN ROUTE',
                 description:
                     'Travelling right now along the corridor with live Google Maps traffic, road sensor feeds & instant hazard alerts.',
-                chips: const ['⚡ Live Radar', '🚨 Incident Alerts', '🌦️ Live Weather', '🚦 Live Traffic'],
               ),
 
               const SizedBox(height: 14),
@@ -443,11 +442,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 role: 'planner',
                 icon: Icons.event_note_rounded,
                 title: 'Planner',
-                subtitle: 'Forecasts & Advisories',
+                subtitle: 'Advance Trip Planning',
                 badgeText: 'PRE-TRIP',
                 description:
                     'Planning departure for a future date. Generates predictive risk forecasts, Ghat elevation risks, and optimal departure timing.',
-                chips: const ['📅 7-Day Forecast', '⏰ Departure Advisor', '📊 Safety Trends', '🏔️ Terrain Guidance'],
               ),
 
               const Spacer(),
@@ -517,7 +515,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     required String subtitle,
     required String badgeText,
     required String description,
-    required List<String> chips,
   }) {
     final bool selected = _selectedRole == role;
     final bool isTraveler = role == 'traveler';
@@ -528,12 +525,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final Color selectedBorder = isTraveler ? const Color(0xFF10B981) : const Color(0xFF2563EB);
     final Color badgeBg = isTraveler ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
     final Color badgeTextColor = isTraveler ? const Color(0xFF15803D) : const Color(0xFF1D4ED8);
-    final Color chipBg = selected
-        ? (isTraveler ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE))
-        : const Color(0xFFF1F5F9);
-    final Color chipTextColor = selected
-        ? (isTraveler ? const Color(0xFF065F46) : const Color(0xFF1E40AF))
-        : const Color(0xFF64748B);
 
     return GestureDetector(
       onTap: _isLoggingOut
@@ -666,28 +657,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 color: AppTheme.textSecondary,
                 height: 1.4,
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: chips.map((c) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: chipBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    c,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: chipTextColor,
-                    ),
-                  ),
-                );
-              }).toList(),
             ),
           ],
         ),
