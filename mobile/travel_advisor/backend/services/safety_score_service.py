@@ -293,29 +293,73 @@ class SafetyScoreService:
                 safety_score = min(safety_score, unusual_val)
 
         # 5. Generate human-readable reasons
-        reasons = self._generate_reasons(
-            weather_result=weather_result,
-            traveler_result=traveler_result,
-            dimension_scores=dimension_scores,
-        )
+        if is_planner:
+            # Planner mode: Provide actionable forecast outcomes (temperature, visibility, road state, safety margin)
+            planner_reasons: list[str] = []
+            if isinstance(weather_result, dict):
+                cond = weather_result.get("condition") or "Clear"
+                temp = weather_result.get("temp")
+                temp_str = f" at {round(temp)}°C" if temp is not None else ""
+                rain = weather_result.get("rain")
+                rain_mm = weather_result.get("rainfall_mm")
+                is_rain = isinstance(rain, str) and rain.casefold() not in {"no rain", "none"}
+                surface_str = "wet pavement caution" if is_rain else "dry road surface"
 
-        # Append Traffic reason (Traveler mode)
-        if not is_planner and isinstance(traffic_result, dict):
-            delay = traffic_result.get("delay_minutes", 0)
-            status_lbl = traffic_result.get("status_label", "Normal Flow")
-            speed_adv = traffic_result.get("speed_advice", "80-100 km/h")
-            if delay > 0 or traffic_result.get("congestion_level") in ("moderate", "heavy", "standstill"):
-                reasons.append(
-                    f"Traffic flow: {status_lbl} (~{delay}m delay, cruising speed {speed_adv})."
-                )
-            else:
-                reasons.append(
-                    f"Traffic flow: Optimal fluid transit ({speed_adv}, no delays reported)."
+                planner_reasons.append(
+                    f"Forecast Outlook: {cond} skies{temp_str} with {surface_str}."
                 )
 
-        # Append Terrain & Planner reasons
-        if is_planner and terrain_reasons:
-            reasons.extend(terrain_reasons)
+                vis_km = weather_result.get("visibility_km")
+                vis_lbl = weather_result.get("visibility") or "Optimal"
+                if vis_km is not None:
+                    planner_reasons.append(
+                        f"Atmospheric Visibility: {vis_km:.1f} km sightlines ({vis_lbl})."
+                    )
+
+                if is_rain:
+                    r_det = f" ({rain_mm} mm expected)" if rain_mm and rain_mm > 0 else ""
+                    planner_reasons.append(
+                        f"Precipitation Alert: {rain}{r_det}. Maintain safe following distance."
+                    )
+
+            if terrain_reasons:
+                planner_reasons.extend(terrain_reasons)
+
+            if safety_score is not None:
+                if safety_score >= 90:
+                    planner_reasons.append(
+                        f"Safety Margin: High ({round(safety_score)}/100) - Minimal transit disruption risk forecast."
+                    )
+                elif safety_score >= 75:
+                    planner_reasons.append(
+                        f"Safety Margin: Favorable ({round(safety_score)}/100) - Normal highway conditions expected."
+                    )
+                else:
+                    planner_reasons.append(
+                        f"Safety Margin: Cautionary ({round(safety_score)}/100) - Exercise increased caution during this window."
+                    )
+            reasons = planner_reasons
+        else:
+            # Traveler mode: Real-time conditions and traffic flow
+            reasons = self._generate_reasons(
+                weather_result=weather_result,
+                traveler_result=traveler_result,
+                dimension_scores=dimension_scores,
+            )
+
+            # Append Traffic reason (Traveler mode)
+            if isinstance(traffic_result, dict):
+                delay = traffic_result.get("delay_minutes", 0)
+                status_lbl = traffic_result.get("status_label", "Normal Flow")
+                speed_adv = traffic_result.get("speed_advice", "80-100 km/h")
+                if delay > 0 or traffic_result.get("congestion_level") in ("moderate", "heavy", "standstill"):
+                    reasons.append(
+                        f"Traffic flow: {status_lbl} (~{delay}m delay, cruising speed {speed_adv})."
+                    )
+                else:
+                    reasons.append(
+                        f"Traffic flow: Optimal fluid transit ({speed_adv}, no delays reported)."
+                    )
 
         # 6. Extract genuine risk factors (strictly negative conditions, empty when safe)
         risk_factors: list[str] = []
