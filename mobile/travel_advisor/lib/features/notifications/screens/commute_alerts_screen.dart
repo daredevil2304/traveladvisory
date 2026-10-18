@@ -594,26 +594,38 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.lightMint,
+      backgroundColor: AppTheme.surfaceCanvas,
       appBar: AppBar(
+        backgroundColor: AppTheme.surfaceCanvas,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Commute Alerts & Habits',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.darkNavy,
+              ),
             ),
             Text(
               'Habit-based Corridor Intelligence',
-              style: TextStyle(fontSize: 12, color: Colors.white70),
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ],
         ),
-        backgroundColor: AppTheme.forestGreen,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.darkNavy),
             tooltip: 'Refresh Alert Assessment',
             onPressed: _loadData,
           ),

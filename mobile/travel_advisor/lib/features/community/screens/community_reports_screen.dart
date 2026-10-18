@@ -164,9 +164,9 @@ class _CommunityReportsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.lightMint,
+      backgroundColor: AppTheme.surfaceCanvas,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightMint,
+        backgroundColor: AppTheme.surfaceCanvas,
         elevation: 0,
         titleSpacing: 0,
         title: Column(
@@ -202,15 +202,16 @@ class _CommunityReportsScreenState
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.forestGreen,
+        backgroundColor: const Color(0xFF1D4ED8),
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.add_location_alt_rounded),
         label: const Text(
           'Report Road Condition',
           style: TextStyle(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             fontSize: 13,
+            letterSpacing: 0.3,
           ),
         ),
         onPressed: _showSubmitModal,

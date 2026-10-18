@@ -3085,11 +3085,11 @@ Widget build(
   child: Scaffold(
         
       backgroundColor:
-          AppTheme.lightMint,
+          AppTheme.surfaceCanvas,
       appBar:
           AppBar(
         backgroundColor:
-            AppTheme.lightMint,
+            AppTheme.surfaceCanvas,
         elevation: 0,
         automaticallyImplyLeading:
             false,

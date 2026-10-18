@@ -165,6 +165,15 @@ class _TripDetailsScreenState
     });
   }
 
+  void _swapRoutePoints() {
+    setState(() {
+      final temp = _selectedSource;
+      _selectedSource = _selectedDestination;
+      _selectedDestination = temp;
+      _locationWasDetected = false;
+    });
+  }
+
   /*
    * Simple Haversine distance calculation.
    *
@@ -829,9 +838,53 @@ class _TripDetailsScreenState
                   ],
                 ),
               ],
+              const SizedBox(
+                height: 14,
+              ),
+
+              Center(
+                child: InkWell(
+                  onTap: _swapRoutePoints,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppTheme.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0C1D4ED8),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.swap_vert_rounded,
+                          size: 16,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Reverse Direction',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
               const SizedBox(
-                height: 22,
+                height: 14,
               ),
 
               _buildSectionTitle(
@@ -1002,29 +1055,67 @@ class _TripDetailsScreenState
               ),
 
               SizedBox(
-                width:
-                    double.infinity,
+                width: double.infinity,
                 height: 56,
-                child:
-                    ElevatedButton(
-                  onPressed:
-                      _isAnalyzing
-                          ? null
-                          : _analyzeJourney,
-                  child: _isAnalyzing
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child:
-                              CircularProgressIndicator(
-                            strokeWidth: 2,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x301D4ED8),
+                        blurRadius: 14,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: _isAnalyzing ? null : _analyzeJourney,
+                    child: _isAnalyzing
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isPlanner
+                                    ? Icons.calendar_month_rounded
+                                    : Icons.explore_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                isPlanner
+                                    ? 'ANALYZE JOURNEY'
+                                    : 'ANALYZE CURRENT JOURNEY',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                        )
-                      : Text(
-                          isPlanner
-                              ? 'ANALYZE JOURNEY'
-                              : 'ANALYZE CURRENT JOURNEY',
-                        ),
+                  ),
                 ),
               ),
             ],
@@ -1043,14 +1134,11 @@ class _TripDetailsScreenState
   ) {
     return Text(
       title,
-      style:
-          const TextStyle(
+      style: const TextStyle(
         fontSize: 12,
-        fontWeight:
-            FontWeight.w800,
+        fontWeight: FontWeight.w800,
         letterSpacing: 1.2,
-        color:
-            AppTheme.textSecondary,
+        color: AppTheme.textSecondary,
       ),
     );
   }
@@ -1063,35 +1151,32 @@ class _TripDetailsScreenState
     required String? value,
     required String hint,
     required IconData icon,
-    required ValueChanged<String?>
-        onChanged,
+    required ValueChanged<String?> onChanged,
   }) {
-    return DropdownButtonFormField<
-        String>(
+    return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
-      decoration:
-          InputDecoration(
+      decoration: InputDecoration(
         hintText: hint,
-        prefixIcon:
-            Icon(icon),
+        prefixIcon: Icon(
+          icon,
+          color: const Color(0xFF1D4ED8),
+        ),
       ),
-      items:
-          routePoints.map(
-        (point) {
-          return DropdownMenuItem<
-              String>(
-            value: point.name,
-            child: Text(
-              point.name,
-              overflow:
-                  TextOverflow.ellipsis,
+      items: routePoints.map((point) {
+        return DropdownMenuItem<String>(
+          value: point.name,
+          child: Text(
+            point.name,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppTheme.darkNavy,
             ),
-          );
-        },
-      ).toList(),
-      onChanged:
-          onChanged,
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
   }
 

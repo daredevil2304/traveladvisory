@@ -318,9 +318,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.lightMint,
+      backgroundColor: AppTheme.surfaceCanvas,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightMint,
+        backgroundColor: AppTheme.surfaceCanvas,
         elevation: 0,
         leading: IconButton(
           tooltip: 'Back to Dashboard',

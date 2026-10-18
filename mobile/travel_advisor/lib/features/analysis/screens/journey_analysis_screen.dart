@@ -141,9 +141,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final travelTime = analysis['travel_time']?.toString();
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceCanvas,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
+        backgroundColor: AppTheme.surfaceCanvas,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
@@ -253,36 +253,75 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               const SizedBox(height: 28),
 
               // CIRCULAR SAFETY METER GAUGE
-              SizedBox(
-                width: 240,
-                height: 240,
-                child: CustomPaint(
-                  painter: SafetyMeterPainter(score: score),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$score',
-                          style: TextStyle(
-                            fontSize: 64,
-                            fontWeight: FontWeight.w900,
-                            color: _getScoreColor(score),
-                            height: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Safety Score',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x060F172A),
+                      blurRadius: 14,
+                      offset: Offset(0, 4),
                     ),
-                  ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      height: 220,
+                      child: CustomPaint(
+                        painter: SafetyMeterPainter(score: score),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$score',
+                                style: TextStyle(
+                                  fontSize: 60,
+                                  fontWeight: FontWeight.w900,
+                                  color: _getScoreColor(score),
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  color: _getScoreColor(score).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _getScoreColor(score).withValues(alpha: 0.25)),
+                                ),
+                                child: Text(
+                                  _getRiskLabel(score).toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _getScoreColor(score),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _getOverallVerdict(score),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
 
@@ -400,9 +439,28 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               const SizedBox(height: 36),
 
               // SAVE REPORT BUTTON (On report analysis page)
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 54,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: _reportSaved
+                      ? const LinearGradient(
+                          colors: [Color(0xFF15803D), Color(0xFF16A34A)],
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_reportSaved ? const Color(0xFF16A34A) : const Color(0xFF1E3A8A)).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: ElevatedButton.icon(
                   onPressed: (_isSavingReport || _reportSaved)
                       ? null
@@ -420,25 +478,24 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                           _reportSaved
                               ? Icons.check_circle_rounded
                               : Icons.bookmark_add_rounded,
+                          color: Colors.white,
                         ),
                   label: Text(
                     _isSavingReport
                         ? 'Saving Report...'
                         : _reportSaved
-                            ? 'Report Saved'
-                            : 'Save Report',
+                            ? 'Report Saved to Archive'
+                            : 'Save Report to Archive',
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.forestGreen,
-                    foregroundColor: AppTheme.white,
-                    disabledBackgroundColor: _reportSaved
-                        ? AppTheme.forestGreen.withValues(alpha: 0.7)
-                        : Colors.grey.shade300,
-                    disabledForegroundColor: AppTheme.white,
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -448,39 +505,54 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               const SizedBox(height: 12),
 
               // BOTTOM ACTION BUTTON (Live updates / Return to Chat)
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 54,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(
-                      context,
-                      isPlanner
-                          ? {'action': 'back_to_chat'}
-                          : {'action': 'live_updates'},
-                    );
-                  },
-                  icon: Icon(
-                    isPlanner
-                        ? Icons.chat_bubble_outline_rounded
-                        : Icons.add_location_alt_rounded,
-                    color: AppTheme.royalCobalt,
-                  ),
-                  label: Text(
-                    isPlanner ? 'Back to Chat' : 'Share Live Updates',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.royalCobalt,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x060F172A),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                      color: AppTheme.royalCobalt,
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.pop(
+                        context,
+                        isPlanner
+                            ? {'action': 'back_to_chat'}
+                            : {'action': 'live_updates'},
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isPlanner
+                              ? Icons.chat_bubble_outline_rounded
+                              : Icons.add_location_alt_rounded,
+                          color: const Color(0xFF1D4ED8),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isPlanner ? 'Back to Chat Assistant' : 'Share Live Road Updates',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1D4ED8),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1481,6 +1553,20 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
   Color _getScoreColor(int score) {
     return SafetyMeterPainter.getScoreColor(score);
+  }
+
+  String _getRiskLabel(int score) {
+    if (score < 45) return 'High Risk';
+    if (score < 65) return 'Caution';
+    if (score < 85) return 'Moderate';
+    return 'Optimal';
+  }
+
+  String _getOverallVerdict(int score) {
+    if (score < 45) return 'Hazardous conditions detected. Caution strongly advised.';
+    if (score < 65) return 'Moderate adverse weather or traffic. Drive with extra care.';
+    if (score < 85) return 'Generally clear corridor conditions with standard precautions.';
+    return 'Optimal travel conditions along the expressway corridor.';
   }
 }
 

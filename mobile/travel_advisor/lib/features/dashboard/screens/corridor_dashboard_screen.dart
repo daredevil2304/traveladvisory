@@ -27,6 +27,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   bool _isSavingSchedule = false;
 
   List<Map<String, dynamic>> _liveReportsPreview = [];
+  List<Map<String, dynamic>> _savedReportsPreview = [];
 
   static const List<String> _corridorPoints = [
     'Mumbai',
@@ -386,6 +387,17 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         });
       }
 
+      // 3b. Load Saved Reports Preview
+      try {
+        final userId = (await ApiService.getStoredUserId()) ?? 1;
+        final saved = await ApiService.getSavedReports(userId: userId);
+        if (mounted) {
+          setState(() {
+            _savedReportsPreview = saved.reversed.take(3).toList();
+          });
+        }
+      } catch (_) {}
+
       // 4. Load Dynamic Corridor Telemetry (OpenWeather + Google Maps Traffic)
       await _fetchLiveCorridorTelemetry(forceRefresh: true);
     } catch (_) {
@@ -409,6 +421,15 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           _isLoadingReports = false;
         });
       }
+      try {
+        final userId = (await ApiService.getStoredUserId()) ?? 1;
+        final saved = await ApiService.getSavedReports(userId: userId);
+        if (mounted) {
+          setState(() {
+            _savedReportsPreview = saved.reversed.take(3).toList();
+          });
+        }
+      } catch (_) {}
       await _fetchLiveCorridorTelemetry(forceRefresh: true);
     } catch (_) {
       if (mounted) {
@@ -1681,6 +1702,95 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   // TAB 3: SAVED REPORTS ARCHIVE SECTION
   // ============================================================
 
+  String _formatSavedReportDate(dynamic dateRaw) {
+    if (dateRaw == null) return '';
+    try {
+      final String raw = dateRaw.toString().trim();
+      DateTime dt;
+      if (!raw.contains('+') && !raw.endsWith('Z') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(raw)) {
+        dt = DateTime.parse('$raw+05:30').toUtc().add(const Duration(hours: 5, minutes: 30));
+      } else {
+        dt = DateTime.parse(raw).toUtc().add(const Duration(hours: 5, minutes: 30));
+      }
+      final String month = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][dt.month - 1];
+      final String hour = dt.hour.toString().padLeft(2, '0');
+      final String minute = dt.minute.toString().padLeft(2, '0');
+      return '${dt.day} $month ${dt.year}, $hour:$minute';
+    } catch (_) {
+      return dateRaw.toString();
+    }
+  }
+
+  Color _getSavedReportScoreColor(int score) {
+    if (score < 45) return const Color(0xFFDC2626);
+    if (score < 65) return const Color(0xFFF97316);
+    if (score < 85) return const Color(0xFFF59E0B);
+    return const Color(0xFF10B981);
+  }
+
+  String _getSavedReportRiskLabel(int score) {
+    if (score < 45) return 'High Risk';
+    if (score < 65) return 'Caution';
+    if (score < 85) return 'Moderate';
+    return 'Safe';
+  }
+
+  Future<void> _openSavedReport(Map<String, dynamic> summary) async {
+    final int reportId = summary['id'] is num ? (summary['id'] as num).toInt() : 0;
+    if (reportId == 0) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1D4ED8)),
+      ),
+    );
+
+    try {
+      final int userId = (await ApiService.getStoredUserId()) ?? 1;
+      final Map<String, dynamic> detail = await ApiService.getSavedReport(
+        userId: userId,
+        reportId: reportId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // close loading dialog
+
+      final dynamic analysisData = detail['analysis_data'] ?? summary['analysis_data'];
+      String title = summary['title']?.toString() ?? 'Travel Report';
+      String source = summary['source']?.toString() ?? detail['source']?.toString() ?? 'Mumbai';
+      String destination = summary['destination']?.toString() ?? detail['destination']?.toString() ?? 'Pune';
+      String role = summary['role']?.toString() ?? detail['role']?.toString() ?? 'traveler';
+
+      if ((summary['source'] == null || summary['source'].toString().isEmpty) && title.contains('→')) {
+        final parts = title.split('→');
+        source = parts[0].replaceAll('Travel Report', '').trim();
+        destination = parts[1].replaceAll('Travel Report', '').trim();
+      }
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.journeyAnalysis,
+        arguments: {
+          'analysis': analysisData,
+          'source': source,
+          'destination': destination,
+          'role': role,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the full report.')),
+      );
+    }
+  }
+
   Widget _buildSavedReportsSection() {
     return Container(
       width: double.infinity,
@@ -1703,8 +1813,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(12),
@@ -1718,11 +1828,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'SAVED REPORTS ARCHIVE',
                       style: TextStyle(
                         fontSize: 11,
@@ -1731,13 +1841,35 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                         letterSpacing: 0.6,
                       ),
                     ),
-                    Text(
-                      'Bookmarked Travel Reports',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.darkNavy,
-                      ),
+                    Row(
+                      children: [
+                        const Text(
+                          'Recent Trip Reports',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                        if (_savedReportsPreview.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${_savedReportsPreview.length} recent',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1D4ED8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -1746,14 +1878,128 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 12),
           const Text(
-            'Access all your archived corridor trip risk assessments, weather observations, and departure recommendations saved during past planning sessions.',
+            'Direct access to your most recent corridor risk assessments. Tap any card to view full telemetry, hazard alerts, and ML predictions.',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          if (_savedReportsPreview.isNotEmpty) ...[
+            ..._savedReportsPreview.map((item) {
+              final String title = item['title']?.toString() ?? 'Travel Report';
+              final String dateStr = _formatSavedReportDate(item['created_at']);
+              final dynamic scoreVal = item['safety_score'] ?? item['overall_safety_score'];
+              final int score = scoreVal is num ? scoreVal.round() : 0;
+              final Color scoreColor = _getSavedReportScoreColor(score);
+              final String riskLabel = _getSavedReportRiskLabel(score);
+              final String role = item['role']?.toString().toLowerCase() ?? 'traveler';
+              final bool isPlanner = role == 'planner';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _openSavedReport(item),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: scoreColor,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.darkNavy,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    if (dateStr.isNotEmpty) ...[
+                                      const Icon(Icons.access_time_rounded, size: 12, color: AppTheme.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        dateStr,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.textSecondary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: isPlanner ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        isPlanner ? 'PLANNER' : 'TRAVELER',
+                                        style: TextStyle(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: isPlanner ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: scoreColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: scoreColor.withValues(alpha: 0.25)),
+                            ),
+                            child: Text(
+                              '$score • $riskLabel',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: scoreColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 6),
+          ],
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -1770,9 +2016,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 Navigator.pushNamed(context, AppRoutes.savedReports);
               },
               icon: const Icon(Icons.bookmark_added_rounded, size: 18),
-              label: const Text(
-                'Open Saved Reports Archive',
-                style: TextStyle(
+              label: Text(
+                _savedReportsPreview.isNotEmpty
+                    ? 'View All Saved Reports Archive'
+                    : 'Open Saved Reports Archive',
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.3,

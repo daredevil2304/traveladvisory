@@ -167,30 +167,51 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
     }
   }
 
+  String _getRiskLabel(int score) {
+    if (score < 45) return 'High Risk';
+    if (score < 65) return 'Caution';
+    if (score < 85) return 'Moderate';
+    return 'Safe';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceCanvas,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
+        backgroundColor: AppTheme.surfaceCanvas,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Saved Travel Reports',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.darkNavy,
-          ),
+        title: Column(
+          children: [
+            const Text(
+              'Saved Travel Reports',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.darkNavy,
+              ),
+            ),
+            if (!_isLoading && _reports.isNotEmpty)
+              Text(
+                '${_reports.length} ${_reports.length == 1 ? "report" : "reports"} archived',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+          ],
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadReports,
+          color: const Color(0xFF1D4ED8),
           child: _buildBody(),
         ),
       ),
@@ -233,43 +254,91 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
     if (_reports.isEmpty) {
       return ListView(
         children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
                 children: [
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      color: AppTheme.lightMint,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
                     child: const Icon(
                       Icons.bookmark_border_rounded,
-                      size: 36,
-                      color: AppTheme.forestGreen,
+                      size: 38,
+                      color: Color(0xFF1D4ED8),
                     ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
                     'No Saved Reports Yet',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
                       color: AppTheme.darkNavy,
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Complete a journey evaluation and tap "Save Report" in the chat to review route conditions whenever needed.',
+                    'Evaluate a corridor journey and tap "Save Report" to archive route risk conditions, telemetry, and forecasts here for quick reference.',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13.5,
                       color: AppTheme.textSecondary,
-                      height: 1.4,
+                      height: 1.45,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    height: 48,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x301D4ED8),
+                            blurRadius: 10,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamed(context, AppRoutes.roleSelection);
+                        },
+                        icon: const Icon(Icons.navigation_rounded, size: 18, color: Colors.white),
+                        label: const Text(
+                          'Evaluate New Journey',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -280,7 +349,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       itemCount: _reports.length,
       itemBuilder: (context, index) {
         final item = _reports[index];
@@ -290,101 +359,172 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
         final dynamic scoreVal = item['safety_score'] ?? item['overall_safety_score'];
         final int score = scoreVal is num ? scoreVal.round() : 0;
         final Color scoreColor = _getScoreColor(score);
+        final String riskLabel = _getRiskLabel(score);
+        final String role = item['role']?.toString().toLowerCase() ?? 'traveler';
+        final bool isPlanner = role == 'planner';
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 14),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppTheme.border),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x080F172A),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: scoreColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.verified_user_rounded,
-                        color: scoreColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 5,
+                    color: scoreColor,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.darkNavy,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: scoreColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.verified_user_rounded,
+                                  color: scoreColor,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.darkNavy,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.access_time_rounded,
+                                          size: 13,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          dateStr,
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: isPlanner ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            isPlanner ? 'PLANNER' : 'TRAVELER',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: isPlanner ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: scoreColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: scoreColor.withValues(alpha: 0.25)),
+                                ),
+                                child: Text(
+                                  '$score • $riskLabel',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: scoreColor,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dateStr,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary,
-                            ),
+                          const SizedBox(height: 12),
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: () => _openReport(item),
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.analytics_outlined, size: 16, color: Color(0xFF1D4ED8)),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'View Full Analysis',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF1E3A8A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF94A3B8), size: 19),
+                                onPressed: () => _deleteReport(reportId),
+                                tooltip: 'Delete Report',
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: scoreColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Score: $score',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: scoreColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                const Divider(height: 1, color: AppTheme.border),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _openReport(item),
-                      icon: const Icon(Icons.analytics_outlined, size: 18, color: AppTheme.forestGreen),
-                      label: const Text(
-                        'View Analysis',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.forestGreen,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey, size: 20),
-                      onPressed: () => _deleteReport(reportId),
-                      tooltip: 'Delete Report',
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
