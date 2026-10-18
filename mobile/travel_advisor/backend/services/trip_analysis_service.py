@@ -7,6 +7,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models.trip import Trip
+from services.corridor_physics_service import corridor_physics_service
+from services.departure_optimizer_service import departure_optimizer_service
 from services.google_maps_traffic_service import google_maps_traffic_service
 from services.route_segment_service import (
     ROUTE_POINT_COORDINATES,
@@ -67,6 +69,10 @@ class TripAnalysisResult:
 
     status: str
 
+    departure_optimization: dict[str, Any] | None = None
+    elevation_profile: list[dict[str, Any]] | None = None
+    emergency_directory: dict[str, Any] | None = None
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "trip_id": self.trip_id,
@@ -89,6 +95,9 @@ class TripAnalysisResult:
             ),
             "reasons": self.reasons,
             "status": self.status,
+            "departure_optimization": self.departure_optimization,
+            "elevation_profile": self.elevation_profile,
+            "emergency_directory": self.emergency_directory,
         }
 
 
@@ -263,6 +272,28 @@ class TripAnalysisService:
             res_dict["risk_factors"] = safety_score_res.get("risk_factors", [])
             res_dict["live_traffic"] = segment_traffic
 
+            # Calculate dynamic safe speed limit advisory based on friction physics
+            w_res = res_dict.get("weather_result")
+            safe_speed = corridor_physics_service.compute_safe_speed(
+                region=region,
+                weather_data=w_res if isinstance(w_res, dict) else None,
+                safety_score=score_val,
+                is_night=is_night_travel,
+            )
+            res_dict["safe_speed_advisory"] = safe_speed
+
+            # Elevation for this segment's primary waypoint
+            reg_elevation_map = {
+                "R1": 14,
+                "R2": 48,
+                "R3": 72,
+                "R4": 550,
+                "R5": 624,
+                "R6": 585,
+                "R7": 560,
+            }
+            res_dict["elevation_m"] = reg_elevation_map.get(reg_code, 500)
+
             segment_results.append(res_dict)
 
         # =========================================================
@@ -308,6 +339,17 @@ class TripAnalysisService:
             overall_safety_score=overall_safety_score,
         )
 
+        # Proactive departure optimization window (+/- 1 hr)
+        departure_optimization = departure_optimizer_service.optimize_departure_window(
+            base_datetime=trip.travel_datetime or datetime.now(timezone.utc),
+            route_segments=route_segments,
+            current_safety_score=overall_safety_score,
+        )
+
+        # Corridor elevation cross-section profile & 24x7 emergency rescue directory
+        elevation_profile = corridor_physics_service.get_elevation_profile()
+        emergency_directory = corridor_physics_service.get_emergency_directory()
+
         return TripAnalysisResult(
             trip_id=trip.id,
             user_id=trip.user_id,
@@ -325,6 +367,9 @@ class TripAnalysisService:
             missing_intelligence_sources=missing_sources,
             reasons=reasons,
             status=status,
+            departure_optimization=departure_optimization,
+            elevation_profile=elevation_profile,
+            emergency_directory=emergency_directory,
         )
 
     # =============================================================
