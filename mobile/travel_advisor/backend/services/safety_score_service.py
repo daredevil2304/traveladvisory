@@ -132,6 +132,27 @@ class SafetyScoreService:
         "traveler": 0.00,
     }
 
+    # -------------------------------------------------------------
+    # Ghat-Adaptive Source Weights (R4 Khandala Ghat & R5 Lonavala Crest):
+    # In steep mountain passes with hairpin curves and elevated risk of
+    # aquaplaning / brake fade, ML historical road hazard prediction
+    # is given higher dominance over generic atmospheric forecasts.
+    # -------------------------------------------------------------
+    PLANNER_GHAT_SOURCE_WEIGHTS = {
+        "ml": 0.55,
+        "weather": 0.25,
+        "terrain": 0.20,
+        "traffic": 0.00,
+        "traveler": 0.00,
+    }
+
+    TRAVELER_GHAT_SOURCE_WEIGHTS = {
+        "ml": 0.40,
+        "weather": 0.20,
+        "traffic": 0.20,
+        "traveler": 0.20,
+    }
+
     SOURCE_WEIGHTS = TRAVELER_SOURCE_WEIGHTS
 
     # -------------------------------------------------------------
@@ -197,6 +218,7 @@ class SafetyScoreService:
     def calculate_segment_score(
         self,
         *,
+        region: str | None = None,
         historical_result: dict[str, Any] | None = None,
         weather_result: dict[str, Any] | None = None,
         traveler_result: dict[str, Any] | None = None,
@@ -210,16 +232,12 @@ class SafetyScoreService:
         Calculate a fair, calibrated Safety Score for one route segment.
 
         Traveler Profile:
-            - ML Historical Model (30%)
-            - Live Weather (25%)
-            - Live Traffic (25%)
-            - Community Reports (20%)
+            - Standard: ML 30%, Live Weather 25%, Live Traffic 25%, Community Reports 20%
+            - Ghat Mountain Passes (R4/R5): ML 40%, Live Weather 20%, Live Traffic 20%, Community Reports 20%
 
         Planner Profile:
-            - ML Forecast Model (45%)
-            - Forecast Weather (35%)
-            - Terrain Geometry & Schedule (20%)
-            - Traffic is strictly 0% (excluded)
+            - Standard: ML 45%, Forecast Weather 35%, Terrain Geometry & Schedule 20%
+            - Ghat Mountain Passes (R4/R5): ML 55%, Forecast Weather 25%, Terrain Geometry & Schedule 20%
         """
 
         # 1. Component calculations
@@ -230,9 +248,19 @@ class SafetyScoreService:
         dimension_scores: dict[str, float] = {}
         dimension_scores.update(weather_dimensions)
 
+        is_ghat = (
+            (region is not None and str(region).strip().upper() in ("R4", "R5"))
+            or (terrain_score is not None and terrain_score < 95.0)
+        )
+
         if is_planner:
             # Planner Mode: Traffic is strictly excluded (0% weight)
-            active_weights = self.PLANNER_SOURCE_WEIGHTS
+            # In Ghat passes (R4/R5), ML model weight is boosted to 55% over macro weather
+            active_weights = (
+                self.PLANNER_GHAT_SOURCE_WEIGHTS
+                if is_ghat
+                else self.PLANNER_SOURCE_WEIGHTS
+            )
             traffic_score = None
             traffic_dimensions = {}
             traveler_score = None
@@ -247,7 +275,12 @@ class SafetyScoreService:
             }
         else:
             # Traveler Mode: Live traffic and community reports included
-            active_weights = self.TRAVELER_SOURCE_WEIGHTS
+            # In Ghat passes (R4/R5), ML model weight is boosted to 40%
+            active_weights = (
+                self.TRAVELER_GHAT_SOURCE_WEIGHTS
+                if is_ghat
+                else self.TRAVELER_SOURCE_WEIGHTS
+            )
             traffic_score, traffic_dimensions = self._calculate_traffic_score(traffic_result)
             traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
             terrain_val = None

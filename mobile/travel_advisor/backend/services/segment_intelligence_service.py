@@ -218,6 +218,7 @@ class SegmentIntelligenceService:
 
         safety_score = (
             safety_score_service.calculate_segment_score(
+                region=normalized_region,
                 historical_result=historical_result,
                 weather_result=weather_dimensions,
                 traveler_result=report_dimensions,
