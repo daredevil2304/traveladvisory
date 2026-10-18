@@ -270,6 +270,11 @@ class TripAnalysisService:
             res_dict["safety_score"] = score_val
             res_dict["reasons"] = safety_score_res.get("reasons", [])
             res_dict["risk_factors"] = safety_score_res.get("risk_factors", [])
+            if isinstance(segment_traffic, dict):
+                dim_scores = safety_score_res.get("dimension_scores", {})
+                if "user_report_traffic" in dim_scores:
+                    segment_traffic["user_report_traffic_score"] = dim_scores["user_report_traffic"]
+                    segment_traffic["traffic_weighting"] = "80% Google Maps / 20% User Report"
             res_dict["live_traffic"] = segment_traffic
 
             # Calculate dynamic safe speed limit advisory based on friction physics

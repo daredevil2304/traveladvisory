@@ -53,9 +53,7 @@ IMPORTANT RULES:
 6. The analysis evaluates route segments individually. When discussing
    a location, identify the relevant route segment when available.
 
-7. Traffic may appear as traveler evidence, but traffic is NOT part of
-   the Safety Score unless the supplied backend context explicitly says
-   otherwise.
+7. For real-time traveler traffic, Google Maps has dominant 80% weightage while community traveler reports have secondary 20% weightage. Always prioritize Google Maps telemetry for highway speeds and delays unless an explicit roadblock hazard is flagged.
 
 8. Do not claim that an alternate route exists unless the supplied
    context explicitly contains an alternate route.

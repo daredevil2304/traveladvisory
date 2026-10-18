@@ -281,7 +281,10 @@ class SafetyScoreService:
                 if is_ghat
                 else self.TRAVELER_SOURCE_WEIGHTS
             )
-            traffic_score, traffic_dimensions = self._calculate_traffic_score(traffic_result)
+            traffic_score, traffic_dimensions = self._calculate_traffic_score(
+                traffic_result=traffic_result,
+                traveler_result=traveler_result,
+            )
             traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
             terrain_val = None
             terrain_dims = {}
@@ -385,7 +388,12 @@ class SafetyScoreService:
                 delay = traffic_result.get("delay_minutes", 0)
                 status_lbl = traffic_result.get("status_label", "Normal Flow")
                 speed_adv = traffic_result.get("speed_advice", "80-100 km/h")
-                if delay > 0 or traffic_result.get("congestion_level") in ("moderate", "heavy", "standstill"):
+                user_traffic = traveler_result.get("traffic") if isinstance(traveler_result, dict) else None
+                if user_traffic and str(user_traffic).strip().lower() not in ("none", "null", ""):
+                    reasons.append(
+                        f"Traffic flow: Google Maps radar (80% wt: {status_lbl}, {speed_adv}) fused with traveler reports (20% wt: '{user_traffic}')."
+                    )
+                elif delay > 0 or traffic_result.get("congestion_level") in ("moderate", "heavy", "standstill"):
                     reasons.append(
                         f"Traffic flow: {status_lbl} (~{delay}m delay, cruising speed {speed_adv})."
                     )
@@ -852,35 +860,95 @@ class SafetyScoreService:
     # TRAFFIC & TERRAIN HELPERS
     # =============================================================
 
+    GOOGLE_MAPS_TRAFFIC_WEIGHT = 0.80
+    USER_REPORT_TRAFFIC_WEIGHT = 0.20
+
+    USER_TRAFFIC_SCORES = {
+        "standstill": 40.0,
+        "very_heavy": 50.0,
+        "heavy": 60.0,
+        "moderate": 75.0,
+        "light": 90.0,
+        "free_flow": 98.0,
+    }
+
     def _calculate_traffic_score(
         self,
         traffic_result: dict[str, Any] | None,
+        traveler_result: dict[str, Any] | None = None,
     ) -> tuple[float | None, dict[str, float]]:
-        if not isinstance(traffic_result, dict):
-            return None, {}
+        """
+        Calculate combined traffic score with 80% Google Maps weight and 20% User Report weight.
+        
+        When travelers submit conditions regarding congestion/traffic, it is factored in
+        with secondary weight (20%) while official Google Maps telemetry remains the dominant
+        anchor (80% weight).
+        """
+        google_maps_score: float | None = None
+        user_traffic_score: float | None = None
+        dimensions: dict[str, float] = {}
 
-        # If explicit traffic_score already exists
-        if "traffic_score" in traffic_result and isinstance(traffic_result["traffic_score"], (int, float)):
-            ts = float(traffic_result["traffic_score"])
-            return ts, {"live_traffic": ts}
+        # 1. Google Maps Traffic Score (80% weight authority)
+        if isinstance(traffic_result, dict):
+            if "traffic_score" in traffic_result and isinstance(traffic_result["traffic_score"], (int, float)):
+                google_maps_score = float(traffic_result["traffic_score"])
+            else:
+                delay = traffic_result.get("delay_minutes", 0)
+                congestion = str(traffic_result.get("congestion_level", "free_flow")).lower()
 
-        delay = traffic_result.get("delay_minutes", 0)
-        congestion = str(traffic_result.get("congestion_level", "free_flow")).lower()
+                if congestion == "standstill" or delay >= 25:
+                    google_maps_score = 40.0
+                elif congestion == "heavy" or delay >= 15:
+                    google_maps_score = 60.0
+                elif congestion == "moderate" or delay >= 6:
+                    google_maps_score = 75.0
+                elif delay >= 3:
+                    google_maps_score = 86.0
+                elif delay >= 1:
+                    google_maps_score = 94.0
+                else:
+                    google_maps_score = 98.0
 
-        if congestion == "standstill" or delay >= 25:
-            score = 40.0
-        elif congestion == "heavy" or delay >= 15:
-            score = 60.0
-        elif congestion == "moderate" or delay >= 6:
-            score = 75.0
-        elif delay >= 3:
-            score = 86.0
-        elif delay >= 1:
-            score = 94.0
-        else:
-            score = 98.0
+            dimensions["google_maps_traffic"] = google_maps_score
 
-        return score, {"live_traffic": score}
+        # 2. Traveler Reported Traffic Score (20% secondary weight)
+        if isinstance(traveler_result, dict):
+            user_traffic = traveler_result.get("traffic")
+            if isinstance(user_traffic, str) and user_traffic.strip():
+                clean_traffic = user_traffic.strip().lower().replace(" ", "_")
+                score_lookup = self.USER_TRAFFIC_SCORES.get(clean_traffic)
+                if score_lookup is not None:
+                    user_traffic_score = score_lookup
+                elif "standstill" in clean_traffic or "jam" in clean_traffic or "stopped" in clean_traffic:
+                    user_traffic_score = 40.0
+                elif "heavy" in clean_traffic:
+                    user_traffic_score = 60.0
+                elif "mod" in clean_traffic or "slow" in clean_traffic:
+                    user_traffic_score = 75.0
+                elif "light" in clean_traffic:
+                    user_traffic_score = 90.0
+                elif "free" in clean_traffic or "clear" in clean_traffic:
+                    user_traffic_score = 98.0
+
+                if user_traffic_score is not None:
+                    dimensions["user_report_traffic"] = user_traffic_score
+
+        # 3. Fuse Google Maps (80%) and User Report (20%)
+        if google_maps_score is not None and user_traffic_score is not None:
+            fused_score = (
+                self.GOOGLE_MAPS_TRAFFIC_WEIGHT * google_maps_score
+                + self.USER_REPORT_TRAFFIC_WEIGHT * user_traffic_score
+            )
+            dimensions["live_traffic"] = round(fused_score, 1)
+            return round(fused_score, 1), dimensions
+        elif google_maps_score is not None:
+            dimensions["live_traffic"] = google_maps_score
+            return google_maps_score, dimensions
+        elif user_traffic_score is not None:
+            dimensions["live_traffic"] = user_traffic_score
+            return user_traffic_score, dimensions
+
+        return None, {}
 
     def _calculate_terrain_score(
         self,
@@ -1136,7 +1204,7 @@ class SafetyScoreService:
                 "standstill",
             }:
                 reasons.append(
-                    f"Traffic flow reported as {traffic}."
+                    f"Traffic condition '{traffic}' reported by travelers (calibrated at secondary 20% weight against Google Maps 80%)."
                 )
 
         # ---------------------------------------------------------

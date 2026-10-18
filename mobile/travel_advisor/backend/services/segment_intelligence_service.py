@@ -432,8 +432,8 @@ class SegmentIntelligenceService:
 
         Each dimension is evaluated independently.
 
-        Traffic is preserved in the original report but is NOT
-        passed as a Safety Score dimension.
+        Traffic is preserved and aggregated here for traveler journeys,
+        and fused at 20% weight against Google Maps 80% dominant weight.
         """
 
         if not reports:
@@ -447,6 +447,7 @@ class SegmentIntelligenceService:
             "fog",
             "unusual_conditions",
             "risk",
+            "traffic",
         )
 
         for field in fields:
@@ -474,8 +475,9 @@ class SegmentIntelligenceService:
                     "fog",
                     "unusual_conditions",
                     "risk",
+                    "traffic",
                 }:
-                    if value.casefold() == "none":
+                    if value.casefold() in {"none", "null"}:
                         continue
 
                 values.append(value)
