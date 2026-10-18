@@ -30,6 +30,7 @@ class CommuteHabitService {
   Timer? _scheduleTimer;
   Timer? _outboundTimer;
   Timer? _returnTimer;
+  final Map<String, String> _lastDispatchedDates = {};
   bool _initialized = false;
 
   /// Initialize service and check for active commute alerts
@@ -105,10 +106,17 @@ class CommuteHabitService {
       alertTime.hour,
       alertTime.minute,
     );
-    if (target.isBefore(now)) {
+
+    Duration delay;
+    // If the scheduled time matches the current minute, fire after 2 seconds for immediate test verification
+    if (now.hour == alertTime.hour && now.minute == alertTime.minute) {
+      delay = const Duration(seconds: 2);
+    } else if (target.isBefore(now)) {
       target = target.add(const Duration(days: 1));
+      delay = target.difference(now);
+    } else {
+      delay = target.difference(now);
     }
-    final delay = target.difference(now);
 
     final timer = Timer(delay, () async {
       final nowT = DateTime.now();
@@ -462,9 +470,19 @@ class CommuteHabitService {
     final currentMinutesSinceMidnight = now.hour * 60 + now.minute;
     final diff = currentMinutesSinceMidnight - targetMinutesSinceMidnight;
 
-    // Keep the in-app active alert banner updated silently.
-    // NEVER dispatch a notification to the system notification drawer when opening the app.
-    if (diff >= -15 && diff <= 60) {
+    // When the current clock matches the exact alert minute, dispatch the system notification!
+    if (diff == 0 || (diff > 0 && diff <= 1)) {
+      final String slotKey = habit['schedule_type']?.toString() ?? 'outbound';
+      final String todayStr = '${now.year}-${now.month}-${now.day}';
+      if (_lastDispatchedDates[slotKey] != todayStr) {
+        _lastDispatchedDates[slotKey] = todayStr;
+        await fetchAlert(
+          source: habit['source'] ?? 'Panvel',
+          destination: habit['destination'] ?? 'Pune',
+          notifySystemTray: true, // Trigger real notification at the exact alert minute!
+        );
+      }
+    } else if (diff >= -15 && diff <= 60) {
       if (activeAlertNotifier.value == null) {
         await fetchAlert(
           source: habit['source'] ?? 'Panvel',
@@ -553,42 +571,16 @@ class CommuteHabitService {
       final alert = await fetchAlert(
         source: src,
         destination: dst,
-        notifySystemTray: false,
+        notifySystemTray: true, // Always show system tray notification when testing alert!
       );
       if (alert != null) {
         return alert;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[CommuteHabitService] Error in triggerTestAlert: $e');
+    }
 
-    // Resilient fallback for offline or latency spikes so test alert never fails
-    final fallbackAlert = {
-      'source': src,
-      'destination': dst,
-      'safety_score': 96,
-      'risk_level': 'Safe',
-      'risk_color': 'green',
-      'title': '$src to $dst Travel Safety Score: 96/100',
-      'alert_title': '$src to $dst Travel Safety Score: 96/100',
-      'body':
-          'Score: 96/100 (Safe). All expressway segments clear with favorable weather and normal visibility.',
-      'alert_body':
-          'Score: 96/100 (Safe). All expressway segments clear with favorable weather and normal visibility.',
-      'regional_warnings': <String>[],
-      'warnings': <String>[],
-      'segment_risks': <Map<String, dynamic>>[],
-      'departure_advice':
-          'Expressway conditions are clear and favorable for your commute.',
-      'advice':
-          'Expressway conditions are clear and favorable for your commute.',
-      'evaluation_time': DateTime.now().toIso8601String(),
-      'has_warnings': false,
-      'evaluated_segments_count': 6,
-      'is_scheduled_commute_day': true,
-      'travel_days': 'Daily',
-    };
-    activeAlertNotifier.value = fallbackAlert;
-    hasUnreadAlertNotifier.value = true;
-    return fallbackAlert;
+    return null;
   }
 }
 

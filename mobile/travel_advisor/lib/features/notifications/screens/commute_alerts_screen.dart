@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/commute_habit_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class CommuteAlertsScreen extends StatefulWidget {
   const CommuteAlertsScreen({super.key});
@@ -1197,16 +1198,50 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
               ),
               onPressed: () async {
                 setState(() => _isLoading = true);
-                final alert = await _habitService.triggerTestAlert();
+                final habit = _habitService.commuteHabitNotifier.value;
+                final src = habit?['source'] ?? 'Panvel';
+                final dst = habit?['destination'] ?? 'Pune';
+                final alert = await _habitService.triggerTestAlert(
+                  source: src,
+                  destination: dst,
+                );
                 setState(() => _isLoading = false);
 
                 if (mounted && alert != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Notification evaluated: Score ${alert['safety_score']}/100 • ${alert['risk_level']}',
+                  final title = alert['title']?.toString() ??
+                      '$src to $dst Travel Safety Alert';
+                  final body = alert['body']?.toString() ??
+                      'Corridor conditions evaluated.';
+                  final score = alert['safety_score'] is int
+                      ? alert['safety_score'] as int
+                      : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
+                  final warnings = (alert['regional_warnings'] as List?)
+                          ?.map((e) => e.toString())
+                          .toList() ??
+                      [];
+
+                  await NotificationService().showCommuteNotification(
+                    title: title,
+                    body: body,
+                    score: score,
+                    warnings: warnings,
+                  );
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Notification evaluated: Score $score/100 • ${alert['risk_level']}',
+                        ),
+                        backgroundColor: _getScoreColor(score),
                       ),
-                      backgroundColor: _getScoreColor(alert['safety_score'] ?? 70),
+                    );
+                  }
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to evaluate commute alert. Please check connectivity.'),
+                      backgroundColor: AppTheme.crimsonRed,
                     ),
                   );
                 }

@@ -19,6 +19,10 @@ from services.route_segment_service import (
 from services.prediction_service import prediction_service
 from services.timezone_service import format_ist_iso, get_ist_now
 from services.weather_service import weather_service
+from datetime import timezone
+from services.segment_intelligence_service import segment_intelligence_service
+from services.google_maps_traffic_service import google_maps_traffic_service
+from services.route_segment_service import ROUTE_POINT_COORDINATES
 
 
 class CommuteNotificationService:
@@ -319,9 +323,8 @@ class CommuteNotificationService:
     ) -> dict[str, Any]:
         """
         Dynamically evaluates real-time corridor telemetry combining live OpenWeather
-        atmospheric observations and regional ML risk models along the route.
-        Filters for genuine high-risk factors while avoiding arbitrary deductions
-        from unverified human crowd submissions.
+        atmospheric observations, regional XGBoost ML risk predictions, and live Google Maps
+        traffic delays along the exact route selected in the commute setup.
         """
         canonical_source = normalize_location(source) if source else "Panvel"
         canonical_destination = (
@@ -339,145 +342,85 @@ class CommuteNotificationService:
         if not segments:
             segments = ["R2", "R3", "R4", "R5", "R6", "R7"]
 
-        # 2. Dynamic evaluation per segment using OpenWeather and ML predictions
         now = get_ist_now()
+        now_utc = datetime.now(timezone.utc)
         warnings: list[str] = []
         segment_risks: list[dict[str, Any]] = []
 
         total_segment_scores: list[float] = []
         segment_weights: list[float] = []
-
-        has_dense_fog = False
-        has_wet_roads = False
-        has_heavy_rain = False
-        has_ghat_hazard = False
+        traffic_delays_total_mins = 0
+        has_heavy_traffic = False
 
         for region in segments:
-            seg_metadata = get_segment_details(region)
+            reg_code = region.upper()
+            seg_metadata = get_segment_details(reg_code)
             seg_name = f"{seg_metadata.start} to {seg_metadata.end}"
-            seg_deductions = 0.0
 
-            # Segment importance weight (Bhor Ghat R4 is the primary bottleneck)
-            seg_weight = 1.35 if region == "R4" else 1.0
+            # Weighting: Bhor Ghat (R4) is the primary bottleneck
+            seg_weight = 1.35 if reg_code == "R4" else 1.0
             segment_weights.append(seg_weight)
 
-            # 2a. Live OpenWeather API evaluation
-            weather = None
+            # Start and End coordinates for this sector
+            start_coords = ROUTE_POINT_COORDINATES.get(seg_metadata.start, (18.98878, 73.11013))
+            end_coords = ROUTE_POINT_COORDINATES.get(seg_metadata.end, (18.52050, 73.85650))
+
+            # Fetch live Google Maps traffic for this sector
+            live_traffic = None
             try:
-                coords = get_route_point_coordinates(seg_metadata.start)
-                weather = weather_service.get_current_weather(
-                    coords[0], coords[1], city_name=seg_metadata.start
+                live_traffic = google_maps_traffic_service.get_segment_traffic(
+                    start_coords=start_coords,
+                    end_coords=end_coords,
+                    start_name=seg_metadata.start,
+                    end_name=seg_metadata.end,
                 )
             except Exception:
                 pass
 
-            seg_issues: list[str] = []
-
-            if weather:
-                # Atmospheric Visibility evaluation
-                if weather.visibility_km is not None:
-                    vis = weather.visibility_km
-                    if vis < 0.5:
-                        seg_deductions += 35.0
-                        has_dense_fog = True
-                        warnings.append(
-                            f"Near {seg_metadata.start} ({region}): Severe zero-visibility fog ({vis:.1f} km)"
-                        )
-                        seg_issues.append(f"Severe fog ({vis:.1f} km)")
-                    elif vis < 1.5:
-                        seg_deductions += 22.0
-                        has_dense_fog = True
-                        warnings.append(
-                            f"Near {seg_metadata.start} ({region}): Low atmospheric visibility ({vis:.1f} km) - fog caution"
-                        )
-                        seg_issues.append(f"Low visibility ({vis:.1f} km)")
-                    elif vis < 3.0:
-                        seg_deductions += 10.0
-                        seg_issues.append(f"Moderate haze ({vis:.1f} km)")
-
-                # Precipitation / Rainfall evaluation
-                if weather.rainfall_mm is not None:
-                    rain = weather.rainfall_mm
-                    if rain > 10.0:
-                        seg_deductions += 35.0
-                        has_heavy_rain = True
-                        has_wet_roads = True
-                        warnings.append(
-                            f"Near {seg_name} ({region}): Torrential rainfall ({rain:.1f} mm/h) - hydroplaning hazard"
-                        )
-                        seg_issues.append(f"Torrential rain ({rain:.1f} mm/h)")
-                    elif rain > 4.0:
-                        seg_deductions += 22.0
-                        has_heavy_rain = True
-                        has_wet_roads = True
-                        warnings.append(
-                            f"Near {seg_name} ({region}): Heavy rainfall ({rain:.1f} mm/h) - slippery highway surface"
-                        )
-                        seg_issues.append(f"Heavy rain ({rain:.1f} mm/h)")
-                    elif rain > 1.0:
-                        seg_deductions += 12.0
-                        has_wet_roads = True
-                        warnings.append(
-                            f"Near {seg_name} ({region}): Moderate rainfall ({rain:.1f} mm/h) with wet road surface"
-                        )
-                        seg_issues.append(f"Wet roads ({rain:.1f} mm/h)")
-                    elif rain > 0.2:
-                        seg_deductions += 5.0
-                        has_wet_roads = True
-
-                # Wind gusts
-                if weather.wind_speed_kmh is not None and weather.wind_speed_kmh > 40.0:
-                    seg_deductions += 14.0
+            if live_traffic and live_traffic.get("delay_minutes", 0) > 0:
+                traffic_delays_total_mins += live_traffic["delay_minutes"]
+                if live_traffic.get("delay_minutes", 0) >= 10:
+                    has_heavy_traffic = True
                     warnings.append(
-                        f"Near {seg_name} ({region}): Strong crosswinds ({weather.wind_speed_kmh:.1f} km/h)"
+                        f"Congestion near {seg_metadata.start}: {live_traffic['delay_minutes']} min delay"
                     )
-                    seg_issues.append(f"Crosswinds ({weather.wind_speed_kmh:.1f} km/h)")
 
-                # Severe condition keywords
-                raw_cond = weather.weather_condition if weather.weather_condition is not None else ""
-                cond = raw_cond.lower()
-                if any(k in cond for k in ["thunderstorm", "squall"]):
-                    seg_deductions += 25.0
-                    warnings.append(
-                        f"Near {seg_metadata.start} ({region}): Thunderstorm activity on corridor"
-                    )
-                    seg_issues.append("Thunderstorm")
-
-            # 2b. Terrain amplification for Bhor Ghat (R4)
-            if region == "R4":
-                if any([has_heavy_rain, has_wet_roads]):
-                    seg_deductions += 15.0
-                    has_ghat_hazard = True
-                    ghat_warn = f"Bhor Ghat ({region}): Steep incline descent with wet asphalt - use low gear"
-                    if ghat_warn not in warnings:
-                        warnings.append(ghat_warn)
-                    seg_issues.append("Steep wet descent")
-                elif has_dense_fog:
-                    seg_deductions += 12.0
-                    has_ghat_hazard = True
-                    ghat_warn = f"Bhor Ghat ({region}): Hairpin turns enveloped in dense cloud cover"
-                    if ghat_warn not in warnings:
-                        warnings.append(ghat_warn)
-                    seg_issues.append("Ghat cloud cover")
-
-            # 2c. Regional ML Model prediction check
+            # Evaluate segment intelligence using full engine: OpenWeather + regional XGBoost + live traffic
+            seg_score = 92.0
+            seg_reasons = []
             try:
-                ml_res = prediction_service.check_model(region)
-                if ml_res.model_available:
-                    pass
+                seg_eval = segment_intelligence_service.evaluate_segment(
+                    db=db,
+                    region=reg_code,
+                    latitude=start_coords[0],
+                    longitude=start_coords[1],
+                    travel_datetime=now_utc,
+                    live_traffic=live_traffic,
+                    is_planner=False,
+                )
+                res_dict = seg_eval.to_dict()
+                safety_res = res_dict.get("safety_score_result", {})
+                score_val = safety_res.get("safety_score")
+                if score_val is not None:
+                    seg_score = float(score_val)
+                seg_reasons = safety_res.get("reasons", [])
             except Exception:
                 pass
 
-            seg_score = max(20.0, min(100.0, 100.0 - seg_deductions))
             total_segment_scores.append(seg_score)
 
-            if seg_issues:
+            # Collect genuine sector hazards (< 85)
+            if seg_score < 85.0:
                 segment_risks.append({
-                    "region": region,
+                    "region": reg_code,
                     "segment_name": seg_name,
-                    "issues": list(set(seg_issues)),
+                    "issues": seg_reasons,
                     "segment_score": int(round(seg_score)),
                 })
+                for r in seg_reasons:
+                    if any(w in r.lower() for w in ["fog", "rain", "slippery", "crosswind", "incline", "delay", "queue"]):
+                        if r not in warnings:
+                            warnings.append(f"{seg_metadata.start} ({reg_code}): {r}")
 
         # 3. Calculate weighted route safety score
         if total_segment_scores and segment_weights:
@@ -488,60 +431,59 @@ class CommuteNotificationService:
         else:
             final_score = 92
 
-        final_score = max(20, min(98, final_score))
+        final_score = max(20, min(99, final_score))
 
-        # 4. Determine risk level
+        # 4. Determine risk level & color
         if final_score < 45:
             risk_level = "High Risk"
             risk_color = "red"
         elif final_score < 65:
             risk_level = "Caution"
             risk_color = "orange"
-        elif final_score < 80:
+        elif final_score < 85:
             risk_level = "Moderate"
             risk_color = "amber"
         else:
             risk_level = "Safe"
             risk_color = "green"
 
-        # 5. Build dynamic notification title and body
+        # 5. Build dynamic notification title and body reflecting real current conditions
         alert_title = (
-            f"{canonical_source} to {canonical_destination} Travel Safety Score: {final_score}/100"
+            f"{canonical_source} to {canonical_destination} Travel Safety: {final_score}/100"
         )
 
-        body_components: list[str] = []
-        if has_dense_fog:
-            body_components.append("Low visibility / dense fog near Ghat")
-        if has_heavy_rain:
-            body_components.append("Heavy rain along corridor")
-        elif has_wet_roads:
-            body_components.append("Wet road surfaces")
-        if has_ghat_hazard:
-            body_components.append("Bhor Ghat steep descent caution")
-
-        if body_components:
-            alert_body = f"Score: {final_score}/100 ({risk_level}). Risky: {', '.join(body_components)}. Tap for details."
+        if warnings:
+            top_warnings = "; ".join(warnings[:2])
+            alert_body = f"Score: {final_score}/100 ({risk_level}). {top_warnings}."
+        elif traffic_delays_total_mins > 0:
+            alert_body = f"Score: {final_score}/100 ({risk_level}). Favorable weather with minor traffic delays (~{traffic_delays_total_mins}m total)."
         else:
-            alert_body = f"Score: {final_score}/100 ({risk_level}). All expressway segments clear with favorable weather and normal visibility."
+            alert_body = f"Score: {final_score}/100 ({risk_level}). All expressway segments clear with free-flowing traffic and optimal visibility."
 
         # 6. Tailored travel advice
         if final_score < 45:
             advice = "High risk detected from live telemetry. Allow 30+ extra minutes and maintain maximum following distance."
         elif final_score < 65:
-            advice = "Use fog lamps, keep low gear on ghat descent, and expect reduced braking traction on wet segments."
-        elif final_score < 80:
+            advice = "Expect reduced braking traction and ghat delays. Maintain safe following distance."
+        elif final_score < 85:
             advice = "Moderate corridor conditions. Normal travel vigilance recommended."
         else:
-            advice = "Expressway conditions are clear and favorable for your daily commute."
+            advice = "Optimal expressway conditions. Free flow with normal travel time expected."
 
         # 7. Check if active day matches scheduled travel days
-        habit = (
-            db.query(CommuteHabit)
-            .filter(CommuteHabit.user_id == user_id)
-            .first()
-        )
-        travel_days = habit.travel_days if habit and habit.travel_days else "Daily"
-        is_scheduled = self.is_scheduled_current_day(travel_days, now)
+        travel_days = "Daily"
+        is_scheduled = True
+        try:
+            habit = (
+                db.query(CommuteHabit)
+                .filter(CommuteHabit.user_id == user_id)
+                .first()
+            )
+            if habit and getattr(habit, "travel_days", None):
+                travel_days = habit.travel_days
+            is_scheduled = self.is_scheduled_current_day(travel_days, now)
+        except Exception:
+            pass
 
         return {
             "source": canonical_source,

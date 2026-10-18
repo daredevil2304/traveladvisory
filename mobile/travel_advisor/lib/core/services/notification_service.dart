@@ -181,8 +181,11 @@ class NotificationService {
         alertTime.minute,
       );
 
-      // Advance to tomorrow if the time has already passed today
-      if (scheduledTz.isBefore(nowTz)) {
+      // If scheduled time is within the current minute, schedule 3 seconds in the future
+      // so testing the current minute triggers immediately on device without waiting 24 hours!
+      if (nowTz.hour == alertTime.hour && nowTz.minute == alertTime.minute) {
+        scheduledTz = nowTz.add(const Duration(seconds: 4));
+      } else if (scheduledTz.isBefore(nowTz)) {
         scheduledTz = scheduledTz.add(const Duration(days: 1));
       }
 
@@ -213,7 +216,7 @@ class NotificationService {
       await cancelScheduledAlert(id: id);
 
       bool scheduled = false;
-      // 1. Primary: inexactAllowWhileIdle (works without exact alarm / Alarms & Reminders permission)
+      // 1. Primary: exactAllowWhileIdle (fires at the exact minute even in Doze/standby)
       try {
         await _notificationsPlugin.zonedSchedule(
           id: id,
@@ -221,17 +224,37 @@ class NotificationService {
           body: body,
           scheduledDate: scheduledTz,
           notificationDetails: NotificationDetails(android: androidDetails),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.time,
           payload: 'commute_scheduled_alert',
         );
         scheduled = true;
-        debugPrint('Successfully scheduled normal alert #$id via inexactAllowWhileIdle at $scheduledTz');
+        debugPrint('Successfully scheduled exact alert #$id via exactAllowWhileIdle at $scheduledTz');
       } catch (e) {
-        debugPrint('inexactAllowWhileIdle failed: $e, falling back to inexact');
+        debugPrint('exactAllowWhileIdle failed: $e, falling back to inexactAllowWhileIdle');
       }
 
-      // 2. Secondary fallback: inexact
+      // 2. Secondary fallback: inexactAllowWhileIdle
+      if (!scheduled) {
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            id: id,
+            title: title,
+            body: body,
+            scheduledDate: scheduledTz,
+            notificationDetails: NotificationDetails(android: androidDetails),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.time,
+            payload: 'commute_scheduled_alert',
+          );
+          scheduled = true;
+          debugPrint('Scheduled alert #$id via inexactAllowWhileIdle at $scheduledTz');
+        } catch (e) {
+          debugPrint('inexactAllowWhileIdle scheduling error: $e');
+        }
+      }
+
+      // 3. Tertiary fallback: inexact
       if (!scheduled) {
         try {
           await _notificationsPlugin.zonedSchedule(
@@ -245,7 +268,7 @@ class NotificationService {
             payload: 'commute_scheduled_alert',
           );
           scheduled = true;
-          debugPrint('Scheduled normal alert #$id via inexact at $scheduledTz');
+          debugPrint('Scheduled alert #$id via inexact at $scheduledTz');
         } catch (e) {
           debugPrint('inexact scheduling error: $e');
         }
