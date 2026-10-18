@@ -494,11 +494,15 @@ class WeatherService:
         """
         Extract rainfall in mm from OpenWeather.
 
-        OpenWeather's current-weather response may provide
-        rain.1h as precipitation in mm/h.
+        OpenWeather current-weather provides rain.1h or rain.3h.
+        OpenWeather 5-day / 3-hour forecast provides rain.3h.
         """
+        if not isinstance(rain, dict):
+            return None
 
         value = rain.get("1h")
+        if value is None:
+            value = rain.get("3h")
 
         return WeatherService._to_float(value)
 

@@ -308,8 +308,9 @@ class SegmentIntelligenceService:
         try:
             is_future = is_planner
             if not is_future and target_datetime is not None:
-                from services.timezone_service import get_ist_now
-                diff_seconds = (target_datetime - get_ist_now()).total_seconds()
+                from services.timezone_service import get_ist_now_aware, to_ist
+                target_ist = to_ist(target_datetime)
+                diff_seconds = (target_ist - get_ist_now_aware()).total_seconds()
                 # If target is at least 30 minutes in the future, use forecast
                 if diff_seconds > 1800:
                     is_future = True
