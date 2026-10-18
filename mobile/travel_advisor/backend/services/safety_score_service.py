@@ -35,6 +35,7 @@ class SafetyScoreResult:
 
     dimension_scores: dict[str, float] = None
     reasons: list[str] = None
+    risk_factors: list[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -59,6 +60,7 @@ class SafetyScoreResult:
             "missing_sources": list(self.missing_sources or []),
             "dimension_scores": self.dimension_scores or {},
             "reasons": self.reasons or [],
+            "risk_factors": list(self.risk_factors or []),
         }
 
 
@@ -297,15 +299,6 @@ class SafetyScoreService:
             dimension_scores=dimension_scores,
         )
 
-        # Append ML reason
-        if isinstance(historical_result, dict) and isinstance(historical_result.get("prediction"), dict):
-            p = historical_result["prediction"]
-            cat = p.get("severity_category", "Safe / Clear")
-            sev = p.get("hazard_severity", 0.0)
-            reasons.append(
-                f"Historical ML Model (XGBoost): Predicted {sev:.1f}/100 hazard severity ({cat})."
-            )
-
         # Append Traffic reason (Traveler mode)
         if not is_planner and isinstance(traffic_result, dict):
             delay = traffic_result.get("delay_minutes", 0)
@@ -321,20 +314,61 @@ class SafetyScoreService:
                 )
 
         # Append Terrain & Planner reasons
-        if is_planner:
-            if terrain_reasons:
-                reasons.extend(terrain_reasons)
-            reasons.append(
-                "Advance planning mode: Real-time traffic is excluded; scoring is driven by atmospheric forecast (35%), regional historical ML model (45%), and corridor terrain geometry (20%)."
-            )
+        if is_planner and terrain_reasons:
+            reasons.extend(terrain_reasons)
 
-        # 6. Confidence
+        # 6. Extract genuine risk factors (strictly negative conditions, empty when safe)
+        risk_factors: list[str] = []
+
+        if isinstance(weather_result, dict):
+            rain = weather_result.get("rain")
+            rain_mm = weather_result.get("rainfall_mm")
+            if isinstance(rain, str) and rain.casefold() not in {"no rain", "none"}:
+                r_det = f" ({rain_mm} mm)" if rain_mm and rain_mm > 0 else ""
+                risk_factors.append(f"Precipitation: {rain}{r_det}. Wet road surface.")
+
+            vis = weather_result.get("visibility")
+            if isinstance(vis, str) and vis.casefold() in {"poor", "very poor", "moderately reduced"}:
+                vis_km = weather_result.get("visibility_km")
+                v_det = f" ({vis_km} km)" if vis_km else ""
+                risk_factors.append(f"Reduced visibility: {vis}{v_det}.")
+
+            fog = weather_result.get("fog")
+            if isinstance(fog, str) and fog.casefold() not in {"none"}:
+                risk_factors.append(f"Fog hazard: {fog} reported on stretch.")
+
+        if isinstance(traveler_result, dict):
+            unusual = traveler_result.get("unusual_conditions")
+            if isinstance(unusual, str) and unusual.casefold() not in {"none", "nothing unusual"}:
+                risk_factors.append(f"Road hazard: {unusual}.")
+
+        # Traffic delay / bottleneck risk
+        if not is_planner and isinstance(traffic_result, dict):
+            delay = traffic_result.get("delay_minutes", 0)
+            congestion = str(traffic_result.get("congestion_level", "")).lower()
+            status_lbl = traffic_result.get("status_label", "")
+            speed_adv = traffic_result.get("speed_advice", "")
+            if delay >= 5 or congestion in ("moderate", "heavy", "standstill"):
+                risk_factors.append(
+                    f"Traffic bottleneck: {status_lbl} (~{delay}m delay, speed {speed_adv})."
+                )
+
+        # Inherent steep terrain or night driving risks (only flagged as risk factors when overall safety is degraded < 85)
+        if terrain_reasons and (safety_score is None or safety_score < 85.0):
+            for tr in terrain_reasons:
+                tr_lower = tr.lower()
+                if "steep bhor ghat" in tr_lower:
+                    risk_factors.append("Steep mountain gradient: low gear and truck clearance advised.")
+                elif "night travel window" in tr_lower:
+                    risk_factors.append("Night driving: reduced ambient visibility on unlit expressway sections.")
+
+        # 7. Confidence
         confidence = self._calculate_confidence(
             source_scores=source_scores,
             fusion_result=fusion_result,
         )
 
-        # 7. Status
+        # 8. Status
         status = self._determine_status(
             safety_score=safety_score,
             available_sources=available_sources,
@@ -355,6 +389,7 @@ class SafetyScoreService:
             missing_sources=missing_sources,
             dimension_scores=dimension_scores,
             reasons=reasons,
+            risk_factors=risk_factors,
         )
 
     # =============================================================

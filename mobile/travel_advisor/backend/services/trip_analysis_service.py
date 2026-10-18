@@ -272,6 +272,7 @@ class TripAnalysisService:
             score_val = safety_score_res.get("safety_score")
             res_dict["safety_score"] = score_val
             res_dict["reasons"] = safety_score_res.get("reasons", [])
+            res_dict["risk_factors"] = safety_score_res.get("risk_factors", [])
             res_dict["live_traffic"] = segment_traffic
 
             segment_results.append(res_dict)
@@ -500,93 +501,59 @@ class TripAnalysisService:
         segment_results: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
-        Identify segments that deserve attention.
+        Identify segments that deserve special driver caution ("Regions to Watch Out For").
 
-        Current operational rule:
+        Operational rule:
+        - Segments scoring below 85.0 (cautionary / degraded safety), OR
+        - Segments with active critical hazards (accidents, heavy rain, dense fog, bottleneck delays >= 5m).
 
-        - Safety Score below 60, OR
-        - explicit segment-level reasons are present.
-
-        This is an application-level attention rule and can later
-        be calibrated using project evaluation data.
+        Safe segments (score >= 85.0 with normal fluid conditions) are strictly excluded.
+        The reasons list for flagged segments contains ONLY the specific active risk factors.
         """
-
         problematic: list[dict[str, Any]] = []
 
         for segment in segment_results:
-            region = segment.get(
-                "region"
-            )
+            region = segment.get("region")
+            segment_details = segment.get("segment_details")
+            safety_result = segment.get("safety_score_result")
 
-            segment_details = segment.get(
-                "segment_details"
-            )
-
-            safety_result = segment.get(
-                "safety_score_result"
-            )
-
-            if not isinstance(
-                safety_result,
-                dict,
-            ):
+            if not isinstance(safety_result, dict):
                 continue
 
-            score = safety_result.get(
-                "safety_score"
-            )
+            score = safety_result.get("safety_score")
+            if score is None or not isinstance(score, (int, float)):
+                continue
 
-            reasons = safety_result.get(
-                "reasons"
-            )
+            score_val = float(score)
 
-            if not isinstance(
-                reasons,
-                list,
-            ):
-                reasons = []
+            # Retrieve genuine risk factors identified during evaluation
+            risk_factors = safety_result.get("risk_factors") or []
+            if not isinstance(risk_factors, list):
+                risk_factors = []
 
-            has_hazard = any(
-                any(
-                    neg in r.lower()
-                    for neg in [
-                        "rain",
-                        "fog",
-                        "mist",
-                        "reduced visibility",
-                        "wind",
-                        "waterlog",
-                        "slippery",
-                        "damage",
-                        "closure",
-                        "accident",
-                        "incident",
-                        "debris",
-                        "heavy traffic",
-                        "standstill",
-                        "landslide",
-                        "congestion",
-                        "delay",
-                        "slowdown",
-                        "bottleneck",
-                        "incline bottleneck",
-                        "steep bhor ghat",
-                        "night travel window",
+            # Filter out any non-hazard / diagnostic / affirmative phrases
+            clean_risks = [
+                r for r in risk_factors
+                if isinstance(r, str) and not any(
+                    ign in r.lower()
+                    for ign in [
+                        "xgboost",
+                        "historical ml",
+                        "clear route",
+                        "optimal fluid",
+                        "advance planning mode",
+                        "no delays reported",
                     ]
                 )
-                for r in reasons
-            )
+            ]
 
-            score_is_low = (
-                isinstance(
-                    score,
-                    (int, float),
-                )
-                and float(score) < 85.0
-            )
-
-            if not score_is_low and not has_hazard:
+            # If score is safe (>= 85) and there are no active severe risks, do NOT watch out for it
+            if score_val >= 85.0 and not clean_risks:
                 continue
+
+            # If score is below 85 but clean_risks is empty, give a clean risk explanation
+            if not clean_risks:
+                clean_risks = [f"Reduced safety margin: composite sector score is {round(score_val)}/100."]
 
             reg_display = SEGMENT_NAME_MAP.get(str(region).upper(), region)
             problematic.append(
@@ -594,11 +561,9 @@ class TripAnalysisService:
                     "region": reg_display,
                     "region_code": region,
                     "segment_details": segment_details,
-                    "safety_score": score,
-                    "confidence": safety_result.get(
-                        "confidence"
-                    ),
-                    "reasons": reasons,
+                    "safety_score": score_val,
+                    "confidence": safety_result.get("confidence"),
+                    "reasons": clean_risks,
                 }
             )
 
