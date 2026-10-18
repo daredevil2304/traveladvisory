@@ -224,30 +224,18 @@ class TripAnalysisService:
                 # Inherent terrain geometry baseline caution for steep Ghat sectors
                 if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
                     t_score = 90.0
-                    seg_terrain_reasons.append(
-                        "Terrain geometry: Steep Bhor Ghat mountain incline (R4); maintain low-gear engine braking and truck lane clearance."
-                    )
                 elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
                     t_score = 94.0
-                    seg_terrain_reasons.append(
-                        "Terrain geometry: Mountain plateau crest transition (R5); watch for crosswinds and multi-axle freight maneuvering."
-                    )
                 elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
                     t_score = 97.0
-                    seg_terrain_reasons.append(
-                        "Corridor alignment: Ghat foothill approach (R3); prepare for gradient changes."
-                    )
                 else:
                     t_score = 100.0
-                    seg_terrain_reasons.append(
-                        "Corridor geometry: Standard flat expressway alignment with optimal sightlines."
-                    )
 
                 # Night driving factor for planned departure
                 if is_night_travel:
                     t_score -= 5.0
                     seg_terrain_reasons.append(
-                        f"Night travel window ({ist_hour:02d}:00 IST): Reduced ambient lighting and headlight glare on unlit expressway sections."
+                        f"Night departure window ({ist_hour:02d}:00 IST): Reduced ambient lighting on unlit sections."
                     )
 
                 seg_terrain_score = max(0.0, min(100.0, t_score))

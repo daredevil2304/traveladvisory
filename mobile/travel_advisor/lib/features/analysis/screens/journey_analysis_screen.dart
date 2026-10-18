@@ -124,23 +124,13 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final List<dynamic> rawProblematic =
         (problematicSegmentsRaw is List) ? problematicSegmentsRaw : [];
 
-    // Filter out safe segments (>= 85) that have normal fluid conditions
+    // Only segments with low safety scores (< 85) belong in "Regions to Watch Out For"
     final List<dynamic> problematicSegments = rawProblematic.where((segment) {
       if (segment is! Map) return false;
       final rawScore = segment['safety_score'];
       final double scoreVal = (rawScore is num) ? rawScore.toDouble() : 100.0;
-      final rawReasons = segment['reasons'];
-      final List<dynamic> reasons = (rawReasons is List) ? rawReasons : [];
-      final hasRealHazard = reasons.any((r) {
-        final str = r.toString().toLowerCase();
-        return !str.contains('clear route') &&
-            !str.contains('optimal fluid') &&
-            !str.contains('xgboost') &&
-            !str.contains('historical ml') &&
-            !str.contains('no delays reported') &&
-            !str.contains('advance planning mode');
-      });
-      return scoreVal < 85.0 || hasRealHazard;
+      // High-safety segments (>= 85) are safe to travel and must never be shown as danger watch-outs
+      return scoreVal < 85.0;
     }).toList();
 
     final segmentResultsRaw = analysis['segment_results'];
@@ -398,7 +388,12 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                 else
                   // For planner (or expanded traveler): full deep breakdown
                   ...segmentResults.map((segment) {
-                    return _buildSegmentCard(segment);
+                    return _buildSegmentCard(
+                      segment,
+                      isPlanner: isPlanner,
+                      travelDate: travelDate,
+                      travelTime: travelTime,
+                    );
                   }),
               ],
 
@@ -828,7 +823,12 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     );
   }
 
-  Widget _buildSegmentCard(dynamic segment) {
+  Widget _buildSegmentCard(
+    dynamic segment, {
+    bool isPlanner = false,
+    String? travelDate,
+    String? travelTime,
+  }) {
     if (segment is! Map) return const SizedBox.shrink();
 
     final String title = _resolveSegmentTitle(segment);
@@ -842,29 +842,64 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final int? score = (rawScore != null) ? (rawScore as num).toInt() : null;
     final Color scoreColor = _getScoreColor(score ?? 80);
 
-    // Weather Telemetry
+    // Weather / Forecast Telemetry
     final weather = segment['weather_result'];
     String cond = 'Clear';
     String tempStr = '--';
-    String humidityStr = 'Dry Surface';
+    String humidityStr = '40% Humidity';
+    String visibilityStr = '10.0 km';
+    String visibilityDesc = 'Optimal Sightlines';
+    String precipitationStr = 'No Rain Forecast';
+    String roadGripStr = 'Dry Pavement';
+    double? visKm;
+    double? rainMm;
+    double? windKmh;
+    int? humidityVal;
     bool isRain = false;
+
     if (weather is Map) {
       cond = weather['weather_condition']?.toString() ?? 'Clear';
       final temp = weather['temperature_c'];
       if (temp != null) {
         tempStr = '${temp is num ? temp.round() : temp}°C';
       }
-      final rh = weather['relative_humidity'] ?? weather['humidity'];
-      final rainVal = weather['rainfall_mm'] ?? weather['rain'];
-      isRain = rainVal != null && rainVal.toString().toLowerCase() != 'no rain' && rainVal.toString() != '0';
+      final rh = weather['humidity_percent'] ?? weather['relative_humidity'] ?? weather['humidity'];
+      if (rh != null && rh is num) {
+        humidityVal = rh.toInt();
+        humidityStr = '$humidityVal% Humidity';
+      }
+
+      final vk = weather['visibility_km'];
+      if (vk != null && vk is num) {
+        visKm = vk.toDouble();
+        visibilityStr = '${visKm.toStringAsFixed(1)} km';
+      }
+      final vc = weather['visibility_condition']?.toString();
+      if (vc != null && vc.isNotEmpty) {
+        visibilityDesc = vc;
+      }
+
+      final rm = weather['rainfall_mm'];
+      if (rm != null && rm is num) {
+        rainMm = rm.toDouble();
+      }
+      final rc = weather['rain_condition']?.toString() ?? weather['rain']?.toString();
+      isRain = (rainMm != null && rainMm > 0) || (rc != null && rc.toLowerCase() != 'no rain' && rc.toLowerCase() != 'none');
       if (isRain) {
-        humidityStr = 'Wet Pavement';
-      } else if (rh != null) {
-        humidityStr = '$rh% Humidity • Dry';
+        precipitationStr = (rainMm != null && rainMm > 0) ? '${rainMm.toStringAsFixed(1)} mm Rain' : (rc ?? 'Rain Expected');
+        roadGripStr = 'Wet Surface Caution';
+      } else {
+        precipitationStr = 'No Rain Forecast';
+        roadGripStr = 'Dry Pavement';
+      }
+
+      final ws = weather['wind_speed_kmh'];
+      if (ws != null && ws is num) {
+        windKmh = ws.toDouble();
       }
     }
 
-    // Traffic Telemetry
+    // Traffic Telemetry (Traveler mode)
     final liveTraffic = segment['live_traffic'];
     String speedText = '85-100 km/h';
     String trafficState = 'Fluid Flow (No Delay)';
@@ -881,7 +916,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       }
     }
 
-    // Risk factors / alerts (if any)
+    // Risk factors / alerts (strictly genuine negative hazards)
     final riskFactorsRaw = segment['risk_factors'] ?? (safetyResult is Map ? safetyResult['risk_factors'] : null);
     final List<dynamic> risksList = (riskFactorsRaw is List) ? riskFactorsRaw : [];
     final cleanRisks = risksList
@@ -893,9 +928,40 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               !s.contains('xgboost') &&
               !s.contains('historical ml') &&
               !s.contains('no delays reported') &&
-              !s.contains('advance planning mode');
+              !s.contains('advance planning mode') &&
+              !s.contains('corridor geometry') &&
+              !s.contains('terrain geometry');
         })
         .toList();
+
+    // Human-readable condition & safety assessment ("Why is the score this?")
+    String conditionAssessment;
+    final int sVal = score ?? 90;
+    if (isPlanner) {
+      if (sVal >= 95) {
+        conditionAssessment = 'Optimal conditions predicted. Atmospheric visibility is clear ($visibilityStr), road surfaces will be dry, and forecast models project fluid transit throughout this corridor.';
+      } else if (sVal >= 85) {
+        conditionAssessment = 'Favorable travel conditions ($sVal/100). Standard highway speeds with normal regional terrain and calm atmospheric outlook.';
+      } else if (sVal >= 70) {
+        if (isRain) {
+          conditionAssessment = 'Caution advised ($sVal/100). Predicted precipitation ($precipitationStr) creates wet pavement. Expect reduced traction and reduce cruising speeds.';
+        } else if (visKm != null && visKm < 5.0) {
+          conditionAssessment = 'Caution advised ($sVal/100). Reduced atmospheric visibility ($visibilityStr) forecast. Use low-beam headlamps and maintain safe following distance.';
+        } else {
+          conditionAssessment = 'Moderate caution advised ($sVal/100). Localized atmospheric variations forecast for this scheduled departure.';
+        }
+      } else {
+        conditionAssessment = 'Adverse conditions predicted ($sVal/100). Noticeable weather or roadway hazards expected. Consider adjusting planned departure window.';
+      }
+    } else {
+      if (sVal >= 95) {
+        conditionAssessment = 'Clear route conditions. Fluid traffic flow, dry pavement, and unrestricted cruising speeds.';
+      } else if (sVal >= 85) {
+        conditionAssessment = 'Good travel conditions ($sVal/100). Normal traffic movement with standard mountain or urban expressway flow.';
+      } else {
+        conditionAssessment = 'Caution advised ($sVal/100). Live traffic delays or degraded road surface reported on this stretch.';
+      }
+    }
 
     final sectorAdvisory = _getSectorAdvisory(regCode, isRain: isRain);
 
@@ -987,122 +1053,342 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                         ],
                       ),
 
+                      // Scheduled Target Date & Time Pill (Planner mode)
+                      if (isPlanner && (travelDate != null || travelTime != null)) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.schedule_rounded, size: 14, color: AppTheme.royalCobalt),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Predicted Outlook for ${travelDate ?? ''} ${travelTime ?? ''}'.trim(),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.royalCobalt,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       const SizedBox(height: 12),
 
-                      // Telemetry Strip (Atmospheric & Transit)
-                      Row(
-                        children: [
-                          // Atmosphere Tile
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isRain ? Icons.water_drop_rounded : Icons.wb_sunny_rounded,
-                                    size: 18,
-                                    color: isRain ? AppTheme.royalCobalt : const Color(0xFFD97706),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '$cond • $tempStr',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.darkNavy,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          humidityStr,
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            color: AppTheme.textSecondary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
+                      // Telemetry Metric Tiles
+                      if (isPlanner) ...[
+                        // PLANNER 3-TILE PREDICTED CONDITIONS GRID
+                        Row(
+                          children: [
+                            // 1. Predicted Weather & Temp
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isRain ? Icons.water_drop_rounded : Icons.wb_sunny_rounded,
+                                      size: 18,
+                                      color: isRain ? AppTheme.royalCobalt : const Color(0xFFD97706),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '$cond • $tempStr',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.darkNavy,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            '$humidityStr${windKmh != null ? ' • ${windKmh.round()} km/h' : ''}',
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppTheme.textSecondary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Transit Speed Tile
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.speed_rounded,
-                                    size: 18,
-                                    color: trafficColor,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          speedText,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.darkNavy,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          trafficState,
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: trafficColor,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
+                            const SizedBox(width: 8),
+                            // 2. Visibility & Sightlines
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.visibility_rounded,
+                                      size: 18,
+                                      color: AppTheme.royalCobalt,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            visibilityStr,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.darkNavy,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            visibilityDesc,
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppTheme.textSecondary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // 3. Road Surface & Precipitation State
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isRain ? Icons.water_rounded : Icons.check_circle_outline_rounded,
+                                size: 18,
+                                color: isRain ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      roadGripStr,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isRain ? const Color(0xFFD97706) : AppTheme.darkNavy,
+                                      ),
+                                    ),
+                                    Text(
+                                      precipitationStr,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        // TRAVELER LIVE TELEMETRY TILES
+                        Row(
+                          children: [
+                            // Atmosphere Tile
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isRain ? Icons.water_drop_rounded : Icons.wb_sunny_rounded,
+                                      size: 18,
+                                      color: isRain ? AppTheme.royalCobalt : const Color(0xFFD97706),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '$cond • $tempStr',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.darkNavy,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            roadGripStr,
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppTheme.textSecondary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Transit Speed Tile
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.speed_rounded,
+                                      size: 18,
+                                      color: trafficColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            speedText,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.darkNavy,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            trafficState,
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: trafficColor,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 10),
+
+                      // Safety Assessment Card ("Why is the score this?")
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFBBF7D0),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(
+                                  Icons.shield_outlined,
+                                  size: 14,
+                                  color: Color(0xFF16A34A),
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Safety Assessment & Outlook',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF15803D),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              conditionAssessment,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.35,
+                                color: AppTheme.darkNavy.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
 
                       // Sector Driving Advisory Box
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppTheme.forestGreen.withValues(alpha: 0.05),
+                          color: const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AppTheme.forestGreen.withValues(alpha: 0.2),
-                          ),
+                          border: Border.all(color: Colors.grey.shade200),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
