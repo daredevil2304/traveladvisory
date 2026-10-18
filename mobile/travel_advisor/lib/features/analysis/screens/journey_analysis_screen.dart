@@ -102,10 +102,15 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     Map<String, dynamic> analysis = {};
     int? tripId;
 
+    bool isSavedReport = false;
     if (arguments is Map<String, dynamic>) {
       source = arguments['source'] ?? source;
       destination = arguments['destination'] ?? destination;
       role = (arguments['role']?.toString().toLowerCase() ?? 'traveler');
+      isSavedReport = arguments['isSavedReport'] == true ||
+          arguments['fromSavedReports'] == true ||
+          arguments['savedReportId'] != null ||
+          arguments['reportId'] != null;
       if (arguments['analysis'] != null) {
         analysis = Map<String, dynamic>.from(arguments['analysis'] as Map);
       }
@@ -176,13 +181,14 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               _showEmergencySheet(context, analysis['emergency_directory']);
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
-            tooltip: 'Saved Reports',
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.savedReports);
-            },
-          ),
+          if (!isSavedReport)
+            IconButton(
+              icon: const Icon(Icons.bookmark_outline_rounded, color: AppTheme.darkNavy),
+              tooltip: 'Saved Reports',
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.savedReports);
+              },
+            ),
         ],
       ),
       body: SafeArea(
@@ -491,128 +497,157 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                   }),
               ],
 
-              const SizedBox(height: 36),
+              if (!isSavedReport) ...[
+                const SizedBox(height: 36),
 
-              // SAVE REPORT BUTTON (On report analysis page)
-              Container(
-                width: double.infinity,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: _reportSaved
-                      ? const LinearGradient(
-                          colors: [Color(0xFF15803D), Color(0xFF16A34A)],
-                        )
-                      : const LinearGradient(
-                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (_reportSaved ? const Color(0xFF16A34A) : const Color(0xFF1E3A8A)).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: (_isSavingReport || _reportSaved)
-                      ? null
-                      : () => _handleSaveReport(tripId, source, destination),
-                  icon: _isSavingReport
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.white,
+                // SAVE REPORT BUTTON (On report analysis page)
+                Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: _reportSaved
+                        ? const LinearGradient(
+                            colors: [Color(0xFF15803D), Color(0xFF16A34A)],
+                          )
+                        : const LinearGradient(
+                            colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
                           ),
-                        )
-                      : Icon(
-                          _reportSaved
-                              ? Icons.check_circle_rounded
-                              : Icons.bookmark_add_rounded,
-                          color: Colors.white,
-                        ),
-                  label: Text(
-                    _isSavingReport
-                        ? 'Saving Report...'
-                        : _reportSaved
-                            ? 'Report Saved to Archive'
-                            : 'Save Report to Archive',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // BOTTOM ACTION BUTTON (Live updates / Return to Chat)
-              Container(
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x060F172A),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      Navigator.pop(
-                        context,
-                        isPlanner
-                            ? {'action': 'back_to_chat'}
-                            : {'action': 'live_updates'},
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isPlanner
-                              ? Icons.chat_bubble_outline_rounded
-                              : Icons.add_location_alt_rounded,
-                          color: const Color(0xFF1D4ED8),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isPlanner ? 'Back to Chat Assistant' : 'Share Live Road Updates',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1D4ED8),
-                            letterSpacing: 0.2,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_reportSaved ? const Color(0xFF16A34A) : const Color(0xFF1E3A8A)).withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: (_isSavingReport || _reportSaved)
+                        ? null
+                        : () => _handleSaveReport(tripId, source, destination),
+                    icon: _isSavingReport
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.white,
+                            ),
+                          )
+                        : Icon(
+                            _reportSaved
+                                ? Icons.check_circle_rounded
+                                : Icons.bookmark_add_rounded,
+                            color: Colors.white,
                           ),
-                        ),
-                      ],
+                    label: Text(
+                      _isSavingReport
+                          ? 'Saving Report...'
+                          : _reportSaved
+                              ? 'Report Saved to Archive'
+                              : 'Save Report to Archive',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 12),
+
+                // BOTTOM ACTION BUTTON (Live updates / Return to Chat)
+                Container(
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x060F172A),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                          isPlanner
+                              ? {'action': 'back_to_chat'}
+                              : {'action': 'live_updates'},
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isPlanner
+                                ? Icons.chat_bubble_outline_rounded
+                                : Icons.add_location_alt_rounded,
+                            color: const Color(0xFF1D4ED8),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isPlanner ? 'Back to Chat Assistant' : 'Share Live Road Updates',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1D4ED8),
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ] else ...[
+                const SizedBox(height: 24),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inventory_2_outlined, color: Color(0xFF64748B), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Viewing Archived Saved Report',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ],
           ),
         ),

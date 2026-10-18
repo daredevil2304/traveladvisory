@@ -1780,6 +1780,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           'source': source,
           'destination': destination,
           'role': role,
+          'isSavedReport': true,
         },
       );
     } catch (e) {

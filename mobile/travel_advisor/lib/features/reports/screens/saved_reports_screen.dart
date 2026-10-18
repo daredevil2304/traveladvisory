@@ -95,6 +95,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
           'source': source,
           'destination': destination,
           'role': role,
+          'isSavedReport': true,
         },
       );
     } catch (e) {
