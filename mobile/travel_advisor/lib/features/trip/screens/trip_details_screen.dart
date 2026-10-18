@@ -665,14 +665,14 @@ class _TripDetailsScreenState
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF0F2942), Color(0xFF1E3A5F)],
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0F2942).withValues(alpha: 0.18),
+                        color: const Color(0xFF1E3A8A).withValues(alpha: 0.18),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1060,7 +1060,7 @@ class _TripDetailsScreenState
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),

@@ -954,7 +954,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               height: 36,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+                  colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1073,9 +1073,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF0A1128), // Executive Midnight Obsidian
             Color(0xFF1E3A8A), // Royal Sapphire
-            Color(0xFF1D4ED8), // Electric Cobalt
+            Color(0xFF1D4ED8), // Vivid Sapphire
+            Color(0xFF2563EB), // Electric Cobalt
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -1083,7 +1083,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x300A1128),
+            color: Color(0x301E3A8A),
             blurRadius: 22,
             offset: Offset(0, 8),
           ),
@@ -1336,7 +1336,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
             child: Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                  colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
@@ -1417,7 +1417,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 decoration: BoxDecoration(
                   gradient: isSelected
                       ? const LinearGradient(
-                          colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         )
@@ -1616,7 +1616,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           decoration: BoxDecoration(
                             gradient: !isAm
                                 ? const LinearGradient(
-                                    colors: [Color(0xFF0A1128), Color(0xFF1E3A8A)],
+                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   )
@@ -3062,7 +3062,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       decoration: BoxDecoration(
                         gradient: _selectedScheduleSlot == 1
                             ? const LinearGradient(
-                                colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+                                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               )

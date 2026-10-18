@@ -448,7 +448,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                           colors: [Color(0xFF15803D), Color(0xFF16A34A)],
                         )
                       : const LinearGradient(
-                          colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),

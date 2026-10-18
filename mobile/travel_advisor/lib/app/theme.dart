@@ -50,8 +50,8 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF0A1128),
       Color(0xFF1E3A8A),
+      Color(0xFF1D4ED8),
       Color(0xFF2563EB),
     ],
   );
@@ -60,9 +60,8 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF0B132B),
-      Color(0xFF1C3782),
-      Color(0xFF0284C7),
+      Color(0xFF1E3A8A),
+      Color(0xFF2563EB),
     ],
   );
 

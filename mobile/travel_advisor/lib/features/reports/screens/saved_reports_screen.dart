@@ -303,7 +303,7 @@ class _SavedReportsScreenState extends State<SavedReportsScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF0A1128), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
