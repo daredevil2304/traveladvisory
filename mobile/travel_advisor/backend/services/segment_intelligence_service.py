@@ -99,7 +99,7 @@ class SegmentIntelligenceService:
     It does NOT calculate the final route-level Safety Score.
     """
 
-    REPORT_LOOKBACK_HOURS = 24
+    REPORT_LOOKBACK_HOURS = 1
 
     def evaluate_segment(
         self,
@@ -188,7 +188,9 @@ class SegmentIntelligenceService:
 
             report_dimensions = (
                 self._build_report_dimensions(
-                    serialized_reports
+                    serialized_reports,
+                    weather_dimensions=weather_dimensions,
+                    live_traffic=live_traffic,
                 )
             )
         else:
@@ -427,14 +429,16 @@ class SegmentIntelligenceService:
     @staticmethod
     def _build_report_dimensions(
         reports: list[dict[str, Any]],
+        weather_dimensions: dict[str, Any] | None = None,
+        live_traffic: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """
-        Aggregate recent traveler observations by dimension.
+        Aggregate recent traveler observations by dimension, cross-comparing with
+        authoritative APIs (OpenWeather for weather, Google Maps for traffic).
 
-        Each dimension is evaluated independently.
-
-        Traffic is preserved and aggregated here for traveler journeys,
-        and fused at 20% weight against Google Maps 80% dominant weight.
+        If multiple users report different conditions at the same time:
+        - Weather dimensions (rain, visibility, fog): preference is given to the OpenWeather API live data.
+        - Traffic dimensions (traffic, road delays): preference is given to Google Maps telemetry.
         """
 
         if not reports:
@@ -501,6 +505,25 @@ class SegmentIntelligenceService:
                     + 1
                 )
 
+            # If multiple users report conflicting observations (len(counts) > 1),
+            # or if 3+ reports have differing conditions, arbitrate in favor of verified APIs:
+            if len(counts) > 1:
+                if field in ("rain", "visibility", "fog") and weather_dimensions:
+                    api_val = weather_dimensions.get(field)
+                    if api_val and str(api_val).strip() and str(api_val).casefold() not in {"null", "none"}:
+                        dimensions[field] = str(api_val).strip()
+                        continue
+                elif field in ("traffic", "unusual_conditions") and live_traffic:
+                    congestion = str(live_traffic.get("congestion_level", "")).lower()
+                    delay = live_traffic.get("delay_minutes", 0)
+                    if delay >= 15 or congestion == "heavy":
+                        dimensions[field] = "heavy congestion"
+                    elif delay >= 5 or congestion == "moderate":
+                        dimensions[field] = "moderate delay"
+                    else:
+                        dimensions[field] = "free flow"
+                    continue
+
             highest_count = max(
                 counts.values()
             )
@@ -528,6 +551,16 @@ class SegmentIntelligenceService:
                     break
 
             if selected_value is not None:
+                # Sanity check against OpenWeather API for weather:
+                if field in ("rain", "visibility", "fog") and weather_dimensions:
+                    api_val = weather_dimensions.get(field)
+                    if (
+                        str(selected_value).casefold() in {"heavy rain", "very heavy rain", "downpour"}
+                        and api_val
+                        and str(api_val).casefold() in {"no rain", "none", "clear"}
+                    ):
+                        selected_value = str(api_val)
+
                 dimensions[field] = (
                     selected_value
                 )

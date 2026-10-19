@@ -23,7 +23,7 @@ class TravelerReportRetrievalService:
         db: Session,
         region: str,
         reference_datetime: datetime,
-        lookback_hours: int = 6,
+        lookback_hours: int = 1,
         limit: int = 20,
     ) -> list[TravelerReport]:
         """
@@ -76,7 +76,7 @@ class TravelerReportRetrievalService:
         db: Session,
         region: str,
         reference_datetime: datetime,
-        lookback_hours: int = 6,
+        lookback_hours: int = 1,
     ) -> TravelerReport | None:
         """
         Return the newest available traveler report for a region.

@@ -2034,51 +2034,95 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
           ),
           const SizedBox(height: 16),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              height: 100,
+              height: 185,
               width: double.infinity,
               color: const Color(0xFFF8FAFC),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: CustomPaint(
                 painter: ElevationChartPainter(),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          // Route Elevation Milestones from Mumbai to Pune
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildWaypointChip('Mumbai', '8m', 'Start', const Color(0xFF0284C7)),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Panvel', '14m', 'R2', const Color(0xFF64748B)),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Khopoli', '72m', 'R4 Base', const Color(0xFFD97706)),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Khandala', '550m', 'R4 Ghat', const Color(0xFFEA580C)),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Lonavala', '624m', 'Peak', const Color(0xFFDC2626), isPeak: true),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Talegaon', '582m', 'R6 Plateau', const Color(0xFF64748B)),
+                const SizedBox(width: 8),
+                _buildWaypointChip('Pune', '560m', 'Destination', const Color(0xFF059669)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaypointChip(String name, String meters, String tag, Color color, {bool isPeak = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPeak ? const Color(0xFFFEF2F2) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isPeak ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
+          width: isPeak ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Text(
-                'Panvel\n14m',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
-                textAlign: TextAlign.center,
+                name,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.darkNavy,
+                ),
               ),
-              Text(
-                'Khopoli\n72m',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                'Bhor Ghat\n550m',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                'Lonavala\n624m (Peak)',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFDC2626)),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                'Talegaon\n585m',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                'Pune\n560m',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
-                textAlign: TextAlign.center,
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  tag,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$meters MSL',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isPeak ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+            ),
           ),
         ],
       ),
@@ -2490,73 +2534,214 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 class ElevationChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
+    const double leftMargin = 38.0;
+    const double rightMargin = 16.0;
+    const double topMargin = 22.0;
+    const double bottomMargin = 30.0;
 
-    final points = [
-      const Offset(0.02, 8.0),
-      const Offset(0.12, 14.0),
-      const Offset(0.28, 48.0),
-      const Offset(0.40, 72.0),
-      const Offset(0.55, 550.0),
-      const Offset(0.62, 624.0),
-      const Offset(0.74, 590.0),
-      const Offset(0.85, 582.0),
-      const Offset(0.98, 560.0),
+    final double chartW = size.width - leftMargin - rightMargin;
+    final double chartH = size.height - topMargin - bottomMargin;
+
+    const double maxElevation = 700.0;
+
+    // 1. Draw horizontal gridlines & Y-axis labels (0m, 200m, 400m, 600m)
+    final yTicks = [0.0, 200.0, 400.0, 600.0];
+    final gridPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 1.0;
+
+    for (final elev in yTicks) {
+      final double y = topMargin + chartH - ((elev / maxElevation) * chartH);
+
+      // Light horizontal gridline
+      canvas.drawLine(
+        Offset(leftMargin, y),
+        Offset(size.width - rightMargin, y),
+        gridPaint,
+      );
+
+      // Y-axis label text
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '${elev.toInt()}m',
+          style: const TextStyle(
+            fontSize: 9.0,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      tp.layout();
+      tp.paint(canvas, Offset(leftMargin - tp.width - 5.0, y - tp.height / 2));
+    }
+
+    // Y-axis title / unit header
+    final yTitleTp = TextPainter(
+      text: const TextSpan(
+        text: 'm MSL',
+        style: TextStyle(
+          fontSize: 8.0,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF94A3B8),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    yTitleTp.layout();
+    yTitleTp.paint(canvas, Offset(leftMargin - yTitleTp.width - 4.0, 4.0));
+
+    // 2. Draw Y-axis and X-axis lines
+    final axisPaint = Paint()
+      ..color = const Color(0xFF94A3B8)
+      ..strokeWidth = 1.5;
+
+    // Y-axis line
+    canvas.drawLine(
+      Offset(leftMargin, topMargin - 4.0),
+      Offset(leftMargin, topMargin + chartH),
+      axisPaint,
+    );
+
+    // X-axis baseline
+    canvas.drawLine(
+      Offset(leftMargin, topMargin + chartH),
+      Offset(size.width - rightMargin + 4.0, topMargin + chartH),
+      axisPaint,
+    );
+
+    // 3. Elevation Waypoints along the Mumbai-Pune corridor
+    // (normalized_x [0.0 to 1.0], elevation_m, short_name)
+    final waypoints = [
+      (0.00, 8.0, 'Mumbai'),
+      (0.18, 14.0, 'Panvel'),
+      (0.35, 48.0, 'Khalapur'),
+      (0.46, 72.0, 'Khopoli'),
+      (0.58, 550.0, 'Ghat'),
+      (0.68, 624.0, 'Lonavala'),
+      (0.84, 582.0, 'Talegaon'),
+      (1.00, 560.0, 'Pune'),
     ];
 
-    const double maxElevation = 680.0;
-    final Path path = Path();
-    final Path fillPath = Path();
-
-    Offset toCanvas(Offset p) {
-      final double x = p.dx * w;
-      final double y = h - ((p.dy / maxElevation) * (h - 22.0)) - 10.0;
+    Offset toCanvas(double normX, double elevM) {
+      final double x = leftMargin + (normX * chartW);
+      final double y = topMargin + chartH - ((elevM / maxElevation) * chartH);
       return Offset(x, y);
     }
 
-    final startPoint = toCanvas(points.first);
-    path.moveTo(startPoint.dx, startPoint.dy);
-    fillPath.moveTo(startPoint.dx, h);
-    fillPath.lineTo(startPoint.dx, startPoint.dy);
+    final Path path = Path();
+    final Path fillPath = Path();
 
-    for (int i = 0; i < points.length - 1; i++) {
-      final p0 = toCanvas(points[i]);
-      final p1 = toCanvas(points[i + 1]);
+    final firstPt = toCanvas(waypoints[0].$1, waypoints[0].$2);
+    path.moveTo(firstPt.dx, firstPt.dy);
+    fillPath.moveTo(firstPt.dx, topMargin + chartH);
+    fillPath.lineTo(firstPt.dx, firstPt.dy);
+
+    for (int i = 0; i < waypoints.length - 1; i++) {
+      final p0 = toCanvas(waypoints[i].$1, waypoints[i].$2);
+      final p1 = toCanvas(waypoints[i + 1].$1, waypoints[i + 1].$2);
       final controlX = (p0.dx + p1.dx) / 2;
       path.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
       fillPath.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
     }
 
-    final endPoint = toCanvas(points.last);
-    fillPath.lineTo(endPoint.dx, h);
+    final lastPt = toCanvas(waypoints.last.$1, waypoints.last.$2);
+    fillPath.lineTo(lastPt.dx, topMargin + chartH);
     fillPath.close();
 
+    // 4. Fill gradient below elevation curve
     final Paint fillPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF2563EB).withValues(alpha: 0.28),
-          const Color(0xFF1E3A8A).withValues(alpha: 0.02),
+          const Color(0xFF2563EB).withValues(alpha: 0.32),
+          const Color(0xFF1E3A8A).withValues(alpha: 0.03),
         ],
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
+      ).createShader(Rect.fromLTWH(leftMargin, topMargin, chartW, chartH));
     canvas.drawPath(fillPath, fillPaint);
 
+    // 5. Draw elevation curve stroke
     final Paint linePaint = Paint()
       ..color = const Color(0xFF2563EB)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, linePaint);
 
+    // 6. Draw dots & X-axis labels
     final Paint dotPaint = Paint()..color = const Color(0xFF1E3A8A);
     final Paint dotInner = Paint()..color = Colors.white;
+    final Paint peakDot = Paint()..color = const Color(0xFFDC2626);
 
-    for (final p in points) {
-      final c = toCanvas(p);
-      canvas.drawCircle(c, 3.5, dotPaint);
-      canvas.drawCircle(c, 1.8, dotInner);
+    for (final wp in waypoints) {
+      final c = toCanvas(wp.$1, wp.$2);
+      final bool isPeak = (wp.$3 == 'Lonavala');
+
+      if (isPeak) {
+        canvas.drawCircle(c, 5.0, peakDot);
+        canvas.drawCircle(c, 2.5, dotInner);
+
+        // Draw Peak Callout
+        final peakTp = TextPainter(
+          text: const TextSpan(
+            text: '624m Peak',
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFFDC2626),
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        peakTp.layout();
+        peakTp.paint(canvas, Offset(c.dx - peakTp.width / 2, c.dy - 16.0));
+      } else {
+        canvas.drawCircle(c, 3.8, dotPaint);
+        canvas.drawCircle(c, 2.0, dotInner);
+      }
+
+      // X-axis tick
+      canvas.drawLine(
+        Offset(c.dx, topMargin + chartH),
+        Offset(c.dx, topMargin + chartH + 4.0),
+        axisPaint,
+      );
+
+      // X-axis label (Segment Name + Meters)
+      final xLabelTp = TextPainter(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '${wp.$3}\n',
+              style: TextStyle(
+                fontSize: 8.5,
+                fontWeight: isPeak ? FontWeight.w900 : FontWeight.w700,
+                color: isPeak ? const Color(0xFFDC2626) : const Color(0xFF334155),
+              ),
+            ),
+            TextSpan(
+              text: '${wp.$2.toInt()}m',
+              style: TextStyle(
+                fontSize: 8.0,
+                fontWeight: FontWeight.w600,
+                color: isPeak ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      );
+      xLabelTp.layout();
+
+      // Ensure labels don't get clipped on edges
+      double labelX = c.dx - (xLabelTp.width / 2);
+      if (labelX < 0) labelX = 0;
+      if (labelX + xLabelTp.width > size.width) labelX = size.width - xLabelTp.width;
+
+      xLabelTp.paint(canvas, Offset(labelX, topMargin + chartH + 5.0));
     }
   }
 

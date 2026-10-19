@@ -254,7 +254,22 @@ class DataFusionService:
             )
 
         def get_source_weight(src: str) -> float:
-            return 2.1 if src == "traveler" else 1.0
+            if dimension in ("rain", "visibility", "fog"):
+                if src == "weather":
+                    return 3.5  # OpenWeather API priority
+                elif src == "traveler":
+                    return 1.0
+                return 1.2
+            elif dimension in ("traffic", "congestion", "unusual_conditions", "risk"):
+                if src in ("traffic", "google_maps"):
+                    return 3.5  # Google Maps Telemetry priority
+                elif src == "weather":
+                    return 1.5
+                elif src == "traveler":
+                    return 1.0
+                return 1.2
+            else:
+                return 1.0 if src == "traveler" else 1.5
 
         winning_key, agreeing_sources = max(
             groups.items(),

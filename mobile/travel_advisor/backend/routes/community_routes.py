@@ -165,13 +165,14 @@ def get_live_community_reports(
     Computes active risky corridor segments based exclusively on user inputs.
     """
     now = get_ist_now()
-    # Handle both IST timestamps and legacy UTC timestamps in DB
-    cutoff_time_ist = now - timedelta(hours=hours)
-    cutoff_time_utc = (now - timedelta(hours=5, minutes=30)) - timedelta(hours=hours)
+    cutoff_time = now - timedelta(hours=hours)
 
     reports_query = (
         db.query(TravelerReport)
-        .filter(TravelerReport.created_at >= min(cutoff_time_ist, cutoff_time_utc))
+        .filter(
+            TravelerReport.created_at >= cutoff_time,
+            TravelerReport.created_at <= now,
+        )
         .order_by(TravelerReport.created_at.desc())
         .all()
     )
@@ -181,14 +182,10 @@ def get_live_community_reports(
 
     for report in reports_query:
         created_dt = report.created_at or now
-        # If created_dt was saved in UTC earlier, normalize to IST
-        if (now - created_dt).total_seconds() > (hours * 3600) and (now - (created_dt + timedelta(hours=5, minutes=30))).total_seconds() <= (hours * 3600):
-            created_dt = created_dt + timedelta(hours=5, minutes=30)
-
         age_seconds = max(0, int((now - created_dt).total_seconds()))
         age_minutes = age_seconds // 60
         remaining_minutes = max(0, (hours * 60) - age_minutes)
-        if remaining_minutes <= 0 and age_minutes > (hours * 60):
+        if remaining_minutes <= 0 or age_minutes >= (hours * 60):
             continue
 
         region_code = (report.route_region or "").strip().upper()

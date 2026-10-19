@@ -103,31 +103,29 @@ class SafetyScoreService:
     # Calibrated Source Weights
     # -------------------------------------------------------------
     # Traveler Profile (En-route traveling right now):
-    #   ML Historical Model  = 30%
-    #   Live Weather          = 25%
-    #   Live Traffic          = 25%
-    #   Community Hazard Reports = 20%
-    # Dynamic normalization applies if community reports are absent
-    # (ML: 37.5%, Weather: 31.25%, Traffic: 31.25%).
+    #   OpenWeather Live API   = 50% (High importance and truth source)
+    #   Google Maps Live Traffic = 30%
+    #   Community Hazard Reports = 10%
+    #   ML Model                = 10% (Reduced on highway sections)
     # -------------------------------------------------------------
     TRAVELER_SOURCE_WEIGHTS = {
-        "ml": 0.30,
-        "weather": 0.25,
-        "traffic": 0.25,
-        "traveler": 0.20,
+        "weather": 0.50,
+        "traffic": 0.30,
+        "traveler": 0.10,
+        "ml": 0.10,
     }
 
     # -------------------------------------------------------------
     # Planner Profile (Advance trip planning):
     #   Traffic is strictly 0.00 (excluded).
-    #   ML Forecast Prediction = 45%
-    #   OpenWeather Forecast   = 35%
+    #   OpenWeather Forecast   = 65% (Dominant atmospheric forecast)
     #   Terrain & Schedule     = 20%
+    #   ML Model               = 15% (Reduced on highway sections)
     # -------------------------------------------------------------
     PLANNER_SOURCE_WEIGHTS = {
-        "ml": 0.45,
-        "weather": 0.35,
+        "weather": 0.65,
         "terrain": 0.20,
+        "ml": 0.15,
         "traffic": 0.00,
         "traveler": 0.00,
     }
@@ -135,12 +133,12 @@ class SafetyScoreService:
     # -------------------------------------------------------------
     # Ghat-Adaptive Source Weights (R4 Khandala Ghat & R5 Lonavala Crest):
     # In steep mountain passes with hairpin curves and elevated risk of
-    # aquaplaning / brake fade, ML historical road hazard prediction
-    # is given higher dominance over generic atmospheric forecasts.
+    # aquaplaning / brake fade, ML road hazard prediction is actively
+    # leveraged alongside OpenWeather mountain weather telemetry.
     # -------------------------------------------------------------
     PLANNER_GHAT_SOURCE_WEIGHTS = {
-        "ml": 0.55,
-        "weather": 0.25,
+        "ml": 0.50,
+        "weather": 0.30,
         "terrain": 0.20,
         "traffic": 0.00,
         "traveler": 0.00,
@@ -148,9 +146,9 @@ class SafetyScoreService:
 
     TRAVELER_GHAT_SOURCE_WEIGHTS = {
         "ml": 0.40,
-        "weather": 0.20,
+        "weather": 0.30,
         "traffic": 0.20,
-        "traveler": 0.20,
+        "traveler": 0.10,
     }
 
     SOURCE_WEIGHTS = TRAVELER_SOURCE_WEIGHTS
@@ -860,8 +858,8 @@ class SafetyScoreService:
     # TRAFFIC & TERRAIN HELPERS
     # =============================================================
 
-    GOOGLE_MAPS_TRAFFIC_WEIGHT = 0.80
-    USER_REPORT_TRAFFIC_WEIGHT = 0.20
+    GOOGLE_MAPS_TRAFFIC_WEIGHT = 0.85
+    USER_REPORT_TRAFFIC_WEIGHT = 0.15
 
     USER_TRAFFIC_SCORES = {
         "standstill": 40.0,
@@ -878,17 +876,14 @@ class SafetyScoreService:
         traveler_result: dict[str, Any] | None = None,
     ) -> tuple[float | None, dict[str, float]]:
         """
-        Calculate combined traffic score with 80% Google Maps weight and 20% User Report weight.
-        
-        When travelers submit conditions regarding congestion/traffic, it is factored in
-        with secondary weight (20%) while official Google Maps telemetry remains the dominant
-        anchor (80% weight).
+        Calculate combined traffic score giving primary preference to Google Maps (85%)
+        and secondary weight to traveler reports (15%), with ground-truth arbitrage.
         """
         google_maps_score: float | None = None
         user_traffic_score: float | None = None
         dimensions: dict[str, float] = {}
 
-        # 1. Google Maps Traffic Score (80% weight authority)
+        # 1. Google Maps Traffic Score (85% weight authority)
         if isinstance(traffic_result, dict):
             if "traffic_score" in traffic_result and isinstance(traffic_result["traffic_score"], (int, float)):
                 google_maps_score = float(traffic_result["traffic_score"])
@@ -911,7 +906,7 @@ class SafetyScoreService:
 
             dimensions["google_maps_traffic"] = google_maps_score
 
-        # 2. Traveler Reported Traffic Score (20% secondary weight)
+        # 2. Traveler Reported Traffic Score (15% secondary weight)
         if isinstance(traveler_result, dict):
             user_traffic = traveler_result.get("traffic")
             if isinstance(user_traffic, str) and user_traffic.strip():
@@ -933,12 +928,20 @@ class SafetyScoreService:
                 if user_traffic_score is not None:
                     dimensions["user_report_traffic"] = user_traffic_score
 
-        # 3. Fuse Google Maps (80%) and User Report (20%)
+        # 3. Fuse Google Maps and User Report with Ground-Truth Protection
         if google_maps_score is not None and user_traffic_score is not None:
-            fused_score = (
-                self.GOOGLE_MAPS_TRAFFIC_WEIGHT * google_maps_score
-                + self.USER_REPORT_TRAFFIC_WEIGHT * user_traffic_score
-            )
+            # If user report sharply conflicts with Google Maps (e.g. discrepancy > 30 pts),
+            # give overwhelming preference (92%) to Google Maps to guard against false reports
+            if abs(google_maps_score - user_traffic_score) > 30.0:
+                fused_score = (
+                    0.92 * google_maps_score
+                    + 0.08 * user_traffic_score
+                )
+            else:
+                fused_score = (
+                    self.GOOGLE_MAPS_TRAFFIC_WEIGHT * google_maps_score
+                    + self.USER_REPORT_TRAFFIC_WEIGHT * user_traffic_score
+                )
             dimensions["live_traffic"] = round(fused_score, 1)
             return round(fused_score, 1), dimensions
         elif google_maps_score is not None:
