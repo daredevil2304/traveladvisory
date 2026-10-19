@@ -718,7 +718,7 @@ class _TripDetailsScreenState
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     child: Text(
-                                      'ACTIVE 6H',
+                                      'ACTIVE 1H',
                                       style: TextStyle(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w800,

@@ -156,11 +156,11 @@ def _assess_report_hazards(report: TravelerReport) -> tuple[bool, list[str]]:
 
 @router.get("/live-reports")
 def get_live_community_reports(
-    hours: int = Query(default=6, ge=1, le=24, description="Lookback window in hours"),
+    hours: int = Query(default=1, ge=1, le=24, description="Lookback window in hours"),
     db: Session = Depends(get_db),
 ):
     """
-    Returns active human traveler reports within the past N hours (default 6h).
+    Returns active human traveler reports within the past N hours (default 1h).
     Expired reports are automatically excluded from the output and risk evaluation.
     Computes active risky corridor segments based exclusively on user inputs.
     """
@@ -292,7 +292,7 @@ def submit_community_road_report(
 ):
     """
     Submits a standalone community road report visible to all travelers.
-    Automatically valid for 6 hours before natural expiration.
+    Automatically valid for 1 hour before natural expiration.
     """
     region_code = _normalize_region_code(payload.route_region)
     meta = REGION_METADATA[region_code]

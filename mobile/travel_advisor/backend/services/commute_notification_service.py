@@ -34,12 +34,12 @@ class CommuteNotificationService:
     2. Learns typical departure time (e.g. 08:00 AM) and query time (e.g. 07:50 AM).
     3. Calculates proactive notification alert time (e.g. 07:45 AM, 15 min prior).
     4. Evaluates corridor safety score using ML predictions, live weather forecasts,
-       and real-time human observations (last 6 hours).
+       and real-time human observations (last 1 hour).
     5. Formulates specific regional hazard warnings (e.g., low visibility near Lonavala,
        wet roads near Bhor Ghat, traffic near Kamshet).
     """
 
-    LOOKBACK_HOURS = 6
+    LOOKBACK_HOURS = 1
 
     def log_commute_check(
         self,

@@ -43,7 +43,7 @@ class _CommunityReportsScreenState
     });
 
     try {
-      final data = await ApiService.getLiveCommunityReports(hours: 6);
+      final data = await ApiService.getLiveCommunityReports(hours: 1);
 
       if (!mounted) return;
 
@@ -181,7 +181,7 @@ class _CommunityReportsScreenState
               ),
             ),
             Text(
-              'Community corridor feed • Active 6 hours',
+              'Community corridor feed • Active 1 hour',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -321,7 +321,7 @@ class _CommunityReportsScreenState
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'No severe hazards nor low visibility reported by travelers in the past 6 hours.',
+                    'No severe hazards nor low visibility reported by travelers in the past 1 hour.',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
@@ -578,7 +578,7 @@ class _CommunityReportsScreenState
             ),
             const SizedBox(height: 6),
             const Text(
-              'Reports automatically clear after 6 hours. Be the first to post current highway conditions.',
+              'Reports automatically clear after 1 hour. Be the first to post current highway conditions.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -989,7 +989,7 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Live road report posted! Active for 6 hours.'),
+          content: Text('Live road report posted! Active for 1 hour.'),
           backgroundColor: AppTheme.forestGreen,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1048,7 +1048,7 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Your input will be visible to travelers and automatically expires after 6 hours.',
+              'Your input will be visible to travelers and automatically expires after 1 hour.',
               style: TextStyle(
                 fontSize: 12,
                 color: AppTheme.textSecondary,

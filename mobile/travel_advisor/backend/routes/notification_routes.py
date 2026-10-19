@@ -125,7 +125,7 @@ def get_commute_alert(
 ) -> dict[str, Any]:
     """
     Generates real-time proactive notification payload evaluating the prediction model,
-    weather forecasts, and human community reports within the past 6 hours.
+    weather forecasts, and human community reports within the past 1 hour.
     """
     try:
         alert_payload = commute_notification_service.generate_commute_alert(

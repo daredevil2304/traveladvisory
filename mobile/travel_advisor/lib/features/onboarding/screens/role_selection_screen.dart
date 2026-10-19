@@ -212,7 +212,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         color: const Color(0xFFEF4444),
                         title: '2. Live Road Feeds',
                         desc:
-                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments, active for 6 hours.',
+                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments, active for 1 hour.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(

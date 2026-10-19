@@ -376,7 +376,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       _parseDaysForSlot(1, returnHabit['travel_days']?.toString() ?? 'Daily');
 
       // 3. Load Community Radar Reports
-      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final res = await ApiService.getLiveCommunityReports(hours: 1);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
@@ -411,7 +411,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   Future<void> _refreshLiveReports() async {
     setState(() => _isLoadingReports = true);
     try {
-      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final res = await ApiService.getLiveCommunityReports(hours: 1);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
@@ -2559,7 +2559,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Live hazard reports from drivers on the 8 expressway segments. Active for 6 hours.',
+                'Live hazard reports from drivers on the 8 expressway segments. Active for 1 hour.',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -2594,7 +2594,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'All 8 Expressway Segments Clear. No active hazards or road obstructions reported in the past 6 hours.',
+                          'All 8 Expressway Segments Clear. No active hazards or road obstructions reported in the past 1 hour.',
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF334155),
