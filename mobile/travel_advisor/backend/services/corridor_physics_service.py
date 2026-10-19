@@ -129,9 +129,13 @@ class CorridorPhysicsService:
         statutory = self.STATUTORY_SPEED_LIMITS.get(reg, 80)
         is_ghat = reg in ("R4", "R5")
 
-        rain_cond = (weather_data.get("rain") or "").lower() if weather_data else ""
+        rain_cond = (
+            (weather_data.get("rain_condition") or weather_data.get("rain") or "")
+        ).lower() if weather_data else ""
         vis_km = weather_data.get("visibility_km") if weather_data else None
-        fog_cond = (weather_data.get("fog") or "").lower() if weather_data else ""
+        fog_cond = (
+            (weather_data.get("fog_condition") or weather_data.get("fog") or "")
+        ).lower() if weather_data else ""
 
         reduction_kmh = 0
         reasons: list[str] = []

@@ -224,25 +224,29 @@ class WeatherNormalizer:
         )
 
         if condition is None:
+            if visibility_condition == "Very Poor":
+                return "Very Dense Fog"
+            elif visibility_condition == "Poor":
+                return "Dense Fog"
             return "None"
 
         if "fog" in condition:
             if visibility_condition == "Very Poor":
                 return "Very Dense Fog"
-
             if visibility_condition == "Poor":
                 return "Dense Fog"
-
             return "Moderate Mist"
 
-        if "mist" in condition:
-            if visibility_condition in {
-                "Poor",
-                "Very Poor",
-            }:
-                return "Moderate Mist"
-
+        if "mist" in condition or "haze" in condition:
+            if visibility_condition in {"Poor", "Very Poor"}:
+                return "Very Dense Fog" if visibility_condition == "Very Poor" else "Dense Fog"
             return "Light Mist"
+
+        # When visibility is severely restricted (<1km), mountain mist/dense fog is physically present
+        if visibility_condition == "Very Poor":
+            return "Very Dense Fog"
+        elif visibility_condition == "Poor" and ("rain" in condition or "cloud" in condition or "shower" in condition):
+            return "Moderate Mist"
 
         return "None"
 

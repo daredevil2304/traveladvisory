@@ -203,7 +203,18 @@ class SafetyScoreService:
         "accident_incident": 40.0,
         "landslide/rockfall": 25.0,
         "landslide_rockfall": 25.0,
+        "mud_rockfall_alert": 25.0,
+        "mud/rockfall alert": 25.0,
         "flooding": 20.0,
+        "waterlogging": 30.0,
+        "severe_waterlogging": 20.0,
+        "severe waterlogging": 20.0,
+        "aquaplaning_risk": 25.0,
+        "aquaplaning risk": 25.0,
+        "water_runoff": 45.0,
+        "water runoff": 45.0,
+        "wet_surface": 65.0,
+        "wet surface": 65.0,
         "road closure": 0.0,
         "road_closure": 0.0,
         "other": 60.0,
@@ -334,7 +345,7 @@ class SafetyScoreService:
                 cond = weather_result.get("condition") or "Clear"
                 temp = weather_result.get("temp")
                 temp_str = f" at {round(temp)}°C" if temp is not None else ""
-                rain = weather_result.get("rain")
+                rain = weather_result.get("rain") or weather_result.get("rain_condition")
                 rain_mm = weather_result.get("rainfall_mm")
                 is_rain = isinstance(rain, str) and rain.casefold() not in {"no rain", "none"}
                 surface_str = "wet pavement caution" if is_rain else "dry road surface"
@@ -344,7 +355,7 @@ class SafetyScoreService:
                 )
 
                 vis_km = weather_result.get("visibility_km")
-                vis_lbl = weather_result.get("visibility") or "Optimal"
+                vis_lbl = weather_result.get("visibility") or weather_result.get("visibility_condition") or "Optimal"
                 if vis_km is not None:
                     planner_reasons.append(
                         f"Atmospheric Visibility: {vis_km:.1f} km sightlines ({vis_lbl})."
@@ -404,19 +415,19 @@ class SafetyScoreService:
         risk_factors: list[str] = []
 
         if isinstance(weather_result, dict):
-            rain = weather_result.get("rain")
+            rain = weather_result.get("rain") or weather_result.get("rain_condition")
             rain_mm = weather_result.get("rainfall_mm")
             if isinstance(rain, str) and rain.casefold() not in {"no rain", "none"}:
                 r_det = f" ({rain_mm} mm)" if rain_mm and rain_mm > 0 else ""
                 risk_factors.append(f"Precipitation: {rain}{r_det}. Wet road surface.")
 
-            vis = weather_result.get("visibility")
+            vis = weather_result.get("visibility") or weather_result.get("visibility_condition")
             if isinstance(vis, str) and vis.casefold() in {"poor", "very poor", "moderately reduced"}:
                 vis_km = weather_result.get("visibility_km")
                 v_det = f" ({vis_km} km)" if vis_km else ""
                 risk_factors.append(f"Reduced visibility: {vis}{v_det}.")
 
-            fog = weather_result.get("fog")
+            fog = weather_result.get("fog") or weather_result.get("fog_condition")
             if isinstance(fog, str) and fog.casefold() not in {"none"}:
                 risk_factors.append(f"Fog hazard: {fog} reported on stretch.")
 
@@ -500,7 +511,7 @@ class SafetyScoreService:
 
         dimensions: dict[str, float] = {}
 
-        rain = weather_result.get("rain")
+        rain = weather_result.get("rain") or weather_result.get("rain_condition")
 
         if isinstance(rain, str):
             score = self._lookup_score(
@@ -511,7 +522,7 @@ class SafetyScoreService:
             if score is not None:
                 dimensions["rain"] = score
 
-        visibility = weather_result.get("visibility")
+        visibility = weather_result.get("visibility") or weather_result.get("visibility_condition")
 
         if isinstance(visibility, str):
             score = self._lookup_score(
@@ -522,7 +533,7 @@ class SafetyScoreService:
             if score is not None:
                 dimensions["visibility"] = score
 
-        fog = weather_result.get("fog")
+        fog = weather_result.get("fog") or weather_result.get("fog_condition")
 
         if isinstance(fog, str):
             score = self._lookup_score(
@@ -1133,7 +1144,7 @@ class SafetyScoreService:
         # ---------------------------------------------------------
 
         if isinstance(weather_result, dict):
-            rain = weather_result.get("rain")
+            rain = weather_result.get("rain") or weather_result.get("rain_condition")
             if isinstance(rain, str) and rain.casefold() not in {
                 "no rain",
                 "none",
@@ -1147,7 +1158,7 @@ class SafetyScoreService:
                     f"Weather indicates {rain}{rain_detail}. Reduce speed for wet asphalt."
                 )
 
-            visibility = weather_result.get("visibility")
+            visibility = weather_result.get("visibility") or weather_result.get("visibility_condition")
             if isinstance(visibility, str) and visibility.casefold() in {
                 "poor",
                 "very poor",
@@ -1163,7 +1174,7 @@ class SafetyScoreService:
                     f"Reduced visibility observed{vis_detail}. Maintain safe following distance."
                 )
 
-            fog = weather_result.get("fog")
+            fog = weather_result.get("fog") or weather_result.get("fog_condition")
             if isinstance(fog, str) and fog.casefold() not in {
                 "none",
             }:
