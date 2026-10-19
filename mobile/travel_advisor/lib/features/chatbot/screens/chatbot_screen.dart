@@ -55,6 +55,7 @@ class _ChatbotScreenState
   bool _isAnalyzing = false;
   bool _analysisComplete = false;
   bool _isCollectingLiveUpdates = false;
+  bool _liveUpdatesSubmitted = false;
   Map<String, dynamic>? _tripAnalysis;
 
   int? _tripId;
@@ -1109,11 +1110,13 @@ final Map<String, dynamic> analysisData =
       'Your journey analysis is ready.',
       actionButtonText: '📊 View Full Journey Report ➔',
       onActionTap: _openJourneyReport,
-      quickReplies: const [
-        'Why is this score low?',
-        'Which road section needs care?',
-        'What precautions should I take?',
-      ],
+      quickReplies: isPlanner
+          ? const [
+              'Why is this score low?',
+              'Which road section needs care?',
+              'What precautions should I take?',
+            ]
+          : const [],
     );
   } on ApiException catch (e) {
     if (!mounted) {
@@ -1168,22 +1171,15 @@ final Map<String, dynamic> analysisData =
 
     if (!mounted) return;
 
-    if (_role == 'traveler') {
+    if (_role == 'traveler' && !_liveUpdatesSubmitted) {
       _startLiveUpdatesQuestionnaire();
     } else {
       setState(() {
         _step = _ConversationStep.postAnalysis;
         _analysisComplete = true;
       });
-      _addBotMessage(
-        'Your journey analysis has been loaded. Feel free to ask questions regarding road conditions along your route.',
-        quickReplies: const [
-          'Why is this score low?',
-          'Which road section needs care?',
-          'What precautions should I take?',
-          '📊 Open Report Again',
-        ],
-      );
+      // Do not re-generate a duplicate chat message or duplicate quick replies.
+      // The screen already contains the analysis cards, report button, and quick replies.
     }
   }
 
@@ -1407,6 +1403,7 @@ final Map<String, dynamic> analysisData =
 
   Future<void> _finishLiveUpdates({required bool skipped}) async {
     _isCollectingLiveUpdates = false;
+    _liveUpdatesSubmitted = true;
     _step = _ConversationStep.postAnalysis;
 
     if (skipped) {
@@ -1439,10 +1436,7 @@ final Map<String, dynamic> analysisData =
     }
 
     _addBotMessage(
-      'Thank you! Your road report has been recorded and shared with other drivers on the highway.',
-    );
-    _addBotMessage(
-      'Feel free to ask any questions regarding road conditions or why a score is low.',
+      'Thank you! Your road report has been recorded and shared with other drivers on the highway. Feel free to ask any questions regarding road conditions along your route.',
       quickReplies: const [
         'Why is this score low?',
         'Which road section needs care?',
