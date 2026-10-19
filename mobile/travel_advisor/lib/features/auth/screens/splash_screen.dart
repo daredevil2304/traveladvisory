@@ -214,7 +214,7 @@ class _SplashScreenState
               right: 0,
               bottom: 30,
               child: Text(
-                'TRAVEL INTELLIGENCE',
+                'WEATHER BASED TRAVEL ADVISORY',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white54,

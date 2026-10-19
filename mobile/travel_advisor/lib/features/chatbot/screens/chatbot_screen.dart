@@ -179,7 +179,7 @@ class _ChatbotScreenState
         _role == 'planner';
 
     _addBotMessage(
-      'Hello! I am your Mumbai-Pune Travel Advisor. 🚗',
+      'Hello! I am your Weather Based Travel Advisory assistant. 🌤️',
     );
 
     _addBotMessage(
@@ -286,6 +286,10 @@ class _ChatbotScreenState
         _isAnalyzing) {
       return;
     }
+
+    setState(() {
+      _clearAllQuickReplies();
+    });
 
     if (value.contains('Report') || value.contains('View Journey Report') || value.contains('Open Report')) {
       if (_tripAnalysis != null) {
@@ -688,7 +692,7 @@ class _ChatbotScreenState
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.forestGreen,
+              primary: Color(0xFF1D4ED8),
               onPrimary: AppTheme.white,
               onSurface: AppTheme.darkNavy,
             ),
@@ -786,7 +790,7 @@ class _ChatbotScreenState
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.forestGreen,
+              primary: Color(0xFF1D4ED8),
               onPrimary: AppTheme.white,
               onSurface: AppTheme.darkNavy,
             ),
@@ -1501,7 +1505,8 @@ final Map<String, dynamic> analysisData =
     final String titlePrefix =
         isPlanner ? 'Planned Trip Safety Score' : 'Trip Safety Score';
     _addBotMessage(
-      '🛡️ $titlePrefix: ${_formatNumber(score)}/100 • $verdict',
+      '🛡️ $titlePrefix: **${_formatNumber(score)}/100** • **$verdict**',
+      analysisData: analysis is Map<String, dynamic> ? analysis : null,
     );
 
     final dynamic segments = _readProperty(analysis, 'problematicSegments');
@@ -1516,7 +1521,7 @@ final Map<String, dynamic> analysisData =
       }
       if (flaggedNames.isNotEmpty) {
         _addBotMessage(
-          '⚠️ Drive carefully near: ${flaggedNames.join(', ')}.',
+          '⚠️ Drive carefully near: **${flaggedNames.join(', ')}**.',
         );
       }
     } else {
@@ -1528,7 +1533,7 @@ final Map<String, dynamic> analysisData =
     final List<String> precautions = _generatePrecautions(analysis);
     if (precautions.isNotEmpty) {
       _addBotMessage(
-        '💡 Driving Tip: ${precautions.first}',
+        '🛡️ Driving Advisory & Safety Assessment: **${precautions.first}**',
       );
     }
   }
@@ -2502,6 +2507,21 @@ List<String> _stringList(
   // MESSAGE HELPERS
   // ============================================================
 
+  void _clearAllQuickReplies() {
+    for (int i = 0; i < _messages.length; i++) {
+      if (_messages[i].quickReplies.isNotEmpty) {
+        _messages[i] = _ChatMessage(
+          text: _messages[i].text,
+          isUser: _messages[i].isUser,
+          quickReplies: const [],
+          actionButtonText: _messages[i].actionButtonText,
+          onActionTap: _messages[i].onActionTap,
+          analysisData: _messages[i].analysisData,
+        );
+      }
+    }
+  }
+
   void _addBotMessage(
     String message, {
     List<String> quickReplies = const [],
@@ -2533,6 +2553,7 @@ List<String> _stringList(
     String message,
   ) {
     setState(() {
+      _clearAllQuickReplies();
       _messages.add(
         _ChatMessage(
           text: message,
@@ -2621,7 +2642,7 @@ List<String> _stringList(
                 color: AppTheme.darkNavy,
                 fontWeight: FontWeight.w500,
               ),
-              cursorColor: AppTheme.forestGreen,
+              cursorColor: const Color(0xFF1D4ED8),
               decoration:
                   InputDecoration(
                 prefixIcon: isPostAnalysis
@@ -2630,7 +2651,7 @@ List<String> _stringList(
                         ? IconButton(
                             icon: const Icon(
                               Icons.calendar_month_rounded,
-                              color: AppTheme.forestGreen,
+                              color: Color(0xFF1D4ED8),
                               size: 24,
                             ),
                             tooltip: 'Select Date on Calendar',
@@ -2640,7 +2661,7 @@ List<String> _stringList(
                             ? IconButton(
                                 icon: const Icon(
                                   Icons.access_time_filled_rounded,
-                                  color: AppTheme.forestGreen,
+                                  color: Color(0xFF1D4ED8),
                                   size: 24,
                                 ),
                                 tooltip: 'Pick Time on Clock',
@@ -2649,8 +2670,7 @@ List<String> _stringList(
                             : null,
                 hintText: hintText,
                 filled: true,
-                fillColor:
-                    AppTheme.lightMint,
+                fillColor: const Color(0xFFF1F5F9),
                 border:
                     OutlineInputBorder(
                   borderRadius:
@@ -2676,7 +2696,7 @@ List<String> _stringList(
           Material(
             color: disabled
                 ? AppTheme.border
-                : AppTheme.forestGreen,
+                : const Color(0xFF1D4ED8),
             borderRadius:
                 BorderRadius.circular(
               15,
@@ -2911,13 +2931,16 @@ List<String> _stringList(
     final bool isScore = !isUser &&
         (text.contains('Trip Safety Score') ||
             text.contains('Journey Safety Score') ||
-            text.contains('Safety Score:'));
+            text.contains('Safety Score:') ||
+            text.contains('Route Safety Score'));
     final bool isCaution = !isUser &&
         (text.contains('Drive carefully near:') ||
             text.contains('Keep watch near:') ||
             text.startsWith('⚠️'));
     final bool isTip = !isUser &&
-        (text.contains('Driving Tip:') ||
+        (text.contains('Driving Advisory') ||
+            text.contains('Safety Assessment') ||
+            text.contains('Driving Tip:') ||
             text.contains('Quick tip:') ||
             text.startsWith('💡'));
     final bool isReady = !isUser &&
@@ -2929,26 +2952,61 @@ List<String> _stringList(
     Widget? topHeader;
 
     if (isScore) {
-      botCardBg = const Color(0xFFEFF6FF);
-      botBorderColor = const Color(0xFFBFDBFE);
+      int? parsedScore;
+      final match = RegExp(r'(\d+)\s*/\s*100').firstMatch(text);
+      if (match != null) {
+        parsedScore = int.tryParse(match.group(1)!);
+      }
+      if (parsedScore == null && message.analysisData != null) {
+        final raw = message.analysisData!['corridorSafetyScore'] ??
+            message.analysisData!['tripSafetyScore'];
+        if (raw is num) parsedScore = raw.toInt();
+      }
+
+      Color headerColor = const Color(0xFF166534);
+      Color iconBg = const Color(0xFF16A34A);
+      if (parsedScore != null) {
+        if (parsedScore >= 80) {
+          botCardBg = const Color(0xFFF0FDF4);
+          botBorderColor = const Color(0xFFBBF7D0);
+          headerColor = const Color(0xFF166534);
+          iconBg = const Color(0xFF16A34A);
+        } else if (parsedScore >= 60) {
+          botCardBg = const Color(0xFFFFFBEB);
+          botBorderColor = const Color(0xFFFDE68A);
+          headerColor = const Color(0xFF92400E);
+          iconBg = const Color(0xFFF59E0B);
+        } else {
+          botCardBg = const Color(0xFFFEF2F2);
+          botBorderColor = const Color(0xFFFECACA);
+          headerColor = const Color(0xFF991B1B);
+          iconBg = const Color(0xFFDC2626);
+        }
+      } else {
+        botCardBg = const Color(0xFFEFF6FF);
+        botBorderColor = const Color(0xFFBFDBFE);
+        headerColor = const Color(0xFF1E3A8A);
+        iconBg = const Color(0xFF2563EB);
+      }
+
       topHeader = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
+              color: iconBg,
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(Icons.shield_rounded, size: 13, color: Colors.white),
           ),
           const SizedBox(width: 7),
-          const Text(
+          Text(
             'ROUTE SAFETY SCORE',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF1E3A8A),
+              color: headerColor,
               letterSpacing: 0.5,
             ),
           ),
@@ -2992,16 +3050,16 @@ List<String> _stringList(
               color: const Color(0xFF0284C7),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.lightbulb_rounded, size: 13, color: Colors.white),
+            child: const Icon(Icons.shield_outlined, size: 13, color: Colors.white),
           ),
           const SizedBox(width: 7),
           const Text(
-            'DRIVING TIP',
+            'DRIVING ADVISORY & SAFETY ASSESSMENT',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: FontWeight.w900,
               color: Color(0xFF0369A1),
-              letterSpacing: 0.5,
+              letterSpacing: 0.4,
             ),
           ),
         ],
@@ -3043,14 +3101,14 @@ List<String> _stringList(
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(
-              Icons.auto_awesome_rounded,
+              Icons.smart_toy_rounded,
               size: 12,
               color: Color(0xFF2563EB),
             ),
           ),
           const SizedBox(width: 6),
           const Text(
-            'Travel Advisor',
+            'Weather Based Travel Advisory',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -3179,7 +3237,9 @@ List<String> _stringList(
             ),
           ),
         ),
-        if (!message.isUser && message.quickReplies.isNotEmpty)
+        if (!message.isUser &&
+            message.quickReplies.isNotEmpty &&
+            identical(message, _messages.last))
           _buildQuickReplies(message.quickReplies),
       ],
     );
@@ -3199,11 +3259,26 @@ List<String> _stringList(
         runSpacing: 8,
         children: replies.map(
           (reply) {
+            final lower = reply.toLowerCase();
             final isReport = reply.contains('Report');
-            final isWarning = reply.contains('attention') ||
-                reply.contains('care') ||
-                reply.contains('low');
-            final isTip = reply.contains('precaution') || reply.contains('tip');
+            final isSafe = lower.contains('free') ||
+                lower.contains('clear') ||
+                lower.contains('good') ||
+                lower.contains('dry') ||
+                lower.contains('smooth');
+            final isWarning = !isSafe &&
+                (lower.contains('attention') ||
+                    lower.contains('care') ||
+                    lower.contains('heavy') ||
+                    lower.contains('slow') ||
+                    lower.contains('jam') ||
+                    lower.contains('rain') ||
+                    lower.contains('wet') ||
+                    lower.contains('fog') ||
+                    lower.contains('low score') ||
+                    lower.contains('why the score is low') ||
+                    (lower.contains('low') && !lower.contains('flow')));
+            final isTip = lower.contains('precaution') || lower.contains('tip');
             final isCalendar =
                 reply.contains('Calendar') || reply.contains('Clock');
 
@@ -3211,7 +3286,11 @@ List<String> _stringList(
             Color border = const Color(0xFFCBD5E1);
             Color text = const Color(0xFF1E293B);
 
-            if (isReport) {
+            if (isSafe) {
+              bg = const Color(0xFFECFDF5);
+              border = const Color(0xFFA7F3D0);
+              text = const Color(0xFF047857);
+            } else if (isReport) {
               bg = const Color(0xFFEFF6FF);
               border = const Color(0xFF93C5FD);
               text = const Color(0xFF1D4ED8);
@@ -3355,62 +3434,38 @@ Widget build(
             Container(
               width: 42,
               height: 42,
-              decoration:
-                  BoxDecoration(
-                color:
-                    AppTheme
-                        .forestGreen,
-                borderRadius:
-                    BorderRadius
-                        .circular(
-                  13,
-                ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1D4ED8),
+                borderRadius: BorderRadius.circular(13),
               ),
-              child:
-                  const Icon(
-                Icons
-                    .auto_awesome_rounded,
-                color:
-                    AppTheme.white,
-                size:
-                    22,
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                color: AppTheme.white,
+                size: 22,
               ),
             ),
             const SizedBox(
               width: 12,
             ),
             Expanded(
-              child:
-                  Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Travel Advisor',
-                    style:
-                        TextStyle(
-                      fontSize:
-                          17,
-                      fontWeight:
-                          FontWeight
-                              .w800,
-                      color:
-                          AppTheme
-                              .darkNavy,
+                    'Weather Based Travel Advisory',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.darkNavy,
                     ),
                   ),
                   Text(
                     isPlanner
-                        ? 'Journey Planner'
-                        : 'Traveler',
-                    style:
-                        const TextStyle(
-                      fontSize:
-                          12,
-                      color:
-                          AppTheme
-                              .textSecondary,
+                        ? 'Trip Planner'
+                        : 'Driving Assistant',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],

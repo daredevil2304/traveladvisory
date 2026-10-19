@@ -795,19 +795,19 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       case 'R2':
         return 'Multi-Lane Plain Expressway';
       case 'R3':
-        return 'Ghat Foothills & Approach Sector';
+        return 'Ghat Foothills & Approach Area';
       case 'R4':
         return 'Bhor Ghat Mountain Pass & Hairpin Incline';
       case 'R5':
         return 'Khandala-Lonavala Crest & Plateau Zone';
       case 'R6':
-        return 'Sahyadri Descending Plateau Sector';
+        return 'Sahyadri Descending Plateau Area';
       case 'R7':
         return 'Pune Metropolitan Approach Corridor';
       case 'R8':
         return 'Pune Bypass & Urban Arterial';
       default:
-        return 'Corridor Transit Sector';
+        return 'Corridor Route Area';
     }
   }
 
@@ -818,7 +818,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         base = 'High-density urban commuter flow with frequent flyovers. Maintain safe following buffer and anticipate sudden lane merges near Vashi and CBD Belapur.';
         break;
       case 'R2':
-        base = 'Open 6-lane high-speed expressway plain. Optimal fluid cruising sector; maintain designated fast-lane discipline and avoid sudden overtaking.';
+        base = 'Open 6-lane high-speed expressway plain. Optimal fluid cruising area; maintain designated fast-lane discipline and avoid sudden overtaking.';
         break;
       case 'R3':
         base = 'Ghat foothill approach. Heavy commercial trucks decelerate into lower gears; watch for slow-moving freight in the left lanes.';
@@ -839,7 +839,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         base = 'Pune metropolitan arterial highway. Moderate urban speeds and expect multiple vehicle merges at city junctions.';
         break;
       default:
-        base = 'Standard expressway transit sector. Maintain designated lane discipline and recommended cruising speed.';
+        base = 'Standard expressway route area. Maintain designated lane discipline and recommended cruising speed.';
     }
 
     if (isRain) {
@@ -1642,15 +1642,15 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                                 Icon(
                                   Icons.navigation_rounded,
                                   size: 14,
-                                  color: AppTheme.forestGreen,
+                                  color: Color(0xFF1D4ED8),
                                 ),
                                 SizedBox(width: 5),
                                 Text(
-                                  'Sector Driving Advisory',
+                                  'Area Driving Advisory',
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w800,
-                                    color: AppTheme.forestGreen,
+                                    color: Color(0xFF1D4ED8),
                                   ),
                                 ),
                               ],

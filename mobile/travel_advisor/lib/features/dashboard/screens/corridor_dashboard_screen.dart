@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
@@ -7,6 +8,7 @@ import '../../../core/services/commute_habit_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/widgets/custom_corridor_icons.dart';
 import '../../../core/widgets/emergency_sos_sheet.dart';
+import '../../location/services/location_service.dart';
 
 class CorridorDashboardScreen extends StatefulWidget {
   const CorridorDashboardScreen({super.key});
@@ -94,7 +96,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       'name': 'Bhor Ghat',
       'code': 'GHT',
       'weather': '28°C Clear',
-      'status': 'Mountain Sector',
+      'status': 'Mountain Area',
       'statusColor': Color(0xFFF59E0B),
       'speedAdvice': '40-50 km/h',
       'desc': 'Steep gradient & hairpin curves. Maintain low gear and 50m braking distance.',
@@ -971,9 +973,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
         ),
         title: const Text(
-          'Mumbai–Pune Travel Advisor',
+          'Weather Based Travel Advisory',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 16.5,
             fontWeight: FontWeight.w800,
             color: AppTheme.darkNavy,
           ),
@@ -1115,22 +1117,13 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 10),
           const Text(
-            'Mumbai - Pune Expressway\nTravel & Safety Guide',
+            'Weather Based Travel Advisory',
             style: TextStyle(
-              fontSize: 23,
+              fontSize: 22,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               height: 1.2,
               letterSpacing: -0.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Live traffic, weather alerts, and safe driving advice for your journey.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Colors.white.withValues(alpha: 0.88),
-              height: 1.4,
             ),
           ),
           const SizedBox(height: 14),
@@ -1176,7 +1169,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                     Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFFA7F3D0)),
                     SizedBox(width: 5),
                     Text(
-                      'ALL 8 SECTORS FLUID',
+                      'ALL 8 AREAS SMOOTH',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -2037,6 +2030,48 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   // SECTION 2: LIVE ROAD UPDATES & CORRIDOR HUB
   // ============================================================
 
+  Future<void> _navigateToChatbotOrPermission({required String role, String? sector}) async {
+    try {
+      final LocationService locationService = LocationService();
+      final bool serviceEnabled = await locationService.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        final LocationPermission permission = await locationService.checkPermission();
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          final Position position = await locationService.getCurrentLocation();
+          if (!mounted) return;
+          final Map<String, dynamic> chatArgs = {
+            'role': role,
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          };
+          if (sector != null) {
+            chatArgs['sector'] = sector;
+          }
+          Navigator.pushNamed(
+            context,
+            AppRoutes.chatbot,
+            arguments: chatArgs,
+          );
+          return;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    final Map<String, dynamic> permArgs = {
+      'role': role,
+    };
+    if (sector != null) {
+      permArgs['sector'] = sector;
+    }
+    Navigator.pushNamed(
+      context,
+      AppRoutes.locationPermission,
+      arguments: permArgs,
+    );
+  }
+
   void _showSectorCopilotDialog(Map<String, dynamic> node) {
     final String sectorName = node['name'] as String? ?? 'Corridor';
     final String sectorCode = node['code'] as String? ?? 'NE-1';
@@ -2113,15 +2148,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ],
               ),
               const SizedBox(height: 16),
-              // Option 1: Traveler Copilot
+              // Option 1: Driving Now
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.locationPermission,
-                    arguments: {'role': 'traveler', 'sector': sectorName},
-                  );
+                  _navigateToChatbotOrPermission(role: 'traveler', sector: sectorName);
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
@@ -2133,7 +2164,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.navigation_rounded,
+                      Icon(Icons.directions_car_rounded,
                           size: 20, color: Color(0xFF16A34A)),
                       SizedBox(width: 12),
                       Expanded(
@@ -2141,7 +2172,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Traveler Copilot (En Route)',
+                              'Driving Now (Live Updates)',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -2166,15 +2197,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
               ),
               const SizedBox(height: 10),
-              // Option 2: Planner Copilot
+              // Option 2: Planning Ahead
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.locationPermission,
-                    arguments: {'role': 'planner', 'sector': sectorName},
-                  );
+                  _navigateToChatbotOrPermission(role: 'planner', sector: sectorName);
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
@@ -2194,7 +2221,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Planner Copilot (Pre-Trip)',
+                              'Planning Ahead (Future Forecast)',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -2203,7 +2230,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Departure window forecast & route risk modeling',
+                              'Departure window forecast & route risk advice',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: Color(0xFF1D4ED8),
@@ -2321,7 +2348,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      '8 SECTORS',
+                      '8 ROAD REGIONS',
                       style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -2333,7 +2360,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               ),
               const SizedBox(height: 3),
               const Text(
-                'Tap any sector to analyze route risks with AI Copilot:',
+                'Tap any area to check road risks with the assistant:',
                 style: TextStyle(
                   fontSize: 11.5,
                   color: AppTheme.textSecondary,

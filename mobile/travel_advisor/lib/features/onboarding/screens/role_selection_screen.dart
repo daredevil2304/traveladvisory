@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/widgets/custom_corridor_icons.dart';
+import '../../location/services/location_service.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -19,7 +21,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   // CONTINUE ACTION
   // ============================================================
 
-  void _continue() {
+  Future<void> _continue() async {
     if (_selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -32,6 +34,32 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
+    try {
+      final LocationService locationService = LocationService();
+      final bool serviceEnabled = await locationService.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        final LocationPermission permission = await locationService.checkPermission();
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          final Position position = await locationService.getCurrentLocation();
+          if (!mounted) return;
+          Navigator.pushNamed(
+            context,
+            AppRoutes.chatbot,
+            arguments: {
+              'role': _selectedRole,
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            },
+          );
+          return;
+        }
+      }
+    } catch (_) {
+      // Fall through to location permission screen if not granted
+    }
+
+    if (!mounted) return;
     Navigator.pushNamed(
       context,
       AppRoutes.locationPermission,
@@ -378,32 +406,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.directions_car_rounded, size: 14, color: Color(0xFF1D4ED8)),
-                    SizedBox(width: 6),
-                    Text(
-                      'STEP 1: CHOOSE TRAVEL OPTION',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1D4ED8),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 18),
               const Text(
                 'How are you travelling?',
                 style: TextStyle(

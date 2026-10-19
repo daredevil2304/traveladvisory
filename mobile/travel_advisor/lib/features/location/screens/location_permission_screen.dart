@@ -15,14 +15,31 @@ class LocationPermissionScreen extends StatefulWidget {
 
 class _LocationPermissionScreenState
     extends State<LocationPermissionScreen> {
-  final LocationService _locationService =
-      LocationService();
+  final LocationService _locationService = LocationService();
 
   bool _isLoading = false;
   String? _errorMessage;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkExistingPermission());
+  }
+
+  Future<void> _checkExistingPermission() async {
+    try {
+      final serviceEnabled = await _locationService.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      final permission = await _locationService.checkPermission();
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        await _enableLocation();
+      }
+    } catch (_) {}
+  }
+
   Future<void> _enableLocation() async {
-    // Capture route arguments before any async gap.
     final routeArguments =
         ModalRoute.of(context)?.settings.arguments;
 
@@ -53,8 +70,7 @@ class _LocationPermissionScreenState
           await _locationService.checkPermission();
 
       if (permission == LocationPermission.denied) {
-        permission =
-            await _locationService.requestPermission();
+        permission = await _locationService.requestPermission();
       }
 
       if (permission == LocationPermission.denied) {
@@ -69,8 +85,7 @@ class _LocationPermissionScreenState
         return;
       }
 
-      if (permission ==
-          LocationPermission.deniedForever) {
+      if (permission == LocationPermission.deniedForever) {
         if (!mounted) return;
 
         setState(() {
@@ -85,24 +100,11 @@ class _LocationPermissionScreenState
       final Position position =
           await _locationService.getCurrentLocation();
 
-      debugPrint(
-        'GPS location detected successfully.',
-      );
-      debugPrint(
-        'Latitude: ${position.latitude}',
-      );
-      debugPrint(
-        'Longitude: ${position.longitude}',
-      );
-
       String role = 'traveler';
 
       if (routeArguments is Map<String, dynamic>) {
-        final passedRole =
-            routeArguments['role'];
-
-        if (passedRole is String &&
-            passedRole.isNotEmpty) {
+        final passedRole = routeArguments['role'];
+        if (passedRole is String && passedRole.isNotEmpty) {
           role = passedRole;
         }
       }
@@ -145,119 +147,129 @@ class _LocationPermissionScreenState
         _errorMessage?.contains('permanently') == true;
 
     return Scaffold(
-      backgroundColor: AppTheme.lightMint,
+      backgroundColor: AppTheme.surfaceCanvas,
+      appBar: AppBar(
+        backgroundColor: AppTheme.surfaceCanvas,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppTheme.darkNavy,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Location Access',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.darkNavy,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 30),
+              const SizedBox(height: 16),
 
-              // ------------------------------------------------------
               // LOCATION ICON
-              // ------------------------------------------------------
               Container(
-                width: 64,
-                height: 64,
+                width: 68,
+                height: 68,
                 decoration: BoxDecoration(
-                  color: AppTheme.mint,
-                  borderRadius:
-                      BorderRadius.circular(20),
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x101D4ED8),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.location_on_rounded,
-                  size: 34,
-                  color: AppTheme.forestGreen,
+                  size: 36,
+                  color: Color(0xFF1D4ED8),
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
-              // ------------------------------------------------------
               // TITLE
-              // ------------------------------------------------------
-              Text(
+              const Text(
                 'Allow Location Access',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.darkNavy,
+                  letterSpacing: -0.4,
+                ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
 
-              // ------------------------------------------------------
               // DESCRIPTION
-              // ------------------------------------------------------
-              Text(
-                'We use your location to identify your starting point and provide travel safety information for your journey.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge,
+              const Text(
+                'We use your GPS to pinpoint your starting area and provide live highway weather and safety updates along your route.',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: AppTheme.textSecondary,
+                  height: 1.45,
+                ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // ------------------------------------------------------
-              // INFO TILE 1
-              // ------------------------------------------------------
+              // INFO TILES
               _buildInfoTile(
                 Icons.my_location_rounded,
-                'Auto-detect starting point',
-                'Your current location will be detected automatically.',
+                'Automatic Starting Point',
+                'Your current road section is detected automatically.',
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-              // ------------------------------------------------------
-              // INFO TILE 2
-              // ------------------------------------------------------
               _buildInfoTile(
                 Icons.route_rounded,
-                'Route-aware advisory',
-                'Your location will help identify the relevant route region.',
+                'Route Weather & Safety',
+                'Get live warnings for heavy rain, fog, and traffic along your highway section.',
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-              // ------------------------------------------------------
-              // INFO TILE 3
-              // ------------------------------------------------------
               _buildInfoTile(
                 Icons.security_rounded,
-                'Privacy focused',
-                'Your location is used only to support your travel advisory.',
+                'Safe & Private',
+                'Your location is used only while the app is active for your safety analysis.',
               ),
 
               const Spacer(),
 
-              // ------------------------------------------------------
               // ERROR MESSAGE
-              // ------------------------------------------------------
               if (_errorMessage != null) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(14),
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: AppTheme.mint,
+                      color: const Color(0xFFFECACA),
                     ),
                   ),
                   child: Row(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
                         permissionPermanentlyDenied
                             ? Icons.settings_rounded
                             : Icons.info_outline_rounded,
-                        color: AppTheme.forestGreen,
+                        color: const Color(0xFFDC2626),
                         size: 20,
                       ),
                       const SizedBox(width: 10),
@@ -267,8 +279,7 @@ class _LocationPermissionScreenState
                           style: const TextStyle(
                             fontSize: 13,
                             height: 1.4,
-                            color:
-                                AppTheme.textPrimary,
+                            color: Color(0xFF991B1B),
                           ),
                         ),
                       ),
@@ -283,9 +294,19 @@ class _LocationPermissionScreenState
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF1D4ED8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                       onPressed: _openSettings,
                       child: const Text(
                         'OPEN APP SETTINGS',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1D4ED8),
+                        ),
                       ),
                     ),
                   ),
@@ -294,41 +315,59 @@ class _LocationPermissionScreenState
                   const SizedBox(height: 12),
               ],
 
-              // ------------------------------------------------------
               // ENABLE LOCATION BUTTON
-              // ------------------------------------------------------
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 56,
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x302563EB),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: ElevatedButton(
-                  onPressed:
-                      _isLoading ? null : _enableLocation,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: _isLoading ? null : _enableLocation,
                   child: _isLoading
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child:
-                              CircularProgressIndicator(
+                          child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            color: AppTheme.white,
+                            color: Colors.white,
                           ),
                         )
-                      : Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
-                          children: const [
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                             Icon(
                               Icons.location_on_rounded,
                               size: 20,
+                              color: Colors.white,
                             ),
                             SizedBox(width: 9),
                             Text(
-                              'ENABLE LOCATION',
+                              'ALLOW LOCATION ACCESS',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight:
-                                    FontWeight.w800,
-                                letterSpacing: 0.4,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                                color: Colors.white,
                               ),
                             ),
                           ],
@@ -340,7 +379,7 @@ class _LocationPermissionScreenState
 
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 48,
                 child: TextButton(
                   onPressed: () {
                     final routeArguments =
@@ -363,16 +402,16 @@ class _LocationPermissionScreenState
                   child: const Text(
                     'SELECT LOCATION MANUALLY',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.forestGreen,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1D4ED8),
                       letterSpacing: 0.4,
                     ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -387,54 +426,57 @@ class _LocationPermissionScreenState
   ) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.mint,
+          color: const Color(0xFFE2E8F0),
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.mint,
-              borderRadius:
-                  BorderRadius.circular(12),
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
-              color: AppTheme.forestGreen,
-              size: 22,
+              color: const Color(0xFF1D4ED8),
+              size: 20,
             ),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.darkNavy,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   description,
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     height: 1.35,
-                    color:
-                        AppTheme.textSecondary,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ],
