@@ -178,20 +178,20 @@ class _ChatbotScreenState
         _role == 'planner';
 
     _addBotMessage(
-      'Hi! I am your Mumbai Pune Travel Advisor.',
+      'Hello! I am your Mumbai-Pune Travel Advisor. 🚗',
     );
 
     _addBotMessage(
       isPlanner
-          ? 'I will help you plan your journey using the requested travel time and conditions along the route.'
-          : 'I will help you understand the current conditions along your journey.',
+          ? 'I will help you plan your future trip and check the safest time to travel.'
+          : 'I will help you check live traffic, rain, fog, and road safety for your trip today.',
     );
 
     if (_latitude == null ||
         _longitude == null) {
       _step = _ConversationStep.manualSource;
       _addBotMessage(
-        'Please select your starting location along the corridor.',
+        'Where are you starting your journey from?',
         quickReplies: _routePoints
             .map((item) => item.displayName)
             .toList(),
@@ -219,14 +219,14 @@ class _ChatbotScreenState
         nearestPoint.name;
 
     _addBotMessage(
-      'I have detected your current location near ${nearestPoint.displayName}.',
+      'I found your location near ${nearestPoint.displayName}.',
     );
 
     _addBotMessage(
-      'Would you like to use this as your starting point?',
+      'Start your journey from here?',
       quickReplies: const [
-        'Yes',
-        'Change source',
+        'Yes, start here',
+        'Change start point',
       ],
     );
   }
@@ -284,6 +284,13 @@ class _ChatbotScreenState
     if (_isTyping ||
         _isAnalyzing) {
       return;
+    }
+
+    if (value.contains('Report') || value.contains('View Journey Report') || value.contains('Open Report')) {
+      if (_tripAnalysis != null) {
+        _openJourneyReport();
+        return;
+      }
     }
 
     final bool isLiveUpdatesActive = _isCollectingLiveUpdates ||
@@ -1030,7 +1037,7 @@ Future<void> _analyzeJourney() async {
   });
 
   _addBotMessage(
-    'I’m analyzing your journey now. I’ll check each relevant route segment rather than looking only at your source and destination.',
+    'Checking your route now... Examining road safety, live traffic, and Ghat weather for every part of your trip.',
   );
 
   try {
@@ -1099,43 +1106,16 @@ final Map<String, dynamic> analysisData =
     _addAdvisoryToChat(analysisData);
 
     _addBotMessage(
-      'Your journey analysis is ready. I am redirecting you to the report...',
+      'Your journey analysis is ready.',
+      actionButtonText: '📊 View Full Journey Report ➔',
+      onActionTap: _openJourneyReport,
+      quickReplies: const [
+        '📊 View Journey Report',
+        'Why is this score low?',
+        'Which road section needs care?',
+        'What precautions should I take?',
+      ],
     );
-
-    Future.delayed(const Duration(milliseconds: 500), () async {
-      if (mounted) {
-        await Navigator.pushNamed(
-          context,
-          AppRoutes.journeyAnalysis,
-          arguments: {
-            'analysis': _tripAnalysis,
-            'source': _source,
-            'destination': _destination,
-            'role': _role,
-            'tripId': _tripId,
-          },
-        );
-
-        if (mounted) {
-          if (_role == 'traveler') {
-            _startLiveUpdatesQuestionnaire();
-          } else {
-            setState(() {
-              _step = _ConversationStep.postAnalysis;
-              _analysisComplete = true;
-            });
-            _addBotMessage(
-              'Your journey analysis has been loaded. Feel welcome to ask questions regarding conditions along your planned corridor.',
-              quickReplies: const [
-                'Why is this score low?',
-                'Which segment needs attention?',
-                'What precautions should I take?',
-              ],
-            );
-          }
-        }
-      }
-    });
   } on ApiException catch (e) {
     if (!mounted) {
       return;
@@ -1168,6 +1148,45 @@ final Map<String, dynamic> analysisData =
     );
   }
 }
+
+  Future<void> _openJourneyReport() async {
+    if (_tripAnalysis == null) {
+      _showError('Journey analysis is not ready yet.');
+      return;
+    }
+
+    await Navigator.pushNamed(
+      context,
+      AppRoutes.journeyAnalysis,
+      arguments: {
+        'analysis': _tripAnalysis,
+        'source': _source,
+        'destination': _destination,
+        'role': _role,
+        'tripId': _tripId,
+      },
+    );
+
+    if (!mounted) return;
+
+    if (_role == 'traveler') {
+      _startLiveUpdatesQuestionnaire();
+    } else {
+      setState(() {
+        _step = _ConversationStep.postAnalysis;
+        _analysisComplete = true;
+      });
+      _addBotMessage(
+        'Your journey analysis has been loaded. Feel free to ask questions regarding road conditions along your route.',
+        quickReplies: const [
+          'Why is this score low?',
+          'Which road section needs care?',
+          'What precautions should I take?',
+          '📊 Open Report Again',
+        ],
+      );
+    }
+  }
 
   // ============================================================
   // LIVE UPDATES / USER INPUT QUESTIONNAIRE
@@ -1393,11 +1412,12 @@ final Map<String, dynamic> analysisData =
 
     if (skipped) {
       _addBotMessage(
-        'Live observations skipped. Feel welcome to ask questions regarding your corridor.',
+        'Live observations skipped. Feel free to ask questions regarding your route.',
         quickReplies: const [
           'Why is this score low?',
-          'Which segment needs attention?',
+          'Which road section needs care?',
           'What precautions should I take?',
+          '📊 Open Report Again',
         ],
       );
       return;
@@ -1420,14 +1440,15 @@ final Map<String, dynamic> analysisData =
     }
 
     _addBotMessage(
-      'Thank you! Your road report for ${_corridorSegmentMap[_selectedReportRegion] ?? 'your section'} has been recorded and posted to the Live Updates Feed.',
+      'Thank you! Your road report has been recorded and shared with other drivers on the highway.',
     );
     _addBotMessage(
-      'Feel welcome to ask questions regarding your corridor assessment.',
+      'Feel free to ask any questions regarding road conditions or why a score is low.',
       quickReplies: const [
         'Why is this score low?',
-        'Which segment needs attention?',
+        'Which road section needs care?',
         'What precautions should I take?',
+        '📊 Open Report Again',
       ],
     );
   }
@@ -1485,9 +1506,9 @@ final Map<String, dynamic> analysisData =
             : 'Caution advised along certain stretches';
 
     final String titlePrefix =
-        isPlanner ? 'Planned Journey Safety Score' : 'Journey Safety Score';
+        isPlanner ? 'Planned Trip Safety Score' : 'Trip Safety Score';
     _addBotMessage(
-      '$titlePrefix: ${_formatNumber(score)}/100 ($verdict)',
+      '🛡️ $titlePrefix: ${_formatNumber(score)}/100 • $verdict',
     );
 
     final dynamic segments = _readProperty(analysis, 'problematicSegments');
@@ -1502,25 +1523,21 @@ final Map<String, dynamic> analysisData =
       }
       if (flaggedNames.isNotEmpty) {
         _addBotMessage(
-          'Keep watch near: ${flaggedNames.join(', ')}.',
+          '⚠️ Drive carefully near: ${flaggedNames.join(', ')}.',
         );
       }
     } else {
       _addBotMessage(
-        'All route segments are clear with no major hazards reported.',
+        '✅ All highway sections are clear with no major delays reported.',
       );
     }
 
     final List<String> precautions = _generatePrecautions(analysis);
     if (precautions.isNotEmpty) {
       _addBotMessage(
-        'Quick tip: ${precautions.first}',
+        '💡 Driving Tip: ${precautions.first}',
       );
     }
-
-    _addBotMessage(
-      'Feel welcome to ask me questions regarding conditions along your corridor.',
-    );
   }
 
 
@@ -2494,9 +2511,10 @@ List<String> _stringList(
 
   void _addBotMessage(
     String message, {
-    List<String>
-        quickReplies =
-        const [],
+    List<String> quickReplies = const [],
+    String? actionButtonText,
+    VoidCallback? onActionTap,
+    Map<String, dynamic>? analysisData,
   }) {
     if (!mounted) {
       return;
@@ -2507,8 +2525,10 @@ List<String> _stringList(
         _ChatMessage(
           text: message,
           isUser: false,
-          quickReplies:
-              quickReplies,
+          quickReplies: quickReplies,
+          actionButtonText: actionButtonText,
+          onActionTap: onActionTap,
+          analysisData: analysisData,
         ),
       );
     });
@@ -2812,17 +2832,35 @@ List<String> _stringList(
 
   Widget _buildFormattedMessageText(
     String text,
-    bool isUser,
-  ) {
+    bool isUser, {
+    bool isScore = false,
+    bool isCaution = false,
+    bool isTip = false,
+  }) {
+    final Color textColor = isUser
+        ? AppTheme.white
+        : (isScore
+            ? const Color(0xFF065F46)
+            : (isCaution
+                ? const Color(0xFF92400E)
+                : (isTip ? const Color(0xFF0369A1) : AppTheme.textPrimary)));
+
     final TextStyle defaultStyle = TextStyle(
-      fontSize: 14,
+      fontSize: isScore ? 15 : 14,
       height: 1.45,
-      color: isUser ? AppTheme.white : AppTheme.textPrimary,
+      color: textColor,
+      fontWeight: isScore ? FontWeight.w600 : FontWeight.w400,
     );
 
     final TextStyle boldStyle = defaultStyle.copyWith(
-      fontWeight: FontWeight.w700,
-      color: isUser ? AppTheme.white : AppTheme.darkNavy,
+      fontWeight: FontWeight.w800,
+      color: isUser
+          ? AppTheme.white
+          : (isScore
+              ? const Color(0xFF065F46)
+              : (isCaution
+                  ? const Color(0xFF78350F)
+                  : (isTip ? const Color(0xFF075985) : AppTheme.darkNavy))),
     );
 
     // Replace markdown star bullets with bullet character
@@ -2874,92 +2912,282 @@ List<String> _stringList(
   Widget _buildMessageBubble(
     _ChatMessage message,
   ) {
+    final bool isUser = message.isUser;
+    final String text = message.text;
+
+    final bool isScore = !isUser &&
+        (text.contains('Trip Safety Score') ||
+            text.contains('Journey Safety Score') ||
+            text.contains('Safety Score:'));
+    final bool isCaution = !isUser &&
+        (text.contains('Drive carefully near:') ||
+            text.contains('Keep watch near:') ||
+            text.startsWith('⚠️'));
+    final bool isTip = !isUser &&
+        (text.contains('Driving Tip:') ||
+            text.contains('Quick tip:') ||
+            text.startsWith('💡'));
+    final bool isReady = !isUser &&
+        (text.contains('Your journey analysis is ready') ||
+            message.actionButtonText != null);
+
+    Color botCardBg = Colors.white;
+    Color botBorderColor = const Color(0xFFE2E8F0);
+    Widget? topHeader;
+
+    if (isScore) {
+      botCardBg = const Color(0xFFF0FDF4);
+      botBorderColor = const Color(0xFF86EFAC);
+      topHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.shield_rounded, size: 13, color: Colors.white),
+          ),
+          const SizedBox(width: 7),
+          const Text(
+            'ROUTE SAFETY SCORE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF065F46),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      );
+    } else if (isCaution) {
+      botCardBg = const Color(0xFFFFFBEB);
+      botBorderColor = const Color(0xFFFDE68A);
+      topHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.warning_amber_rounded, size: 13, color: Colors.white),
+          ),
+          const SizedBox(width: 7),
+          const Text(
+            'CAUTION AREA',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF92400E),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      );
+    } else if (isTip) {
+      botCardBg = const Color(0xFFF0F9FF);
+      botBorderColor = const Color(0xFFBAE6FD);
+      topHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0284C7),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.lightbulb_rounded, size: 13, color: Colors.white),
+          ),
+          const SizedBox(width: 7),
+          const Text(
+            'DRIVING TIP',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF0369A1),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      );
+    } else if (isReady) {
+      botCardBg = const Color(0xFFF8FAFC);
+      botBorderColor = const Color(0xFF93C5FD);
+      topHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.check_circle_rounded, size: 13, color: Colors.white),
+          ),
+          const SizedBox(width: 7),
+          const Text(
+            'ANALYSIS COMPLETED',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1E40AF),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      );
+    } else if (!isUser) {
+      topHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              size: 12,
+              color: Color(0xFF10B981),
+            ),
+          ),
+          const SizedBox(width: 6),
+          const Text(
+            'Travel Advisor',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF047857),
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment:
-          message.isUser
-              ? CrossAxisAlignment
-                  .end
-              : CrossAxisAlignment
-                  .start,
+          isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Align(
-          alignment:
-              message.isUser
-                  ? Alignment
-                      .centerRight
-                  : Alignment
-                      .centerLeft,
-          child:
-              Container(
-            constraints:
-                const BoxConstraints(
-              maxWidth: 330,
-            ),
-            margin:
-                const EdgeInsets
-                    .only(
-              bottom: 8,
-            ),
-            padding:
-                const EdgeInsets
-                    .symmetric(
-              horizontal: 16,
-              vertical: 13,
-            ),
-            decoration:
-                BoxDecoration(
-              color: message
-                      .isUser
-                  ? AppTheme
-                      .forestGreen
-                  : AppTheme.white,
-              borderRadius:
-                  BorderRadius.only(
-                topLeft:
-                    const Radius
-                        .circular(
-                  18,
-                ),
-                topRight:
-                    const Radius
-                        .circular(
-                  18,
-                ),
-                bottomLeft:
-                    Radius.circular(
-                  message.isUser
-                      ? 18
-                      : 5,
-                ),
-                bottomRight:
-                    Radius.circular(
-                  message.isUser
-                      ? 5
-                      : 18,
-                ),
+          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 335),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: isUser ? null : botCardBg,
+              gradient: isUser
+                  ? const LinearGradient(
+                      colors: [Color(0xFF047857), Color(0xFF10B981)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isUser ? 18 : 4),
+                bottomRight: Radius.circular(isUser ? 4 : 18),
               ),
-              border:
-                  message.isUser
-                      ? null
-                      : Border.all(
-                          color:
-                              AppTheme
-                                  .border,
-                        ),
+              border: isUser ? null : Border.all(color: botBorderColor, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: isUser
+                      ? const Color(0x24047857)
+                      : const Color(0x0C0F172A),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: _buildFormattedMessageText(
-              message.text,
-              message.isUser,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (topHeader != null) ...[
+                  topHeader,
+                  const SizedBox(height: 8),
+                ],
+                _buildFormattedMessageText(
+                  text,
+                  isUser,
+                  isScore: isScore,
+                  isCaution: isCaution,
+                  isTip: isTip,
+                ),
+                if (message.actionButtonText != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x351E3A8A),
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: message.onActionTap ?? _openJourneyReport,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.assessment_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              message.actionButtonText!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.4,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
-        if (!message.isUser &&
-            message.quickReplies
-                .isNotEmpty)
-          _buildQuickReplies(
-            message
-                .quickReplies,
-          ),
+        if (!message.isUser && message.quickReplies.isNotEmpty)
+          _buildQuickReplies(message.quickReplies),
       ],
     );
   }
@@ -2972,63 +3200,72 @@ List<String> _stringList(
     List<String> replies,
   ) {
     return Padding(
-      padding:
-          const EdgeInsets
-              .only(
-        bottom: 12,
-      ),
-      child:
-          Wrap(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children:
-            replies.map(
+        children: replies.map(
           (reply) {
-            return OutlinedButton(
-              onPressed:
-                  () =>
-                      _selectQuickReply(
-                reply,
-              ),
-              style:
-                  OutlinedButton
-                      .styleFrom(
-                foregroundColor:
-                    AppTheme
-                        .forestGreen,
-                side:
-                    BorderSide(
-                  color:
-                      AppTheme
-                          .forestGreen,
-                ),
-                shape:
-                    RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius
-                          .circular(
-                    18,
+            final isReport = reply.contains('Report');
+            final isWarning = reply.contains('attention') ||
+                reply.contains('care') ||
+                reply.contains('low');
+            final isTip = reply.contains('precaution') || reply.contains('tip');
+            final isCalendar =
+                reply.contains('Calendar') || reply.contains('Clock');
+
+            Color bg = const Color(0xFFF0FDF4);
+            Color border = const Color(0xFFA7F3D0);
+            Color text = const Color(0xFF065F46);
+
+            if (isReport) {
+              bg = const Color(0xFFEFF6FF);
+              border = const Color(0xFF93C5FD);
+              text = const Color(0xFF1D4ED8);
+            } else if (isWarning) {
+              bg = const Color(0xFFFFFBEB);
+              border = const Color(0xFFFDE68A);
+              text = const Color(0xFFB45309);
+            } else if (isTip) {
+              bg = const Color(0xFFF5F3FF);
+              border = const Color(0xFFDDD6FE);
+              text = const Color(0xFF6D28D9);
+            } else if (isCalendar) {
+              bg = const Color(0xFFF0FDF4);
+              border = const Color(0xFF86EFAC);
+              text = const Color(0xFF15803D);
+            }
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _selectQuickReply(reply),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
                   ),
-                ),
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  horizontal:
-                      14,
-                  vertical:
-                      9,
-                ),
-              ),
-              child:
-                  Text(
-                reply,
-                style:
-                    const TextStyle(
-                  fontSize:
-                      12.5,
-                  fontWeight:
-                      FontWeight
-                          .w700,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: border, width: 1.2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x080F172A),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    reply,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: text,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -3336,12 +3573,17 @@ class _ChatMessage {
   final String text;
   final bool isUser;
   final List<String> quickReplies;
+  final String? actionButtonText;
+  final VoidCallback? onActionTap;
+  final Map<String, dynamic>? analysisData;
 
   const _ChatMessage({
     required this.text,
     required this.isUser,
-    this.quickReplies =
-        const [],
+    this.quickReplies = const [],
+    this.actionButtonText,
+    this.onActionTap,
+    this.analysisData,
   });
 }
 

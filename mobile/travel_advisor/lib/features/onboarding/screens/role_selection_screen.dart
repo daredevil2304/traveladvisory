@@ -165,7 +165,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Travel Advisor Guide',
+                              'How This App Works',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -173,7 +173,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               ),
                             ),
                             Text(
-                              'Overview of features & navigation',
+                              'Quick guide for drivers',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: AppTheme.textSecondary,
@@ -197,9 +197,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       _buildGuideFeatureItem(
                         icon: Icons.directions_car_rounded,
                         color: AppTheme.forestGreen,
-                        title: '1. Traveler & Planner Profiles',
+                        title: '1. Driving Now vs. Planning Later',
                         desc:
-                            'Select Traveler for immediate route risk assessment with live radar, and Planner for scheduling future journey forecasts.',
+                            'Select "Driving Now" for live traffic and weather while on the road. Select "Planning Later" to check safety for a future trip.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
@@ -209,9 +209,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           showLivePulse: true,
                         ),
                         color: const Color(0xFFEF4444),
-                        title: '2. Live Road Feeds',
+                        title: '2. Live Road Updates',
                         desc:
-                            'Community hazard updates on visibility, rain, road condition, and traffic along expressway segments, active for 1 hour.',
+                            'See and share live reports about rain, fog, traffic, and road conditions along the expressway.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
@@ -220,17 +220,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           color: Color(0xFF0284C7),
                         ),
                         color: const Color(0xFF0284C7),
-                        title: '3. Corridor Hub & Commute Alerts',
+                        title: '3. Daily Commute Alerts',
                         desc:
-                            'Set your recurring commute route, departure time, and alert notice. Receive proactive notifications with safety scores before you depart.',
+                            'Save your regular travel times to get automatic safety alerts before you leave.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
                         icon: Icons.bookmark_outline_rounded,
                         color: const Color(0xFF1E40AF),
-                        title: '4. Saved Reports Archive',
+                        title: '4. Saved Trip Reports',
                         desc:
-                            'Quickly review past journey evaluations and AI corridor safety reports anytime.',
+                            'Review your past trip safety scores and driving advice anytime.',
                       ),
                     ],
                   ),
@@ -331,7 +331,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Select Profile'),
+        title: const Text('Choose Travel Type'),
         actions: [
           IconButton(
             tooltip: 'App Overview & Guide',
@@ -389,10 +389,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.tune_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                    Icon(Icons.directions_car_rounded, size: 14, color: Color(0xFF1D4ED8)),
                     SizedBox(width: 6),
                     Text(
-                      'AI JOURNEY CONFIGURATION',
+                      'STEP 1: CHOOSE TRAVEL OPTION',
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
@@ -405,7 +405,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Select Your Profile Mode',
+                'How are you travelling?',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
@@ -415,7 +415,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Personalize corridor telemetry, live road radar feeds, and forecasting models to match your travel needs.',
+                'Choose whether you are driving right now or planning a trip for a future date.',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
@@ -428,11 +428,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               _buildRoleCard(
                 role: 'traveler',
                 icon: Icons.directions_car_rounded,
-                title: 'Traveler',
-                subtitle: 'Live En-Route Travel',
-                badgeText: 'EN ROUTE',
+                title: 'Driving Now',
+                subtitle: 'On the road today',
+                badgeText: 'LIVE TRIP',
                 description:
-                    'Travelling right now along the corridor with live Google Maps traffic, road sensor feeds & instant hazard alerts.',
+                    'I am travelling right now. Show me live traffic, rain, fog, and road safety alerts along the highway in real time.',
               ),
 
               const SizedBox(height: 14),
@@ -441,11 +441,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               _buildRoleCard(
                 role: 'planner',
                 icon: Icons.event_note_rounded,
-                title: 'Planner',
-                subtitle: 'Advance Trip Planning',
-                badgeText: 'PRE-TRIP',
+                title: 'Planning for Later',
+                subtitle: 'Trip on a future date',
+                badgeText: 'FUTURE TRIP',
                 description:
-                    'Planning departure for a future date. Generates predictive risk forecasts, Ghat elevation risks, and optimal departure timing.',
+                    'I want to plan a future trip. Check the weather forecast, Ghat road conditions, and the best time to leave.',
               ),
 
               const Spacer(),
@@ -482,7 +482,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'CONTINUE TO ROUTE SETUP',
+                        'CONTINUE',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,

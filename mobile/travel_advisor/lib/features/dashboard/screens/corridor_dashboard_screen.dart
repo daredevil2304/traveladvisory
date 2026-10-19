@@ -1133,7 +1133,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 10),
           const Text(
-            'Corridor Intelligence\nCommand Center',
+            'Mumbai - Pune Expressway\nTravel & Safety Guide',
             style: TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.w900,
@@ -1144,7 +1144,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Real-time expressway telemetry, multi-schedule commute alerts, and smart route risk intelligence.',
+            'Live traffic, weather alerts, and safe driving advice for your journey.',
             style: TextStyle(
               fontSize: 12.5,
               color: Colors.white.withValues(alpha: 0.88),
@@ -1324,7 +1324,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
 
           // Main Title
           const Text(
-            'Profile Selection',
+            'Choose How You Travel',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
@@ -1336,7 +1336,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           const SizedBox(height: 6),
 
           const Text(
-            'Select your travel profile to tailor expressway telemetry, hazard feeds, and predictive advice to your journey:',
+            'Are you driving right now or planning a future trip? Tap below to check road safety and traffic:',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
@@ -1380,10 +1380,10 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.tune_rounded, size: 16, color: Colors.white),
+                    Icon(Icons.directions_car_rounded, size: 16, color: Colors.white),
                     SizedBox(width: 8),
                     Text(
-                      'Configure Profile & Route Evaluation',
+                      'Check Route & Safety',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -1896,7 +1896,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
           const SizedBox(height: 12),
           const Text(
-            'Direct access to your most recent corridor risk assessments. Tap any card to view full telemetry, hazard alerts, and ML predictions.',
+            'Your saved trip reports. Tap any card to view your route safety score, weather, and driving tips.',
             style: TextStyle(
               fontSize: 12.5,
               color: AppTheme.textSecondary,
@@ -2256,7 +2256,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 customIcon: const CorridorSafetyShieldIcon(size: 15, color: Color(0xFF10B981)),
                 iconColor: const Color(0xFF10B981),
                 value: '$_corridorSafetyScore/100',
-                label: 'Corridor Safety',
+                label: 'Highway Safety',
                 badgeText: _corridorSafetyBadge,
                 badgeColor: _corridorSafetyScore >= 85
                     ? const Color(0xFF10B981)
@@ -2271,7 +2271,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 customIcon: const GhatMountainIcon(size: 15, color: Color(0xFF0284C7)),
                 iconColor: const Color(0xFF0284C7),
                 value: _ghatTemperature,
-                label: 'Ghat Sector',
+                label: 'Ghat Weather',
                 badgeText: _ghatCondition,
                 badgeColor: const Color(0xFF0284C7),
               ),
@@ -2285,7 +2285,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ),
                 iconColor: _corridorTrafficColor,
                 value: _corridorTrafficSummary,
-                label: 'Corridor Traffic',
+                label: 'Highway Traffic',
                 badgeText: _corridorTrafficBadge,
                 badgeColor: _corridorTrafficColor,
               ),
@@ -2450,7 +2450,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Need deep corridor risk & lane guidance? Consult AI Copilot',
+                          'Have questions about your route? Ask the AI Travel Assistant',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -2514,7 +2514,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'COMMUNITY HAZARD RADAR',
+                            'COMMUNITY ROAD ALERTS',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
@@ -2523,7 +2523,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                             ),
                           ),
                           Text(
-                            'Live Motorist Feeds',
+                            'Live Driver Updates',
                             style: TextStyle(
                               fontSize: 15.5,
                               fontWeight: FontWeight.w800,
@@ -2575,7 +2575,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Live hazard reports from drivers on the 8 expressway segments. Active for 1 hour.',
+                'Live road updates reported by drivers on the expressway (valid for 1 hour).',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -2610,7 +2610,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'All 8 Expressway Segments Clear. No active hazards or road obstructions reported in the past 1 hour.',
+                          'All sections clear. No traffic jams, heavy rain, or road hazards reported in the past 1 hour.',
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF334155),
@@ -2651,7 +2651,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           Icon(Icons.campaign_rounded, size: 18, color: Color(0xFF1D4ED8)),
                           SizedBox(width: 8),
                           Text(
-                            'Spotted an obstacle, fog, or rain?',
+                            'Spotted rain, fog, or a traffic jam?',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -2663,7 +2663,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       Row(
                         children: [
                           Text(
-                            '+ Report',
+                            '+ Share Update',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
