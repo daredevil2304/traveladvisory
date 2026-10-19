@@ -3,6 +3,7 @@ import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/widgets/custom_corridor_icons.dart';
+import '../../../core/widgets/emergency_sos_sheet.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -333,6 +334,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
         title: const Text('Select Profile'),
         actions: [
+          const ExpresswaySosIconButton(),
           IconButton(
             tooltip: 'App Overview & Guide',
             icon: const Icon(
@@ -371,6 +373,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
           ),
         ],
+      ),
+      floatingActionButton: const ExpresswaySosFloatingButton(
+        heroTag: 'role_selection_sos_fab',
       ),
       body: SafeArea(
         child: Padding(

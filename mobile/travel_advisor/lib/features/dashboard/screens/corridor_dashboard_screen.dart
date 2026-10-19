@@ -6,6 +6,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/services/commute_habit_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/widgets/custom_corridor_icons.dart';
+import '../../../core/widgets/emergency_sos_sheet.dart';
 
 class CorridorDashboardScreen extends StatefulWidget {
   const CorridorDashboardScreen({super.key});
@@ -984,6 +985,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
         ),
         actions: [
+          const ExpresswaySosIconButton(),
           IconButton(
             tooltip: 'App Overview & Guide',
             icon: const Icon(
@@ -1022,6 +1024,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                   ),
           ),
         ],
+      ),
+      floatingActionButton: const ExpresswaySosFloatingButton(
+        heroTag: 'dashboard_welcome_sos_fab',
       ),
       body: SafeArea(
         child: RefreshIndicator(
