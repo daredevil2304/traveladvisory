@@ -99,6 +99,9 @@ class CommuteHabitService {
     }
 
     final now = DateTime.now();
+    final slotKey = slot == 0 ? 'outbound' : 'return';
+    final todayStr = '${now.year}-${now.month}-${now.day}';
+
     var target = DateTime(
       now.year,
       now.month,
@@ -107,27 +110,30 @@ class CommuteHabitService {
       alertTime.minute,
     );
 
-    Duration delay;
-    // If the scheduled time matches the current minute, fire after 2 seconds for immediate test verification
-    if (now.hour == alertTime.hour && now.minute == alertTime.minute) {
-      delay = const Duration(seconds: 2);
-    } else if (target.isBefore(now)) {
+    // If already dispatched today or the target minute has passed, schedule for tomorrow
+    if (_lastDispatchedDates[slotKey] == todayStr || target.isBefore(now)) {
       target = target.add(const Duration(days: 1));
-      delay = target.difference(now);
-    } else {
-      delay = target.difference(now);
     }
+
+    final delay = target.difference(now);
 
     final timer = Timer(delay, () async {
       final nowT = DateTime.now();
-      if (isScheduledDay(travelDays, nowT.weekday)) {
-        await fetchAlert(
-          source: src,
-          destination: dst,
-          notifySystemTray: true,
-        );
+      final fireTodayStr = '${nowT.year}-${nowT.month}-${nowT.day}';
+
+      // Ensure exactly ONE notification is dispatched per day per slot
+      if (_lastDispatchedDates[slotKey] != fireTodayStr) {
+        _lastDispatchedDates[slotKey] = fireTodayStr;
+        if (isScheduledDay(travelDays, nowT.weekday)) {
+          await fetchAlert(
+            source: src,
+            destination: dst,
+            notifySystemTray: true,
+            notificationId: slot == 0 ? 1001 : 1002,
+          );
+        }
       }
-      // Re-arm for subsequent days
+      // Re-arm for subsequent day
       _armExactCountdownTimer(slot, alertTime, src, dst, dep, travelDays);
     });
 
@@ -480,6 +486,7 @@ class CommuteHabitService {
           source: habit['source'] ?? 'Panvel',
           destination: habit['destination'] ?? 'Pune',
           notifySystemTray: true, // Trigger real notification at the exact alert minute!
+          notificationId: slotKey == 'return' ? 1002 : 1001,
         );
       }
     } else if (diff >= -15 && diff <= 60) {
@@ -498,6 +505,7 @@ class CommuteHabitService {
     String source = 'Panvel',
     String destination = 'Pune',
     bool notifySystemTray = false,
+    int notificationId = 1001,
   }) async {
     isLoadingNotifier.value = true;
     try {
@@ -529,6 +537,7 @@ class CommuteHabitService {
                 [];
 
             NotificationService().showCommuteNotification(
+              id: notificationId,
               title: title,
               body: body,
               score: score,
@@ -572,6 +581,7 @@ class CommuteHabitService {
         source: src,
         destination: dst,
         notifySystemTray: true, // Always show system tray notification when testing alert!
+        notificationId: 1001,
       );
       if (alert != null) {
         return alert;

@@ -89,8 +89,9 @@ class NotificationService {
     return true;
   }
 
-  /// Show a real system notification in the notification shade
+  /// Show a real system notification in the notification shade (fixed ID prevents duplicate cards)
   Future<bool> showCommuteNotification({
+    int id = 1001,
     required String title,
     required String body,
     int score = 70,
@@ -130,10 +131,10 @@ class NotificationService {
         android: androidDetails,
       );
 
-      final int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
+      // Use the specified ID (default 1001 for outbound, 1002 for return)
+      // so Android updates or replaces the single alert card rather than spamming multiple cards
       await _notificationsPlugin.show(
-        id: notificationId,
+        id: id,
         title: title,
         body: body,
         notificationDetails: platformDetails,

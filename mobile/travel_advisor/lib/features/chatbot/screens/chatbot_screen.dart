@@ -1110,7 +1110,6 @@ final Map<String, dynamic> analysisData =
       actionButtonText: '📊 View Full Journey Report ➔',
       onActionTap: _openJourneyReport,
       quickReplies: const [
-        '📊 View Journey Report',
         'Why is this score low?',
         'Which road section needs care?',
         'What precautions should I take?',
@@ -2840,7 +2839,7 @@ List<String> _stringList(
     final Color textColor = isUser
         ? AppTheme.white
         : (isScore
-            ? const Color(0xFF065F46)
+            ? const Color(0xFF1E3A8A)
             : (isCaution
                 ? const Color(0xFF92400E)
                 : (isTip ? const Color(0xFF0369A1) : AppTheme.textPrimary)));
@@ -2857,7 +2856,7 @@ List<String> _stringList(
       color: isUser
           ? AppTheme.white
           : (isScore
-              ? const Color(0xFF065F46)
+              ? const Color(0xFF1E3A8A)
               : (isCaution
                   ? const Color(0xFF78350F)
                   : (isTip ? const Color(0xFF075985) : AppTheme.darkNavy))),
@@ -2936,15 +2935,15 @@ List<String> _stringList(
     Widget? topHeader;
 
     if (isScore) {
-      botCardBg = const Color(0xFFF0FDF4);
-      botBorderColor = const Color(0xFF86EFAC);
+      botCardBg = const Color(0xFFEFF6FF);
+      botBorderColor = const Color(0xFFBFDBFE);
       topHeader = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981),
+              color: const Color(0xFF2563EB),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(Icons.shield_rounded, size: 13, color: Colors.white),
@@ -2955,7 +2954,7 @@ List<String> _stringList(
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF065F46),
+              color: Color(0xFF1E3A8A),
               letterSpacing: 0.5,
             ),
           ),
@@ -3046,13 +3045,13 @@ List<String> _stringList(
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: const Color(0xFFEFF6FF),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(
               Icons.auto_awesome_rounded,
               size: 12,
-              color: Color(0xFF10B981),
+              color: Color(0xFF2563EB),
             ),
           ),
           const SizedBox(width: 6),
@@ -3061,7 +3060,7 @@ List<String> _stringList(
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF047857),
+              color: Color(0xFF1E40AF),
               letterSpacing: 0.2,
             ),
           ),
@@ -3070,7 +3069,7 @@ List<String> _stringList(
             width: 5,
             height: 5,
             decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
+              color: Color(0xFF2563EB),
               shape: BoxShape.circle,
             ),
           ),
@@ -3092,7 +3091,7 @@ List<String> _stringList(
               color: isUser ? null : botCardBg,
               gradient: isUser
                   ? const LinearGradient(
-                      colors: [Color(0xFF047857), Color(0xFF10B981)],
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
@@ -3107,7 +3106,7 @@ List<String> _stringList(
               boxShadow: [
                 BoxShadow(
                   color: isUser
-                      ? const Color(0x24047857)
+                      ? const Color(0x351E3A8A)
                       : const Color(0x0C0F172A),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
@@ -3214,9 +3213,9 @@ List<String> _stringList(
             final isCalendar =
                 reply.contains('Calendar') || reply.contains('Clock');
 
-            Color bg = const Color(0xFFF0FDF4);
-            Color border = const Color(0xFFA7F3D0);
-            Color text = const Color(0xFF065F46);
+            Color bg = const Color(0xFFF8FAFC);
+            Color border = const Color(0xFFCBD5E1);
+            Color text = const Color(0xFF1E293B);
 
             if (isReport) {
               bg = const Color(0xFFEFF6FF);
@@ -3227,13 +3226,13 @@ List<String> _stringList(
               border = const Color(0xFFFDE68A);
               text = const Color(0xFFB45309);
             } else if (isTip) {
-              bg = const Color(0xFFF5F3FF);
-              border = const Color(0xFFDDD6FE);
-              text = const Color(0xFF6D28D9);
+              bg = const Color(0xFFF0F9FF);
+              border = const Color(0xFFBAE6FD);
+              text = const Color(0xFF0284C7);
             } else if (isCalendar) {
-              bg = const Color(0xFFF0FDF4);
-              border = const Color(0xFF86EFAC);
-              text = const Color(0xFF15803D);
+              bg = const Color(0xFFEFF6FF);
+              border = const Color(0xFFBFDBFE);
+              text = const Color(0xFF1D4ED8);
             }
 
             return Material(

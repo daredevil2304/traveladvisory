@@ -643,25 +643,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       if (!mounted) return;
 
       if (alert != null) {
-        final title = alert['title']?.toString() ??
-            'Mumbai–Pune Commute Safety Alert';
-        final body = alert['body']?.toString() ??
-            'Corridor conditions evaluated.';
-        final score = alert['safety_score'] is int
-            ? alert['safety_score'] as int
-            : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
-        final warnings = (alert['regional_warnings'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [];
-
-        await NotificationService().showCommuteNotification(
-          title: title,
-          body: body,
-          score: score,
-          warnings: warnings,
-        );
-
         _showNotificationTestDialog(alert);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
