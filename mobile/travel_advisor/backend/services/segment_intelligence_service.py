@@ -103,7 +103,7 @@ class SegmentIntelligenceService:
 
     def evaluate_segment(
         self,
-        db: Session,
+        db: Session | None,
         region: str,
         latitude: float,
         longitude: float,
@@ -112,6 +112,7 @@ class SegmentIntelligenceService:
         live_traffic: dict[str, Any] | None = None,
         terrain_score: float | None = None,
         terrain_reasons: list[str] | None = None,
+        prefetched_reports: list[Any] | None = None,
     ) -> SegmentIntelligenceResult:
         """
         Evaluate one route segment.
@@ -171,14 +172,19 @@ class SegmentIntelligenceService:
         # =========================================================
 
         if not is_planner:
-            reports = (
-                traveler_report_retrieval_service.get_recent_reports(
-                    db=db,
-                    region=normalized_region,
-                    reference_datetime=travel_datetime,
-                    lookback_hours=self.REPORT_LOOKBACK_HOURS,
+            if prefetched_reports is not None:
+                reports = prefetched_reports
+            elif db is not None:
+                reports = (
+                    traveler_report_retrieval_service.get_recent_reports(
+                        db=db,
+                        region=normalized_region,
+                        reference_datetime=travel_datetime,
+                        lookback_hours=self.REPORT_LOOKBACK_HOURS,
+                    )
                 )
-            )
+            else:
+                reports = []
 
             serialized_reports = (
                 traveler_report_retrieval_service.serialize_reports(

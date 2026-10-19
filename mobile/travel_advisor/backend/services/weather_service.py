@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import threading
+import time
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from config import settings
 
@@ -105,6 +109,22 @@ class WeatherService:
 
     def __init__(self) -> None:
         self.provider_name = "openweather"
+        self._session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=25,
+            pool_maxsize=25,
+            max_retries=Retry(
+                total=2,
+                backoff_factor=0.2,
+                status_forcelist=[500, 502, 503, 504],
+            ),
+        )
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
+        self._lock = threading.Lock()
+        self._current_cache: dict[str, tuple[float, WeatherData]] = {}
+        self._raw_forecast_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._cache_ttl_seconds = 180  # 3 minutes in-memory cache
 
     def validate_coordinates(
         self,
@@ -188,6 +208,14 @@ class WeatherService:
                     query_lat, query_lon = s_lat, s_lon
                     break
 
+        cache_key = f"curr:{city_name.strip().lower() if city_name else ''}:{query_lat:.4f},{query_lon:.4f}"
+        now = time.time()
+        with self._lock:
+            if cache_key in self._current_cache:
+                cached_time, cached_val = self._current_cache[cache_key]
+                if now - cached_time < self._cache_ttl_seconds:
+                    return cached_val
+
         self.validate_coordinates(
             latitude=query_lat,
             longitude=query_lon,
@@ -219,18 +247,21 @@ class WeatherService:
                 "units": "metric",
             }
             try:
-                response = requests.get(
+                response = self._session.get(
                     url,
                     params=params_city,
                     timeout=self.REQUEST_TIMEOUT_SECONDS,
                 )
                 if response.status_code == 200:
                     payload = response.json()
-                    return self._parse_openweather_response(
+                    parsed_res = self._parse_openweather_response(
                         payload=payload,
                         requested_latitude=query_lat,
                         requested_longitude=query_lon,
                     )
+                    with self._lock:
+                        self._current_cache[cache_key] = (now, parsed_res)
+                    return parsed_res
             except Exception:
                 pass
 
@@ -242,7 +273,7 @@ class WeatherService:
         }
 
         try:
-            response = requests.get(
+            response = self._session.get(
                 url,
                 params=params,
                 timeout=self.REQUEST_TIMEOUT_SECONDS,
@@ -269,11 +300,14 @@ class WeatherService:
                 "OpenWeather returned invalid JSON."
             ) from exc
 
-        return self._parse_openweather_response(
+        parsed_res = self._parse_openweather_response(
             payload=payload,
             requested_latitude=query_lat,
             requested_longitude=query_lon,
         )
+        with self._lock:
+            self._current_cache[cache_key] = (now, parsed_res)
+        return parsed_res
 
     def get_forecast_weather(
         self,
@@ -305,59 +339,72 @@ class WeatherService:
             longitude=query_lon,
         )
 
-        api_key = settings.openweather_api_key.strip()
-        if not api_key:
-            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+        fc_cache_key = f"fc:{city_name.strip().lower() if city_name else ''}:{query_lat:.4f},{query_lon:.4f}"
+        now = time.time()
+        payload = None
+        with self._lock:
+            if fc_cache_key in self._raw_forecast_cache:
+                cached_time, cached_payload = self._raw_forecast_cache[fc_cache_key]
+                if now - cached_time < self._cache_ttl_seconds:
+                    payload = cached_payload
 
-        url = f"{settings.openweather_base_url.rstrip('/')}/forecast"
-
-        response = None
-        # Try city query first if provided and not in municipal coordinates
-        if (
-            city_name
-            and isinstance(city_name, str)
-            and city_name.strip()
-            and city_name.strip().lower() not in MUNICIPAL_STATION_COORDINATES
-        ):
-            try:
-                resp = requests.get(
-                    url,
-                    params={
-                        "q": f"{city_name.strip()},IN",
-                        "appid": api_key,
-                        "units": "metric",
-                    },
-                    timeout=self.REQUEST_TIMEOUT_SECONDS,
-                )
-                if resp.status_code == 200:
-                    response = resp
-            except Exception:
-                pass
-
-        if response is None:
-            params = {
-                "lat": query_lat,
-                "lon": query_lon,
-                "appid": api_key,
-                "units": "metric",
-            }
-
-            try:
-                response = requests.get(
-                    url,
-                    params=params,
-                    timeout=self.REQUEST_TIMEOUT_SECONDS,
-                )
-            except requests.RequestException:
+        if payload is None:
+            api_key = settings.openweather_api_key.strip()
+            if not api_key:
                 return self.get_current_weather(query_lat, query_lon, city_name=city_name)
 
-        if response.status_code != 200:
-            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+            url = f"{settings.openweather_base_url.rstrip('/')}/forecast"
 
-        try:
-            payload = response.json()
-        except ValueError:
-            return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+            response = None
+            # Try city query first if provided and not in municipal coordinates
+            if (
+                city_name
+                and isinstance(city_name, str)
+                and city_name.strip()
+                and city_name.strip().lower() not in MUNICIPAL_STATION_COORDINATES
+            ):
+                try:
+                    resp = self._session.get(
+                        url,
+                        params={
+                            "q": f"{city_name.strip()},IN",
+                            "appid": api_key,
+                            "units": "metric",
+                        },
+                        timeout=self.REQUEST_TIMEOUT_SECONDS,
+                    )
+                    if resp.status_code == 200:
+                        response = resp
+                except Exception:
+                    pass
+
+            if response is None:
+                params = {
+                    "lat": query_lat,
+                    "lon": query_lon,
+                    "appid": api_key,
+                    "units": "metric",
+                }
+
+                try:
+                    response = self._session.get(
+                        url,
+                        params=params,
+                        timeout=self.REQUEST_TIMEOUT_SECONDS,
+                    )
+                except requests.RequestException:
+                    return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+
+            if response is None or response.status_code != 200:
+                return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+
+            try:
+                payload = response.json()
+            except ValueError:
+                return self.get_current_weather(query_lat, query_lon, city_name=city_name)
+
+            with self._lock:
+                self._raw_forecast_cache[fc_cache_key] = (now, payload)
 
         forecast_list = payload.get("list")
         if not isinstance(forecast_list, list) or not forecast_list:

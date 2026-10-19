@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import threading
 from typing import Any
+
+import pandas as pd
 
 from ml.model_loader import ModelLoadError, model_loader
 
@@ -209,7 +212,6 @@ class PredictionService:
             if getattr(features, "pressure_hpa", None) is not None:
                 pres = float(features.pressure_hpa)
 
-        import pandas as pd
         input_df = pd.DataFrame([{
             "month": int(month),
             "hour": int(hour),
@@ -264,6 +266,18 @@ class PredictionService:
             model_name=model_name,
         )
 
+    def warmup_models(self) -> None:
+        """
+        Pre-load all available regional ML models into memory so
+        first-request and subsequent predictions take ~3ms with zero disk I/O.
+        """
+        for region in sorted(self.SUPPORTED_REGIONS):
+            try:
+                if self._model_loader.is_model_available(region):
+                    self._model_loader.load_model(region)
+            except Exception:
+                pass
+
     @staticmethod
     def _normalize_region(region: str) -> str:
         """
@@ -277,3 +291,6 @@ class PredictionService:
 
 # Shared service instance used by the backend.
 prediction_service = PredictionService()
+
+# Pre-warm ML models in background thread immediately upon module import
+threading.Thread(target=prediction_service.warmup_models, daemon=True).start()

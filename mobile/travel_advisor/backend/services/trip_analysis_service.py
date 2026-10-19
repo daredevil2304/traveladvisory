@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+import concurrent.futures
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -181,10 +182,8 @@ class TripAnalysisService:
             )
 
         # =========================================================
-        # 4. EVALUATE EVERY ROUTE SEGMENT
+        # 4. EVALUATE EVERY ROUTE SEGMENT (CONCURRENT EXECUTION)
         # =========================================================
-
-        segment_results: list[dict[str, Any]] = []
 
         is_traveler = (trip.role or "").lower() in ("traveler", "traveller")
         is_planner = not is_traveler
@@ -206,100 +205,43 @@ class TripAnalysisService:
         ist_hour = ist_travel_dt.hour
         is_night_travel = (ist_hour >= 22 or ist_hour <= 5)
 
-        for region in route_segments:
-            reg_code = region.upper()
-            segment_traffic = None
-            seg_terrain_score = None
-            seg_terrain_reasons: list[str] = []
-
-            # =========================================================
-            # TRAVELER PROFILE: FETCH LIVE GOOGLE MAPS TRAFFIC
-            # =========================================================
-            if is_traveler:
-                start_name, end_name = seg_endpoints.get(reg_code, ("Panvel", "Pune"))
-                start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
-                end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
-                segment_traffic = google_maps_traffic_service.get_segment_traffic(
-                    start_coords=start_c,
-                    end_coords=end_c,
-                    start_name=start_name,
-                    end_name=end_name,
-                )
-            # =========================================================
-            # PLANNER PROFILE: ADVANCE FORECASTS & TERRAIN GEOMETRY
-            # (TRAFFIC IS STRICTLY EXCLUDED AS CURRENT FLOW IS IRRELEVANT)
-            # =========================================================
-            else:
-                # Inherent terrain geometry baseline caution for steep Ghat sectors
-                if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
-                    t_score = 90.0
-                elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
-                    t_score = 94.0
-                elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
-                    t_score = 97.0
-                else:
-                    t_score = 100.0
-
-                # Night driving factor for planned departure
-                if is_night_travel:
-                    t_score -= 5.0
-                    seg_terrain_reasons.append(
-                        f"Night departure window ({ist_hour:02d}:00 IST): Reduced ambient lighting on unlit sections."
-                    )
-
-                seg_terrain_score = max(0.0, min(100.0, t_score))
-
-            result = self._evaluate_segment(
+        # Batch fetch all recent traveler reports in a single query across segments
+        reports_by_region: dict[str, list[Any]] = {}
+        if is_traveler:
+            from services.traveler_report_retrieval_service import (
+                traveler_report_retrieval_service,
+            )
+            reports_by_region = traveler_report_retrieval_service.get_reports_for_regions(
                 db=db,
-                trip=trip,
-                region=region,
-                live_traffic=segment_traffic,
-                is_planner=is_planner,
-                terrain_score=seg_terrain_score,
-                terrain_reasons=seg_terrain_reasons,
+                regions=route_segments,
+                reference_datetime=travel_dt,
+                lookback_hours=1,
             )
 
-            res_dict = result.to_dict()
-            safety_score_res = res_dict.get("safety_score_result")
-            if not isinstance(safety_score_res, dict):
-                safety_score_res = {}
-                res_dict["safety_score_result"] = safety_score_res
-
-            # Ensure convenience fields are present for UI screens
-            score_val = safety_score_res.get("safety_score")
-            res_dict["safety_score"] = score_val
-            res_dict["reasons"] = safety_score_res.get("reasons", [])
-            res_dict["risk_factors"] = safety_score_res.get("risk_factors", [])
-            if isinstance(segment_traffic, dict):
-                dim_scores = safety_score_res.get("dimension_scores", {})
-                if "user_report_traffic" in dim_scores:
-                    segment_traffic["user_report_traffic_score"] = dim_scores["user_report_traffic"]
-                    segment_traffic["traffic_weighting"] = "80% Google Maps / 20% User Report"
-            res_dict["live_traffic"] = segment_traffic
-
-            # Calculate dynamic safe speed limit advisory based on friction physics
-            w_res = res_dict.get("weather_result")
-            safe_speed = corridor_physics_service.compute_safe_speed(
-                region=region,
-                weather_data=w_res if isinstance(w_res, dict) else None,
-                safety_score=score_val,
-                is_night=is_night_travel,
-            )
-            res_dict["safe_speed_advisory"] = safe_speed
-
-            # Elevation for this segment's primary waypoint
-            reg_elevation_map = {
-                "R1": 14,
-                "R2": 48,
-                "R3": 72,
-                "R4": 550,
-                "R5": 624,
-                "R6": 585,
-                "R7": 560,
+        # Parallelize independent segment evaluation across threads
+        results_by_region: dict[str, dict[str, Any]] = {}
+        max_threads = max(1, min(len(route_segments), 7))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+            future_to_region = {
+                executor.submit(
+                    self._evaluate_single_segment_worker,
+                    region=region,
+                    is_traveler=is_traveler,
+                    is_planner=is_planner,
+                    is_night_travel=is_night_travel,
+                    ist_hour=ist_hour,
+                    travel_dt=travel_dt,
+                    seg_endpoints=seg_endpoints,
+                    prefetched_reports=reports_by_region.get(region.upper(), []),
+                ): region
+                for region in route_segments
             }
-            res_dict["elevation_m"] = reg_elevation_map.get(reg_code, 500)
+            for future in concurrent.futures.as_completed(future_to_region):
+                reg = future_to_region[future]
+                results_by_region[reg.upper()] = future.result()
 
-            segment_results.append(res_dict)
+        # Preserve exact route sequence order [R1, R2, ..., R7]
+        segment_results = [results_by_region[r.upper()] for r in route_segments]
 
         # =========================================================
         # 5. TRIP-LEVEL AGGREGATION
@@ -378,6 +320,108 @@ class TripAnalysisService:
             elevation_profile=elevation_profile,
             emergency_directory=emergency_directory,
         )
+
+    # =============================================================
+    # SEGMENT EVALUATION WORKER (PARALLEL EXECUTION)
+    # =============================================================
+
+    @staticmethod
+    def _evaluate_single_segment_worker(
+        region: str,
+        is_traveler: bool,
+        is_planner: bool,
+        is_night_travel: bool,
+        ist_hour: int,
+        travel_dt: datetime,
+        seg_endpoints: dict[str, tuple[str, str]],
+        prefetched_reports: list[Any] | None,
+    ) -> dict[str, Any]:
+        reg_code = region.upper()
+        segment_traffic = None
+        seg_terrain_score = None
+        seg_terrain_reasons: list[str] = []
+
+        if is_traveler:
+            start_name, end_name = seg_endpoints.get(reg_code, ("Panvel", "Pune"))
+            start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
+            end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
+            segment_traffic = google_maps_traffic_service.get_segment_traffic(
+                start_coords=start_c,
+                end_coords=end_c,
+                start_name=start_name,
+                end_name=end_name,
+            )
+        else:
+            if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
+                t_score = 90.0
+            elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
+                t_score = 94.0
+            elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
+                t_score = 97.0
+            else:
+                t_score = 100.0
+
+            if is_night_travel:
+                t_score -= 5.0
+                seg_terrain_reasons.append(
+                    f"Night departure window ({ist_hour:02d}:00 IST): Reduced ambient lighting on unlit sections."
+                )
+
+            seg_terrain_score = max(0.0, min(100.0, t_score))
+
+        latitude, longitude = get_segment_coordinates(region)
+
+        result = segment_intelligence_service.evaluate_segment(
+            db=None,
+            region=region,
+            latitude=latitude,
+            longitude=longitude,
+            travel_datetime=travel_dt,
+            live_traffic=segment_traffic,
+            is_planner=is_planner,
+            terrain_score=seg_terrain_score,
+            terrain_reasons=seg_terrain_reasons,
+            prefetched_reports=prefetched_reports or [],
+        )
+
+        res_dict = result.to_dict()
+        safety_score_res = res_dict.get("safety_score_result")
+        if not isinstance(safety_score_res, dict):
+            safety_score_res = {}
+            res_dict["safety_score_result"] = safety_score_res
+
+        score_val = safety_score_res.get("safety_score")
+        res_dict["safety_score"] = score_val
+        res_dict["reasons"] = safety_score_res.get("reasons", [])
+        res_dict["risk_factors"] = safety_score_res.get("risk_factors", [])
+        if isinstance(segment_traffic, dict):
+            dim_scores = safety_score_res.get("dimension_scores", {})
+            if "user_report_traffic" in dim_scores:
+                segment_traffic["user_report_traffic_score"] = dim_scores["user_report_traffic"]
+                segment_traffic["traffic_weighting"] = "80% Google Maps / 20% User Report"
+        res_dict["live_traffic"] = segment_traffic
+
+        w_res = res_dict.get("weather_result")
+        safe_speed = corridor_physics_service.compute_safe_speed(
+            region=region,
+            weather_data=w_res if isinstance(w_res, dict) else None,
+            safety_score=score_val,
+            is_night=is_night_travel,
+        )
+        res_dict["safe_speed_advisory"] = safe_speed
+
+        reg_elevation_map = {
+            "R1": 14,
+            "R2": 48,
+            "R3": 72,
+            "R4": 550,
+            "R5": 624,
+            "R6": 585,
+            "R7": 560,
+        }
+        res_dict["elevation_m"] = reg_elevation_map.get(reg_code, 500)
+
+        return res_dict
 
     # =============================================================
     # SEGMENT EVALUATION

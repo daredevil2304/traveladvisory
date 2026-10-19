@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from config import settings
 from services.route_segment_service import ROUTE_POINT_COORDINATES
 from services.weather_service import weather_service
@@ -41,6 +44,19 @@ class GoogleMapsTrafficService:
         self._traffic_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._telemetry_cache: tuple[float, dict[str, Any]] | None = None
         self._cache_ttl_seconds = 60  # 1 minute cache for real-time telemetry updates
+        self._lock = threading.Lock()
+        self._session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=20,
+            pool_maxsize=20,
+            max_retries=Retry(
+                total=2,
+                backoff_factor=0.2,
+                status_forcelist=[500, 502, 503, 504],
+            ),
+        )
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
 
     def _query_google_routes_api(
         self,
@@ -79,7 +95,7 @@ class GoogleMapsTrafficService:
                 "travelMode": "DRIVE",
                 "routingPreference": "TRAFFIC_AWARE",
             }
-            resp = requests.post(
+            resp = self._session.post(
                 url,
                 json=payload,
                 headers=headers,
@@ -120,7 +136,7 @@ class GoogleMapsTrafficService:
                 "traffic_model": "best_guess",
                 "key": api_key,
             }
-            resp = requests.get(
+            resp = self._session.get(
                 url,
                 params=params,
                 timeout=self.REQUEST_TIMEOUT_SECONDS,
@@ -152,10 +168,12 @@ class GoogleMapsTrafficService:
         cache_key = f"{start_coords[0]:.4f},{start_coords[1]:.4f}->{end_coords[0]:.4f},{end_coords[1]:.4f}"
         now = time.time()
 
-        if not force_refresh and cache_key in self._traffic_cache:
-            cached_time, cached_val = self._traffic_cache[cache_key]
-            if now - cached_time < self._cache_ttl_seconds:
-                return cached_val
+        if not force_refresh:
+            with self._lock:
+                if cache_key in self._traffic_cache:
+                    cached_time, cached_val = self._traffic_cache[cache_key]
+                    if now - cached_time < self._cache_ttl_seconds:
+                        return cached_val
 
         # Attempt Google Maps API if API key is configured
         api_key = settings.google_maps_api_key.strip()
@@ -189,7 +207,8 @@ class GoogleMapsTrafficService:
                     "status_color": status_clr,
                     "description": f"Live Google Maps data: ~{round(traffic_sec / 60)} min journey with {delay_min} min delay.",
                 }
-                self._traffic_cache[cache_key] = (now, result)
+                with self._lock:
+                    self._traffic_cache[cache_key] = (now, result)
                 return result
 
         # Dynamic Real-Time Expressway Radar (5-minute rolling model)
@@ -200,7 +219,8 @@ class GoogleMapsTrafficService:
             end_name=end_name,
             node_idx=node_idx,
         )
-        self._traffic_cache[cache_key] = (now, fallback)
+        with self._lock:
+            self._traffic_cache[cache_key] = (now, fallback)
         return fallback
 
     def _interpret_traffic_ratio(

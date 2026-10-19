@@ -100,33 +100,45 @@ class TravelerReportRetrievalService:
         db: Session,
         regions: list[str],
         reference_datetime: datetime,
-        lookback_hours: int = 6,
+        lookback_hours: int = 1,
         limit_per_region: int = 20,
     ) -> dict[str, list[TravelerReport]]:
         """
-        Retrieve reports for every route region involved in a trip.
+        Retrieve reports for all route regions involved in a trip in a single SQL query.
 
         Example:
-
             {
                 "R1": [...],
                 "R2": [...],
                 "R3": [...]
             }
         """
+        results: dict[str, list[TravelerReport]] = {
+            self._normalize_region(r): [] for r in regions
+        }
 
-        results: dict[str, list[TravelerReport]] = {}
+        if not results:
+            return results
 
-        for region in regions:
-            normalized_region = self._normalize_region(region)
+        start_datetime = reference_datetime - timedelta(hours=lookback_hours)
 
-            results[normalized_region] = self.get_recent_reports(
-                db=db,
-                region=normalized_region,
-                reference_datetime=reference_datetime,
-                lookback_hours=lookback_hours,
-                limit=limit_per_region,
+        statement = (
+            select(TravelerReport)
+            .where(
+                TravelerReport.route_region.in_(list(results.keys())),
+                TravelerReport.created_at >= start_datetime,
+                TravelerReport.created_at <= reference_datetime,
             )
+            .order_by(
+                TravelerReport.created_at.desc()
+            )
+        )
+
+        all_reports = list(db.execute(statement).scalars().all())
+        for report in all_reports:
+            reg = report.route_region
+            if reg in results and len(results[reg]) < limit_per_region:
+                results[reg].append(report)
 
         return results
 
