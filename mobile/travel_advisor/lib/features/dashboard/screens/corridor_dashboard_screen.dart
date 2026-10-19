@@ -990,12 +990,13 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
         ),
         title: const Text(
-          'Corridor Intelligence',
+          'Mumbai–Pune Travel Advisor',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: FontWeight.w800,
             color: AppTheme.darkNavy,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         actions: [
           IconButton(
