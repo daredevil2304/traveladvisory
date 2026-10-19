@@ -124,7 +124,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final bool isPlanner = (role == 'planner');
 
     final overallScore = analysis['overall_safety_score'];
-    final int score = (overallScore != null) ? (overallScore as num).toInt() : 0;
+    final int score = (overallScore != null) ? (overallScore as num).round() : 80;
 
     final problematicSegmentsRaw = analysis['problematic_segments'];
     final List<dynamic> rawProblematic =
@@ -2446,7 +2446,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   // ============================================================
 
   void _showTravelBriefSheet(BuildContext context, Map<String, dynamic> analysis, String source, String destination) {
-    final int overallScore = (analysis['overall_safety_score'] as num?)?.toInt() ?? 80;
+    final int overallScore = (analysis['overall_safety_score'] as num?)?.round() ?? 80;
     final String date = analysis['travel_date'] ?? 'Today';
     final String time = analysis['travel_time'] ?? 'Now';
     final List<dynamic> segments = (analysis['segment_results'] is List) ? analysis['segment_results'] : [];

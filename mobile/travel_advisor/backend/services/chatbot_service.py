@@ -86,6 +86,11 @@ IMPORTANT RULES:
 
 17. When explaining differences between Traveler and Planner scores:
     Explain that the Live Traveler score factors in real-time Google Maps road congestion (30% weight) and live community reports along the corridor right now. The Planner score is an advance forecast based on OpenWeather atmospheric conditions, Sahyadri mountain terrain geometry, and historical accident risk models, assuming typical free-flowing conditions without real-time congestion.
+
+18. CRITICAL SAFETY SCORE ACCURACY:
+    Always quote the exact integer safety scores provided in the backend context (e.g. 91/100, 92/100, 99/100).
+    Never invent scores, never use different numbers, and never use decimal values (such as 97.8 or 97.2).
+    If asked which section needs the most attention or care, always cite the exact segment identified in the context as having the lowest safety score, along with its exact score.
 """.strip()
 
     def answer(
@@ -108,12 +113,18 @@ IMPORTANT RULES:
                 f"Trip with id {trip_id} was not found."
             )
 
-        analysis = trip_analysis_service.analyze_trip(
-            db=db,
-            trip_id=trip_id,
-        )
-
-        analysis_data = analysis.to_dict()
+        analysis_data = trip.analysis_data
+        if not analysis_data or not isinstance(analysis_data, dict):
+            analysis = trip_analysis_service.analyze_trip(
+                db=db,
+                trip_id=trip_id,
+            )
+            analysis_data = analysis.to_dict()
+            trip.analysis_data = analysis_data
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
         context = self._build_context(
             trip=trip,
@@ -189,8 +200,9 @@ IMPORTANT RULES:
         )
 
         if overall_score is not None:
+            ov_score_int = int(round(float(overall_score)))
             lines.append(
-                f"Overall Safety Score: {overall_score}/100"
+                f"Overall Route Safety Score: {ov_score_int}/100"
             )
         else:
             lines.append(
@@ -307,6 +319,32 @@ IMPORTANT RULES:
         if isinstance(segment_results, list) and segment_results:
             lines.append("")
             lines.append("=== ROUTE SEGMENTS & WEATHER OBSERVATIONS ===")
+
+            # Find the lowest scoring segment(s) on the route
+            min_score = float('inf')
+            lowest_labels: list[str] = []
+            from services.trip_analysis_service import SEGMENT_NAME_MAP
+            for seg in segment_results:
+                if not isinstance(seg, dict):
+                    continue
+                score_info = seg.get("safety_score_result") or {}
+                raw_score = score_info.get("safety_score") or score_info.get("score") or seg.get("safety_score")
+                if raw_score is not None:
+                    s_int = int(round(float(raw_score)))
+                    details = seg.get("segment_details") or {}
+                    st = details.get("start")
+                    en = details.get("end")
+                    reg = seg.get("region", "")
+                    lbl = f"{st} to {en}" if (st and en) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
+                    if s_int < min_score:
+                        min_score = s_int
+                        lowest_labels = [f"{lbl} ({s_int}/100)"]
+                    elif s_int == min_score:
+                        lowest_labels.append(f"{lbl} ({s_int}/100)")
+
+            if lowest_labels and min_score < float('inf'):
+                lines.append(f"Lowest scoring section on entire route: {', '.join(lowest_labels)}")
+
             for seg in segment_results:
                 if not isinstance(seg, dict):
                     continue
@@ -322,7 +360,6 @@ IMPORTANT RULES:
                         end = rs.end
                     except Exception:
                         pass
-                from services.trip_analysis_service import SEGMENT_NAME_MAP
                 label = f"{start} to {end}" if (start and end) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
 
                 score_info = seg.get("safety_score_result") or {}
@@ -351,7 +388,8 @@ IMPORTANT RULES:
 
                 lines.append(f"- Segment {label}:")
                 if seg_score is not None:
-                    lines.append(f"  Safety Score: {seg_score}/100")
+                    seg_int = int(round(float(seg_score)))
+                    lines.append(f"  Safety Score: {seg_int}/100")
                 else:
                     lines.append("  Safety Score: unavailable")
                 lines.append(f"  Live Weather: {', '.join(weather_desc)}")
@@ -404,12 +442,14 @@ Answer the user's question using the backend context below.
         analysis: dict[str, Any],
         message: str,
     ) -> str:
-        score = analysis.get("overall_safety_score") or analysis.get("safety_score") or 80
+        raw_score = analysis.get("overall_safety_score") or analysis.get("safety_score") or 80
+        score = int(round(float(raw_score)))
         src = trip.source_name
         dst = trip.destination_name
         reasons = analysis.get("reasons") or []
         problematic = analysis.get("problematic_segments") or []
         precautions = analysis.get("precautions") or []
+        segment_results = analysis.get("segment_results") or []
 
         msg_lower = message.lower()
         if "score" in msg_lower or "why" in msg_lower or "low" in msg_lower:
@@ -420,16 +460,39 @@ Answer the user's question using the backend context below.
                 ans += "Corridor road conditions are generally stable with standard expressway precautions."
             return ans
 
-        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower:
+        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower or "care" in msg_lower or "attention" in msg_lower:
             if problematic:
                 names = []
                 for p in problematic[:3]:
                     d = p.get("segment_details") or {}
+                    s_val = p.get("safety_score")
+                    s_str = f"{int(round(float(s_val)))}/100" if s_val is not None else "caution"
                     if d.get("start") and d.get("end"):
-                        names.append(f"{d['start']} to {d['end']} (score: {p.get('safety_score', 'N/A')})")
+                        names.append(f"{d['start']} to {d['end']} (Safety Score: {s_str})")
                     else:
                         names.append(str(p.get("region", "Corridor section")))
-                return f"Sections requiring closer attention: {', '.join(names)}."
+                return f"Sections requiring closer attention along your route: {'; '.join(names)}."
+            elif segment_results:
+                sorted_segs = []
+                from services.trip_analysis_service import SEGMENT_NAME_MAP
+                for s in segment_results:
+                    if not isinstance(s, dict):
+                        continue
+                    si = s.get("safety_score_result") or {}
+                    raw_s = si.get("safety_score") or si.get("score") or s.get("safety_score")
+                    if raw_s is not None:
+                        sorted_segs.append((int(round(float(raw_s))), s))
+                sorted_segs.sort(key=lambda x: x[0])
+                if sorted_segs:
+                    lowest_items = []
+                    for s_val, s_obj in sorted_segs[:2]:
+                        d = s_obj.get("segment_details") or {}
+                        st = d.get("start")
+                        en = d.get("end")
+                        reg = s_obj.get("region", "")
+                        lbl = f"{st} to {en}" if (st and en) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
+                        lowest_items.append(f"{lbl} (Safety Score: {s_val}/100)")
+                    return f"The sections that require the most attention along your corridor are: {', '.join(lowest_items)}. Overall highway conditions remain stable."
             return f"All expressway segments between {src} and {dst} are clear with normal driving conditions."
 
         if "precaution" in msg_lower or "tip" in msg_lower or "advice" in msg_lower:

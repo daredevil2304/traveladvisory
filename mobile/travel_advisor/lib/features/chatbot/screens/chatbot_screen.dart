@@ -1495,7 +1495,7 @@ final Map<String, dynamic> analysisData =
     );
 
     final bool isPlanner = _role == 'planner';
-    final double score = safetyScore ?? 80;
+    final int score = (safetyScore ?? 80).round();
     final String verdict = score >= 80
         ? 'Safe to travel'
         : score >= 60
@@ -1505,7 +1505,7 @@ final Map<String, dynamic> analysisData =
     final String titlePrefix =
         isPlanner ? 'Planned Trip Safety Score' : 'Trip Safety Score';
     _addBotMessage(
-      '🛡️ $titlePrefix: **${_formatNumber(score)}/100** • **$verdict**',
+      '🛡️ $titlePrefix: **$score/100** • **$verdict**',
       analysisData: analysis is Map<String, dynamic> ? analysis : null,
     );
 
@@ -1636,88 +1636,216 @@ final Map<String, dynamic> analysisData =
 // POST-ANALYSIS CHAT
 // ============================================================
 
-Future<void> _handlePostAnalysisMessage(
-  String message,
-) async {
-  final int? tripId = _tripId;
+  Future<void> _handlePostAnalysisMessage(
+    String message,
+  ) async {
+    final int? tripId = _tripId;
 
-  if (tripId == null) {
-    _addBotMessage(
-      'I don’t have a valid trip ID for this journey. Please analyze the journey again.',
-    );
-    return;
-  }
-
-  final String userMessage = message.trim();
-
-  if (userMessage.isEmpty) {
-    return;
-  }
-
-  setState(() {
-    _isTyping = true;
-  });
-
-  _scrollToBottom();
-
-  try {
-    final Map<String, dynamic> response =
-        await ApiService.sendChatbotMessage(
-      tripId: tripId,
-      message: userMessage,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    final String answer =
-        response['answer']?.toString().trim() ?? '';
-
-    setState(() {
-      _isTyping = false;
-    });
-
-    if (answer.isEmpty) {
+    if (tripId == null) {
       _addBotMessage(
-        'I received the request, but the travel assistant did not return an answer. Please try asking again.',
+        'I don’t have a valid trip ID for this journey. Please analyze the journey again.',
       );
       return;
     }
 
-    _addBotMessage(_resolveSegmentName(answer));
-  } on ApiException catch (e) {
-    if (!mounted) {
+    final String userMessage = message.trim();
+
+    if (userMessage.isEmpty) {
+      return;
+    }
+
+    // Check if we can answer immediately from _tripAnalysis for standard queries
+    // to guarantee 100% mathematical consistency with the Journey Report.
+    final String? localAnswer = _generateGroundedAnalysisAnswer(userMessage);
+    if (localAnswer != null) {
+      _addBotMessage(localAnswer);
       return;
     }
 
     setState(() {
-      _isTyping = false;
+      _isTyping = true;
     });
 
-    _addBotMessage(
-      'I could not retrieve a response from the travel assistant at this moment.',
-    );
+    _scrollToBottom();
 
-    _showError(e.message);
-  } catch (_) {
-    if (!mounted) {
-      return;
+    try {
+      final Map<String, dynamic> response =
+          await ApiService.sendChatbotMessage(
+        tripId: tripId,
+        message: userMessage,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final String answer =
+          response['answer']?.toString().trim() ?? '';
+
+      setState(() {
+        _isTyping = false;
+      });
+
+      if (answer.isEmpty) {
+        _addBotMessage(
+          'I received the request, but the travel assistant did not return an answer. Please try asking again.',
+        );
+        return;
+      }
+
+      _addBotMessage(_resolveSegmentName(answer));
+    } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isTyping = false;
+      });
+
+      _addBotMessage(
+        'I could not retrieve a response from the travel assistant at this moment.',
+      );
+
+      _showError(e.message);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isTyping = false;
+      });
+
+      _addBotMessage(
+        'Something went wrong while contacting the travel assistant. Please try again.',
+      );
+
+      _showError(
+        'Unable to contact the chatbot service.',
+      );
     }
-
-    setState(() {
-      _isTyping = false;
-    });
-
-    _addBotMessage(
-      'Something went wrong while contacting the travel assistant. Please try again.',
-    );
-
-    _showError(
-      'Unable to contact the chatbot service.',
-    );
   }
-}
+
+  String? _generateGroundedAnalysisAnswer(String query) {
+    if (_tripAnalysis == null) return null;
+
+    final String q = query.toLowerCase().trim();
+
+    final rawOverall = _readDouble(_tripAnalysis, 'overallSafetyScore');
+    final int overallScore = (rawOverall ?? 80).round();
+
+    final segmentsRaw = _tripAnalysis!['segment_results'];
+    final List<Map<String, dynamic>> segmentList = [];
+    if (segmentsRaw is List) {
+      for (final item in segmentsRaw) {
+        if (item is Map) {
+          segmentList.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+
+    int getSegScore(Map<String, dynamic> seg) {
+      final sr = seg['safety_score_result'];
+      final raw = (sr is Map)
+          ? (sr['safety_score'] ?? sr['score'])
+          : seg['safety_score'];
+      return (raw is num) ? raw.round() : 80;
+    }
+
+    String getSegLabel(Map<String, dynamic> seg) {
+      final details = seg['segment_details'];
+      if (details is Map && details['start'] != null && details['end'] != null) {
+        return '${details['start']} to ${details['end']}';
+      }
+      final reg = seg['region']?.toString() ?? '';
+      return _corridorSegmentMap[reg.toUpperCase()] ?? reg;
+    }
+
+    // 1. "Which road section needs care?"
+    if (q.contains('which road section') ||
+        q.contains('section needs care') ||
+        q.contains('which road needs') ||
+        q.contains('which section') ||
+        q.contains('sections need care') ||
+        q.contains('which area needs care')) {
+      if (segmentList.isNotEmpty) {
+        final sorted = List<Map<String, dynamic>>.from(segmentList)
+          ..sort((a, b) => getSegScore(a).compareTo(getSegScore(b)));
+
+        final lowest = sorted.first;
+
+        final items = <String>[];
+        for (final seg in sorted.take(3)) {
+          final s = getSegScore(seg);
+          final lbl = getSegLabel(seg);
+          final traffic = seg['live_traffic'];
+          String note = '';
+          if (traffic is Map && traffic['delay_minutes'] != null) {
+            final int dm = traffic['delay_minutes'] is num
+                ? (traffic['delay_minutes'] as num).toInt()
+                : 0;
+            if (dm > 0) {
+              note = ', +${dm}m traffic delay';
+            }
+          }
+          final bool isGhat = lbl.toLowerCase().contains('khandala') ||
+              lbl.toLowerCase().contains('khopoli') ||
+              lbl.toLowerCase().contains('bhor');
+          if (isGhat && note.isEmpty) {
+            note = ', mountain incline';
+          }
+          final isLowest = (seg == lowest);
+          items.add(
+            '• **$lbl** - Safety Score **$s / 100**${isLowest ? ' (lowest score on route$note)' : note}',
+          );
+        }
+
+        return 'The sections that stand out as needing the most attention along your corridor are:\n${items.join('\n')}\n\nAll safety scores match your Journey Report. Overall highway conditions remain stable, but extra caution is advisable on these stretches.';
+      }
+    }
+
+    // 2. "Why is this score low?"
+    if (q.contains('why is this score low') ||
+        q.contains('why the score is low') ||
+        q.contains('why is score low') ||
+        q.contains('why is the score low') ||
+        q.contains('why score is low')) {
+      if (segmentList.isNotEmpty) {
+        final sorted = List<Map<String, dynamic>>.from(segmentList)
+          ..sort((a, b) => getSegScore(a).compareTo(getSegScore(b)));
+
+        final lowest = sorted.first;
+        final lowestScore = getSegScore(lowest);
+        final lowestLabel = getSegLabel(lowest);
+
+        final traffic = lowest['live_traffic'];
+        String reasonStr = 'governed by the most cautious segment on your journey';
+        if (traffic is Map && traffic['delay_minutes'] != null) {
+          final int dm = traffic['delay_minutes'] is num
+              ? (traffic['delay_minutes'] as num).toInt()
+              : 0;
+          if (dm > 0) {
+            reasonStr = 'due to a +${dm}m traffic slowdown reported on this segment';
+          }
+        }
+
+        final int highestScore = getSegScore(sorted.last);
+
+        return 'Your overall corridor Safety Score is **$overallScore / 100**, determined by the lowest-scoring segment (**$lowestLabel** at **$lowestScore / 100** $reasonStr).\n\nBy taking the lowest section score, the system ensures potential slowdowns or hazards are never hidden by smooth highway conditions elsewhere (which range up to **$highestScore / 100**).';
+      }
+    }
+
+    // 3. "What precautions should I take?"
+    if (q.contains('what precaution') || q.contains('precautions should i')) {
+      final precautions = _generatePrecautions(_tripAnalysis);
+      if (precautions.isNotEmpty) {
+        return 'Recommended driving precautions for your journey:\n${precautions.map((p) => '• **$p**').join('\n')}';
+      }
+    }
+
+    return null;
+  }
 
   // ============================================================
   // ROUTE RESOLUTION
@@ -2410,20 +2538,6 @@ List<String> _stringList(
       )
       .toList();
 }
-
-  String _formatNumber(
-    double value,
-  ) {
-    if (value ==
-        value.roundToDouble()) {
-      return value
-          .toInt()
-          .toString();
-    }
-
-    return value
-        .toStringAsFixed(1);
-  }
 
   int? _parseTripId(
     dynamic value,
