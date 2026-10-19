@@ -293,6 +293,11 @@ class TripAnalysisService:
             route_segments=route_segments,
             current_safety_score=overall_safety_score,
             is_live_traveler=is_live_traveler,
+            live_traffic_by_region={
+                r.upper(): results_by_region[r.upper()].get("live_traffic")
+                for r in route_segments
+                if r.upper() in results_by_region
+            },
         )
 
         # Corridor elevation cross-section profile & 24x7 emergency rescue directory

@@ -413,7 +413,8 @@ class WeatherService:
         # If target_time is specified, select the entry with closest timestamp
         selected_entry = forecast_list[0]
         if target_time is not None:
-            target_ts = target_time.timestamp()
+            from services.timezone_service import to_ist
+            target_ts = to_ist(target_time).timestamp()
             smallest_diff = float("inf")
             for item in forecast_list:
                 item_ts = item.get("dt")

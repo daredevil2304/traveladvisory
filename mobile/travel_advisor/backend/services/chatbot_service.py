@@ -83,6 +83,9 @@ IMPORTANT RULES:
     Khalapur, Khopoli, Khandala / Bhor Ghat, Lonavala, Kamshet, Pune).
     Never output technical segment codes like R1, R2, R3, R4, R5, R6, R7.
     Always describe the corridor stretch using town names.
+
+17. When explaining differences between Traveler and Planner scores:
+    Explain that the Live Traveler score factors in real-time Google Maps road congestion (30% weight) and live community reports along the corridor right now. The Planner score is an advance forecast based on OpenWeather atmospheric conditions, Sahyadri mountain terrain geometry, and historical accident risk models, assuming typical free-flowing conditions without real-time congestion.
 """.strip()
 
     def answer(

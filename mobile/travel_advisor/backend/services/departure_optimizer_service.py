@@ -27,17 +27,23 @@ class DepartureOptimizerService:
         self,
         route_segments: list[str],
         slot_time: datetime,
+        is_live_traveler: bool = False,
+        offset_minutes: int = 0,
+        live_traffic_by_region: dict[str, Any] | None = None,
     ) -> tuple[float, str]:
         """
         Runs the full intelligence pipeline for an alternative departure window:
-        - Retrieves forecast OpenWeather readings for that exact time interval
-        - Runs the regional XGBoost machine learning risk model
-        - Evaluates terrain geometry & night lighting
-        - Fuses dimensions and computes segment safety score
-        - Applies weakest-link corridor aggregation
+        - For Traveler mode (is_live_traveler=True):
+            Evaluates under the Traveler formula (weather 50%, traffic 30%, ML 10%, traveler 10%)
+            with time-of-day traffic projection (congestion clearance decay).
+        - For Planner mode (is_live_traveler=False):
+            Retrieves forecast OpenWeather readings for that exact time interval,
+            runs the regional XGBoost machine learning risk model,
+            evaluates terrain geometry & night lighting, and applies weakest-link aggregation.
         Returns (corridor_safety_score, condition_description)
         """
-        ist_hour = slot_time.hour
+        slot_ist = to_ist(slot_time)
+        ist_hour = slot_ist.hour
         is_night = (ist_hour >= 22 or ist_hour <= 5)
 
         segment_scores: list[float] = []
@@ -49,45 +55,86 @@ class DepartureOptimizerService:
             reg_code = region.upper()
             lat, lon = get_segment_coordinates(reg_code)
             seg_det = get_segment_details(reg_code)
-            start_city = seg_det.start if seg_det else None
 
-            # Inherent terrain geometry baseline
-            if reg_code == "R4":
-                t_score = 90.0
-            elif reg_code == "R5":
-                t_score = 94.0
-            elif reg_code == "R3":
-                t_score = 97.0
+            if is_live_traveler:
+                # In Traveler mode, evaluate using the traveler formula
+                # Derive projected traffic from live traffic
+                seg_traffic = None
+                if live_traffic_by_region and reg_code in live_traffic_by_region:
+                    base_traffic = live_traffic_by_region[reg_code]
+                    if isinstance(base_traffic, dict):
+                        seg_traffic = dict(base_traffic)
+                        raw_traffic_score = base_traffic.get("traffic_score")
+                        if raw_traffic_score is not None:
+                            # If departing later (+30m or +60m), congestion gradually clears towards free flow
+                            decay = 0.35 if offset_minutes == 30 else (0.65 if offset_minutes == 60 else 0.0)
+                            proj_traffic_score = round(
+                                float(raw_traffic_score) + (100.0 - float(raw_traffic_score)) * decay,
+                                1,
+                            )
+                            seg_traffic["traffic_score"] = proj_traffic_score
+
+                try:
+                    seg_eval = segment_intelligence_service.evaluate_segment(
+                        db=None,
+                        region=reg_code,
+                        latitude=lat,
+                        longitude=lon,
+                        travel_datetime=slot_time,
+                        live_traffic=seg_traffic,
+                        is_planner=False,
+                        prefetched_reports=[],
+                    )
+                    score_val = seg_eval.safety_score_result.get("safety_score")
+                    if score_val is not None:
+                        score_f = float(score_val)
+                        segment_scores.append(score_f)
+                        if score_f < min_score:
+                            min_score = score_f
+                            weakest_reasons = seg_eval.safety_score_result.get("reasons", [])
+                            weakest_segment_name = f"{seg_det.start if seg_det else reg_code}"
+                except Exception:
+                    pass
+
             else:
-                t_score = 100.0
+                # Planner mode
+                # Inherent terrain geometry baseline
+                if reg_code == "R4":
+                    t_score = 90.0
+                elif reg_code == "R5":
+                    t_score = 94.0
+                elif reg_code == "R3":
+                    t_score = 97.0
+                else:
+                    t_score = 100.0
 
-            t_reasons = []
-            if is_night:
-                t_score -= 5.0
-                t_reasons.append(f"Night window ({ist_hour:02d}:00): Reduced ambient lighting")
+                t_reasons = []
+                if is_night:
+                    t_score -= 5.0
+                    t_reasons.append(f"Night window ({ist_hour:02d}:00): Reduced ambient lighting")
 
-            try:
-                seg_eval = segment_intelligence_service.evaluate_segment(
-                    db=None,
-                    region=reg_code,
-                    latitude=lat,
-                    longitude=lon,
-                    travel_datetime=slot_time,
-                    is_planner=True,
-                    terrain_score=t_score,
-                    terrain_reasons=t_reasons,
-                    prefetched_reports=[],
-                )
-                score_val = seg_eval.safety_score_result.get("safety_score")
-                if score_val is not None:
-                    score_f = float(score_val)
-                    segment_scores.append(score_f)
-                    if score_f < min_score:
-                        min_score = score_f
-                        weakest_reasons = seg_eval.safety_score_result.get("reasons", [])
-                        weakest_segment_name = f"{seg_det.start if seg_det else reg_code}"
-            except Exception:
-                pass
+                try:
+                    seg_eval = segment_intelligence_service.evaluate_segment(
+                        db=None,
+                        region=reg_code,
+                        latitude=lat,
+                        longitude=lon,
+                        travel_datetime=slot_time,
+                        is_planner=True,
+                        terrain_score=t_score,
+                        terrain_reasons=t_reasons,
+                        prefetched_reports=[],
+                    )
+                    score_val = seg_eval.safety_score_result.get("safety_score")
+                    if score_val is not None:
+                        score_f = float(score_val)
+                        segment_scores.append(score_f)
+                        if score_f < min_score:
+                            min_score = score_f
+                            weakest_reasons = seg_eval.safety_score_result.get("reasons", [])
+                            weakest_segment_name = f"{seg_det.start if seg_det else reg_code}"
+                except Exception:
+                    pass
 
         if not segment_scores:
             return 85.0, "Corridor forecast clear"
@@ -111,16 +158,24 @@ class DepartureOptimizerService:
         route_segments: list[str],
         current_safety_score: float | None = None,
         is_live_traveler: bool = False,
+        live_traffic_by_region: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Evaluate alternative departure windows.
-        For live travelers, only evaluate current (0) and future windows (+30m, +60m).
-        For planners, evaluate windows around planned departure (-60m, -30m, 0, +30m, +60m).
+        For live travelers:
+            Only evaluate current (0) and future windows (+30m, +60m).
+            Evaluates under traveler weights with projected traffic clearing.
+        For planners:
+            Evaluate windows around planned departure (-60m, -30m, 0, +30m, +60m),
+            filtering out any past windows that have already passed in real time.
         Runs full corridor intelligence and machine learning predictions for each window.
         """
         ist_base = to_ist(base_datetime)
         curr_score = current_safety_score or 85.0
         offsets = self.OFFSETS_MINUTES_TRAVELER if is_live_traveler else self.OFFSETS_MINUTES_PLANNER
+
+        from services.timezone_service import get_ist_now_aware
+        now_ist = get_ist_now_aware()
 
         alternatives: list[dict[str, Any]] = []
         best_offset = 0
@@ -129,6 +184,12 @@ class DepartureOptimizerService:
         for offset in offsets:
             slot_time = ist_base + timedelta(minutes=offset)
             time_label = slot_time.strftime("%I:%M %p")
+
+            # In Planner mode, filter out windows that have already passed in real-world time
+            # (e.g. if planning for 8:40 PM at 7:50 PM, -60m is 7:40 PM which is in the past)
+            if not is_live_traveler and offset != 0:
+                if slot_time < (now_ist - timedelta(minutes=5)):
+                    continue
 
             if offset == 0:
                 alternatives.append({
@@ -145,6 +206,9 @@ class DepartureOptimizerService:
                 est_score, cond_desc = self._evaluate_corridor_for_window(
                     route_segments=route_segments,
                     slot_time=slot_time,
+                    is_live_traveler=is_live_traveler,
+                    offset_minutes=offset,
+                    live_traffic_by_region=live_traffic_by_region,
                 )
             except Exception:
                 est_score = round(curr_score, 1)

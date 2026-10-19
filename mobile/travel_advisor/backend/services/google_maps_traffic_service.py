@@ -440,25 +440,43 @@ class GoogleMapsTrafficService:
                 found_recent = False
                 if recent_trip and recent_trip.created_at:
                     age_sec = (get_ist_now() - recent_trip.created_at).total_seconds()
-                    # If analyzed within the last 30 minutes, sync directly with this analyzed trip
-                    if 0 <= age_sec <= 1800 and recent_trip.analysis_data:
+                    # If analyzed within the last 60 minutes, sync directly with this analyzed trip
+                    if 0 <= age_sec <= 3600 and recent_trip.analysis_data:
                         raw_trip_score = recent_trip.analysis_data.get("overall_safety_score")
                         if raw_trip_score is not None:
                             corridor_score = int(round(float(raw_trip_score)))
                             found_recent = True
 
                 if not found_recent:
-                    # Evaluate the 7 expressway sectors (Mumbai -> Pune) live
+                    # Evaluate the 7 expressway sectors (Mumbai -> Pune) live with real traffic
                     now_utc = datetime.now(timezone.utc)
+                    seg_endpoints = {
+                        "R1": ("Mumbai", "Panvel"),
+                        "R2": ("Panvel", "Khalapur"),
+                        "R3": ("Khalapur", "Khopoli"),
+                        "R4": ("Khopoli", "Khandala"),
+                        "R5": ("Khandala", "Lonavala"),
+                        "R6": ("Lonavala", "Kamshet"),
+                        "R7": ("Kamshet", "Pune"),
+                    }
                     for reg_code in ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]:
                         lat, lon = get_segment_coordinates(reg_code)
+                        s_name, e_name = seg_endpoints[reg_code]
+                        start_c = ROUTE_POINT_COORDINATES.get(s_name, (18.98878, 73.11013))
+                        end_c = ROUTE_POINT_COORDINATES.get(e_name, (18.52050, 73.85650))
+                        seg_traffic = self.get_segment_traffic(
+                            start_coords=start_c,
+                            end_coords=end_c,
+                            start_name=s_name,
+                            end_name=e_name,
+                        )
                         seg_eval = segment_intelligence_service.evaluate_segment(
                             db=active_db,
                             region=reg_code,
                             latitude=lat,
                             longitude=lon,
                             travel_datetime=now_utc,
-                            live_traffic=None,
+                            live_traffic=seg_traffic,
                             is_planner=False,
                         )
                         res = seg_eval.to_dict()
