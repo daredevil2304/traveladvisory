@@ -379,7 +379,10 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
               // PROACTIVE SMART DEPARTURE TIMING OPTIMIZER
               if (analysis['departure_optimization'] != null) ...[
-                _buildDepartureOptimizerCard(analysis['departure_optimization']),
+                _buildDepartureOptimizerCard(
+                  analysis['departure_optimization'],
+                  isTraveler: !isPlanner,
+                ),
                 const SizedBox(height: 16),
               ],
 
@@ -1742,11 +1745,64 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   // PROACTIVE SMART DEPARTURE TIMING OPTIMIZER CARD
   // ============================================================
 
-  Widget _buildDepartureOptimizerCard(dynamic opt) {
+  Widget _buildDepartureOptimizerCard(dynamic opt, {bool isTraveler = true}) {
     if (opt is! Map) return const SizedBox.shrink();
-    final bool hasBetter = opt['has_better_alternative'] == true;
-    final String recText = opt['recommendation_text']?.toString() ?? '';
-    final List<dynamic> alts = (opt['alternative_windows'] is List) ? opt['alternative_windows'] : [];
+
+    final List<dynamic> rawAlts =
+        (opt['alternative_windows'] is List) ? opt['alternative_windows'] : [];
+
+    // For traveler role, only keep current (0) and future windows (positive offsets).
+    // Never show past windows (-30m, -60m) to a traveler who is already traveling/departing now.
+    final List<dynamic> alts = isTraveler
+        ? rawAlts.where((alt) {
+            if (alt is! Map) return false;
+            final num? offset = alt['offset_minutes'] as num?;
+            if (offset != null) return offset >= 0;
+            final String cond = (alt['condition'] ?? '').toString().toLowerCase();
+            return !cond.contains('earlier');
+          }).toList()
+        : rawAlts;
+
+    bool hasBetter = opt['has_better_alternative'] == true;
+    String recText = opt['recommendation_text']?.toString() ?? '';
+
+    // If traveler, ensure the recommendation does NOT suggest an earlier/past time
+    if (isTraveler) {
+      final num optOffset = (opt['optimal_offset_minutes'] as num?) ?? 0;
+      if (optOffset < 0 || recText.toLowerCase().contains('earlier')) {
+        // Find best future window from remaining alternatives
+        Map<String, dynamic>? bestFuture;
+        final double currentScore =
+            (opt['current_safety_score'] as num?)?.toDouble() ?? 85.0;
+        double bestFutureScore = currentScore;
+        int bestFutureOffset = 0;
+
+        for (final item in alts) {
+          if (item is Map) {
+            final num off = (item['offset_minutes'] as num?) ?? 0;
+            final double s =
+                (item['safety_score'] as num?)?.toDouble() ?? 0.0;
+            if (off > 0 && s > bestFutureScore + 2.0) {
+              bestFutureScore = s;
+              bestFutureOffset = off.toInt();
+              bestFuture = Map<String, dynamic>.from(item);
+            }
+          }
+        }
+
+        if (bestFuture != null && (bestFutureScore - currentScore) >= 3.0) {
+          hasBetter = true;
+          final String displayTime = bestFuture['display_time'] ?? '';
+          final double diff = bestFutureScore - currentScore;
+          recText =
+              'Smart Timing Advice: Leaving at $displayTime ($bestFutureOffset mins later) increases safety from ${currentScore.toInt()} to ${bestFutureScore.toInt()}/100 (+${diff.toInt()} pts) with clearer conditions.';
+        } else {
+          hasBetter = false;
+          recText =
+              'Leaving now is within your safest upcoming departure window with good safety conditions.';
+        }
+      }
+    }
 
     return Container(
       width: double.infinity,
@@ -1799,7 +1855,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      hasBetter ? 'Optimal Departure Window Available' : 'Scheduled Departure Verified',
+                      hasBetter ? 'Better Departure Time Available' : 'Leaving Time Verified',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
@@ -1833,6 +1889,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                   final double slotScore = (alt['safety_score'] as num?)?.toDouble() ?? 80.0;
                   final String cond = alt['condition'] ?? '';
                   final Color chipColor = _getScoreColor(slotScore.toInt());
+                  final num? offsetNum = alt['offset_minutes'] as num?;
 
                   return Container(
                     margin: const EdgeInsets.only(right: 10),
@@ -1861,14 +1918,27 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                             if (isCurrent) ...[
                               const SizedBox(width: 5),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: AppTheme.royalSapphire,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
-                                  'CHOSEN',
-                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white),
+                                child: Text(
+                                  isTraveler ? 'NOW' : 'CHOSEN',
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white),
+                                ),
+                              ),
+                            ] else if (offsetNum != null && offsetNum != 0) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE2E8F0),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  offsetNum > 0 ? '+$offsetNum m' : '$offsetNum m',
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
                                 ),
                               ),
                             ],

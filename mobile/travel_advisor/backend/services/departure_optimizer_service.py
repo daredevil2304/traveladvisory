@@ -15,20 +15,25 @@ class DepartureOptimizerService:
     with higher safety scores and reduced Ghat storm exposure.
     """
 
-    OFFSETS_MINUTES = [-60, -30, 0, 30, 60]
+    OFFSETS_MINUTES_PLANNER = [-60, -30, 0, 30, 60]
+    OFFSETS_MINUTES_TRAVELER = [0, 30, 60]
 
     def optimize_departure_window(
         self,
         base_datetime: datetime,
         route_segments: list[str],
         current_safety_score: float | None = None,
+        is_live_traveler: bool = False,
     ) -> dict[str, Any]:
         """
-        Evaluate alternative departure windows at -60m, -30m, +30m, +60m.
+        Evaluate alternative departure windows.
+        For live travelers, only evaluate current (0) and future windows (+30m, +60m).
+        For planners, evaluate windows around planned departure (-60m, -30m, 0, +30m, +60m).
         Compares weather trends over the critical Western Ghats section (R4/R5).
         """
         ist_base = to_ist(base_datetime)
         curr_score = current_safety_score or 85.0
+        offsets = self.OFFSETS_MINUTES_TRAVELER if is_live_traveler else self.OFFSETS_MINUTES_PLANNER
 
         # Focus weather check on the most vulnerable sector (Khopoli/Khandala R4)
         ghat_lat, ghat_lon = ROUTE_POINT_COORDINATES.get("Khopoli", (18.7877, 73.3438))
@@ -36,9 +41,8 @@ class DepartureOptimizerService:
         alternatives: list[dict[str, Any]] = []
         best_offset = 0
         best_score = curr_score
-        best_reason = "Current departure is within an optimal travel window."
 
-        for offset in self.OFFSETS_MINUTES:
+        for offset in offsets:
             slot_time = ist_base + timedelta(minutes=offset)
             time_label = slot_time.strftime("%I:%M %p")
 
@@ -49,7 +53,7 @@ class DepartureOptimizerService:
                     "display_time": time_label,
                     "safety_score": round(curr_score, 1),
                     "is_current": True,
-                    "condition": "Scheduled Departure",
+                    "condition": "Leaving Now" if is_live_traveler else "Scheduled Departure",
                 })
                 continue
 
@@ -110,16 +114,22 @@ class DepartureOptimizerService:
         if best_offset != 0 and score_diff >= 3.0:
             direction = "later" if best_offset > 0 else "earlier"
             recommendation = (
-                f"Proactive Timing Advice: Departing at {best_slot_label} ({abs(best_offset)} mins {direction}) "
+                f"Smart Timing Advice: Departing at {best_slot_label} ({abs(best_offset)} mins {direction}) "
                 f"increases route safety from {curr_score:.0f} to {best_score:.0f}/100 (+{score_diff:.0f} pts) "
                 f"with clearer conditions through Bhor Ghat."
             )
             has_recommendation = True
         else:
-            recommendation = (
-                f"Selected departure at {ist_base.strftime('%I:%M %p')} is already in an optimal corridor window "
-                f"with favorable safety margins ({curr_score:.0f}/100)."
-            )
+            if is_live_traveler:
+                recommendation = (
+                    f"Leaving now at {ist_base.strftime('%I:%M %p')} is within the best upcoming window "
+                    f"with good safety conditions ({curr_score:.0f}/100)."
+                )
+            else:
+                recommendation = (
+                    f"Selected departure at {ist_base.strftime('%I:%M %p')} is already in an optimal corridor window "
+                    f"with favorable safety margins ({curr_score:.0f}/100)."
+                )
             has_recommendation = False
 
         return {

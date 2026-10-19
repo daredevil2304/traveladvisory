@@ -344,11 +344,13 @@ class TripAnalysisService:
             overall_safety_score=overall_safety_score,
         )
 
-        # Proactive departure optimization window (+/- 1 hr)
+        # Proactive departure optimization window (+/- 1 hr for planner, +30m/+60m for live traveler)
+        is_live_traveler = (trip.role or "").lower() in ("traveler", "traveller")
         departure_optimization = departure_optimizer_service.optimize_departure_window(
             base_datetime=trip.travel_datetime or datetime.now(timezone.utc),
             route_segments=route_segments,
             current_safety_score=overall_safety_score,
+            is_live_traveler=is_live_traveler,
         )
 
         # Corridor elevation cross-section profile & 24x7 emergency rescue directory
