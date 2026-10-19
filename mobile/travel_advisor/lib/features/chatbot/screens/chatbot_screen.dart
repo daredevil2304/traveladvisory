@@ -56,6 +56,7 @@ class _ChatbotScreenState
   bool _analysisComplete = false;
   bool _isCollectingLiveUpdates = false;
   bool _liveUpdatesSubmitted = false;
+  bool _hasPromptedLiveUpdates = false;
   Map<String, dynamic>? _tripAnalysis;
 
   int? _tripId;
@@ -248,14 +249,28 @@ class _ChatbotScreenState
 
     _messageController.clear();
 
+    setState(() {
+      _clearAllQuickReplies();
+    });
+
     _addUserMessage(message);
 
     /*
-     * After analysis, the chatbot remains active.
-     * User can ask follow-up questions instead
-     * of being forced onto another screen.
+     * If user is being prompted for live updates, but asks a trip/report question
+     * or requests report instead of answering live update:
+     * Immediately exit live updates collection and answer the question.
      */
     if (_isCollectingLiveUpdates) {
+      if (_isTripQuery(message) || message.toLowerCase().contains('report')) {
+        _isCollectingLiveUpdates = false;
+        _step = _ConversationStep.postAnalysis;
+        if (message.toLowerCase().contains('report')) {
+          _openJourneyReport();
+        } else {
+          _handlePostAnalysisMessage(message);
+        }
+        return;
+      }
       _handleLiveUpdateMessage(message);
       return;
     }
@@ -293,6 +308,8 @@ class _ChatbotScreenState
 
     if (value.contains('Report') || value.contains('View Journey Report') || value.contains('Open Report')) {
       if (_tripAnalysis != null) {
+        _isCollectingLiveUpdates = false;
+        _step = _ConversationStep.postAnalysis;
         _openJourneyReport();
         return;
       }
@@ -304,6 +321,15 @@ class _ChatbotScreenState
         _step == _ConversationStep.liveUpdateVisibility ||
         _step == _ConversationStep.liveUpdateHazards ||
         _step == _ConversationStep.liveUpdateTraffic;
+
+    // If live updates collection was active and the user selected a post-analysis question
+    if (isLiveUpdatesActive && _isTripQuery(value)) {
+      _isCollectingLiveUpdates = false;
+      _step = _ConversationStep.postAnalysis;
+      _addUserMessage(value);
+      _handlePostAnalysisMessage(value);
+      return;
+    }
 
     final bool isPostAnalysis =
         (_analysisComplete || _step == _ConversationStep.postAnalysis) &&
@@ -517,10 +543,10 @@ class _ChatbotScreenState
     }
 
     _addBotMessage(
-      'Would you like to use the detected starting point?',
+      'Please give a valid input. Would you like to start your journey from ${_source ?? "the detected location"}?',
       quickReplies: const [
-        'Yes',
-        'Change source',
+        'Yes, start here',
+        'Change start point',
       ],
     );
   }
@@ -537,7 +563,7 @@ class _ChatbotScreenState
 
     if (point == null) {
       _addBotMessage(
-        'Please choose a location on the Mumbai Pune route.',
+        'Please give a valid input. Please choose a starting location on the Mumbai-Pune corridor.',
         quickReplies:
             _routePoints
                 .map(
@@ -627,7 +653,7 @@ class _ChatbotScreenState
 
     if (point == null) {
       _addBotMessage(
-        'Please choose a supported Mumbai Pune route destination.',
+        'Please give a valid input. Please choose a supported destination along the Mumbai-Pune corridor.',
         quickReplies: destinationOptions,
       );
       return;
@@ -636,7 +662,8 @@ class _ChatbotScreenState
     if (_source ==
         point.name) {
       _addBotMessage(
-        'Your source and destination are the same. Please choose another destination.',
+        'Please give a valid input. Your starting location and destination cannot be the same. Please choose another destination.',
+        quickReplies: destinationOptions,
       );
       return;
     }
@@ -743,7 +770,7 @@ class _ChatbotScreenState
 
     if (date == null) {
       _addBotMessage(
-        'Please specify your travel date using the calendar or choose Tomorrow / Same Day.',
+        'Please give a valid input. Please specify your travel date using the calendar or choose Tomorrow / Same Day.',
         quickReplies: const [
           '📅 Choose Date on Calendar',
           'Same Day',
@@ -827,7 +854,7 @@ class _ChatbotScreenState
 
     if (time == null) {
       _addBotMessage(
-        'Please pick a departure time on the clock / select one below.',
+        'Please give a valid input. Please pick a departure time on the clock or select one of the options below.',
         quickReplies: const [
           '⏰ Pick Time on Clock',
           'Morning (08:00)',
@@ -857,8 +884,22 @@ class _ChatbotScreenState
       return;
     }
 
-    _rain =
-        message.trim();
+    final validated = _validateRainInput(message);
+    if (validated == null) {
+      _addBotMessage(
+        'Please give a valid input. Are you experiencing rainfall along the route?',
+        quickReplies: const [
+          'None',
+          'Light drizzle',
+          'Moderate rain',
+          'Heavy downpour',
+          'Skip to Analysis',
+        ],
+      );
+      return;
+    }
+
+    _rain = validated;
 
     _step =
         _ConversationStep
@@ -889,8 +930,22 @@ class _ChatbotScreenState
       return;
     }
 
-    _visibility =
-        message.trim();
+    final validated = _validateVisibilityInput(message);
+    if (validated == null) {
+      _addBotMessage(
+        'Please give a valid input. How is the visibility along the route?',
+        quickReplies: const [
+          'Clear',
+          'Slightly reduced',
+          'Moderately reduced',
+          'Poor',
+          'Skip to Analysis',
+        ],
+      );
+      return;
+    }
+
+    _visibility = validated;
 
     _step =
         _ConversationStep
@@ -920,8 +975,21 @@ class _ChatbotScreenState
       return;
     }
 
-    _fog =
-        message.trim();
+    final validated = _validateFogInput(message);
+    if (validated == null) {
+      _addBotMessage(
+        'Please give a valid input. Are you noticing any fog / mist?',
+        quickReplies: const [
+          'None',
+          'Light mist',
+          'Dense fog',
+          'Skip to Analysis',
+        ],
+      );
+      return;
+    }
+
+    _fog = validated;
 
     _step =
         _ConversationStep
@@ -953,10 +1021,23 @@ class _ChatbotScreenState
       return;
     }
 
-    _unusualConditions =
-        _normalizeUnusualCondition(
-      message,
-    );
+    final validated = _validateHazardsInput(message);
+    if (validated == null) {
+      _addBotMessage(
+        'Please give a valid input. Any unusual road conditions observed?',
+        quickReplies: const [
+          'Nothing unusual',
+          'Slippery road',
+          'Waterlogging',
+          'Landslide / Rockfall',
+          'Debris',
+          'Skip to Analysis',
+        ],
+      );
+      return;
+    }
+
+    _unusualConditions = validated;
 
     _step =
         _ConversationStep
@@ -980,12 +1061,27 @@ class _ChatbotScreenState
   void _handleTravelerTraffic(
     String message,
   ) {
-    if (!message.toLowerCase().contains('analyze')) {
-      _traffic =
-          _normalizeTraffic(
-        message,
-      );
+    if (message.toLowerCase().contains('analyze') ||
+        message.toLowerCase().contains('skip')) {
+      _analyzeJourney();
+      return;
     }
+
+    final validated = _validateTrafficInput(message);
+    if (validated == null) {
+      _addBotMessage(
+        'Please give a valid input. How does the traffic appear?',
+        quickReplies: const [
+          'Free flow',
+          'Moderate',
+          'Heavy',
+          'Analyze Route',
+        ],
+      );
+      return;
+    }
+
+    _traffic = validated;
 
     _analyzeJourney();
   }
@@ -1161,6 +1257,9 @@ final Map<String, dynamic> analysisData =
       return;
     }
 
+    _isCollectingLiveUpdates = false;
+    _step = _ConversationStep.postAnalysis;
+
     await Navigator.pushNamed(
       context,
       AppRoutes.journeyAnalysis,
@@ -1175,10 +1274,12 @@ final Map<String, dynamic> analysisData =
 
     if (!mounted) return;
 
-    if (_role == 'traveler' && !_liveUpdatesSubmitted) {
+    if (_role == 'traveler' && !_hasPromptedLiveUpdates && !_liveUpdatesSubmitted) {
+      _hasPromptedLiveUpdates = true;
       _startLiveUpdatesQuestionnaire();
     } else {
       setState(() {
+        _isCollectingLiveUpdates = false;
         _step = _ConversationStep.postAnalysis;
         _analysisComplete = true;
       });
@@ -1314,29 +1415,70 @@ final Map<String, dynamic> analysisData =
   void _handleLiveUpdateMessage(String message) {
     final lower = message.toLowerCase().trim();
 
-    if (lower.contains('skip')) {
+    // 1. Skip / cancel live updates
+    if (lower.contains('skip') ||
+        lower == 'cancel' ||
+        lower == 'exit' ||
+        lower == 'no thanks' ||
+        lower == 'not now') {
       _finishLiveUpdates(skipped: true);
+      return;
+    }
+
+    // 2. If user asked a trip / report question or wants to view report
+    if (_isTripQuery(message) ||
+        message.contains('Report') ||
+        message.contains('View Journey Report') ||
+        message.contains('Open Report')) {
+      _isCollectingLiveUpdates = false;
+      _step = _ConversationStep.postAnalysis;
+      if (message.contains('Report') ||
+          message.contains('View Journey Report') ||
+          message.contains('Open Report')) {
+        _openJourneyReport();
+      } else {
+        _handlePostAnalysisMessage(message);
+      }
       return;
     }
 
     switch (_step) {
       case _ConversationStep.liveUpdateRegion:
+        String? reg;
         if (lower.contains('mumbai')) {
-          _selectedReportRegion = 'R1';
+          reg = 'R1';
         } else if (lower.contains('panvel')) {
-          _selectedReportRegion = 'R2';
+          reg = 'R2';
         } else if (lower.contains('khalapur')) {
-          _selectedReportRegion = 'R3';
+          reg = 'R3';
         } else if (lower.contains('khopoli')) {
-          _selectedReportRegion = 'R4';
+          reg = 'R4';
         } else if (lower.contains('khandala')) {
-          _selectedReportRegion = 'R5';
+          reg = 'R5';
         } else if (lower.contains('lonavala')) {
-          _selectedReportRegion = 'R6';
+          reg = 'R6';
         } else if (lower.contains('kamshet') || lower.contains('pune')) {
-          _selectedReportRegion = 'R7';
+          reg = 'R7';
         }
 
+        if (reg == null) {
+          _addBotMessage(
+            'Please give a valid input. Which section along the Mumbai-Pune corridor are you reporting for?',
+            quickReplies: const [
+              'Mumbai to Panvel',
+              'Panvel to Khalapur',
+              'Khalapur to Khopoli',
+              'Khopoli to Khandala (Bhor Ghat)',
+              'Khandala to Lonavala',
+              'Lonavala to Kamshet',
+              'Kamshet to Pune',
+              'Skip live updates',
+            ],
+          );
+          return;
+        }
+
+        _selectedReportRegion = reg;
         _step = _ConversationStep.liveUpdateRain;
         _addBotMessage(
           'Are you experiencing rainfall along ${_corridorSegmentMap[_selectedReportRegion] ?? 'this section'}?',
@@ -1351,7 +1493,22 @@ final Map<String, dynamic> analysisData =
         break;
 
       case _ConversationStep.liveUpdateRain:
-        _rain = message.trim();
+        final validatedRain = _validateRainInput(message);
+        if (validatedRain == null) {
+          _addBotMessage(
+            'Please give a valid input. Are you experiencing rainfall along ${_corridorSegmentMap[_selectedReportRegion] ?? 'this section'}?',
+            quickReplies: const [
+              'None',
+              'Light drizzle',
+              'Moderate rain',
+              'Heavy downpour',
+              'Skip live updates',
+            ],
+          );
+          return;
+        }
+
+        _rain = validatedRain;
         _step = _ConversationStep.liveUpdateVisibility;
         _addBotMessage(
           'How is visibility along your section?',
@@ -1360,12 +1517,28 @@ final Map<String, dynamic> analysisData =
             'Moderate mist (500m - 1km)',
             'Dense fog (< 200m)',
             'Near zero visibility',
+            'Skip live updates',
           ],
         );
         break;
 
       case _ConversationStep.liveUpdateVisibility:
-        _visibility = message.trim();
+        final validatedVis = _validateVisibilityInput(message);
+        if (validatedVis == null) {
+          _addBotMessage(
+            'Please give a valid input. How is visibility along your section?',
+            quickReplies: const [
+              'Clear (> 1 km)',
+              'Moderate mist (500m - 1km)',
+              'Dense fog (< 200m)',
+              'Near zero visibility',
+              'Skip live updates',
+            ],
+          );
+          return;
+        }
+
+        _visibility = validatedVis;
         _step = _ConversationStep.liveUpdateHazards;
         _addBotMessage(
           'What is the road condition along your section?',
@@ -1376,12 +1549,30 @@ final Map<String, dynamic> analysisData =
             'Potholes',
             'Landslide / Rockfall',
             'Debris',
+            'Skip live updates',
           ],
         );
         break;
 
       case _ConversationStep.liveUpdateHazards:
-        _unusualConditions = message.trim();
+        final validatedHazards = _validateHazardsInput(message);
+        if (validatedHazards == null) {
+          _addBotMessage(
+            'Please give a valid input. What is the road condition along your section?',
+            quickReplies: const [
+              'Smooth / Dry',
+              'Wet / Slippery',
+              'Waterlogging',
+              'Potholes',
+              'Landslide / Rockfall',
+              'Debris',
+              'Skip live updates',
+            ],
+          );
+          return;
+        }
+
+        _unusualConditions = validatedHazards;
         _step = _ConversationStep.liveUpdateTraffic;
         _addBotMessage(
           'How is traffic moving along your section?',
@@ -1390,12 +1581,28 @@ final Map<String, dynamic> analysisData =
             'Moderate delay',
             'Heavy congestion',
             'Standstill',
+            'Skip live updates',
           ],
         );
         break;
 
       case _ConversationStep.liveUpdateTraffic:
-        _traffic = message.trim();
+        final validatedTraffic = _validateTrafficInput(message);
+        if (validatedTraffic == null) {
+          _addBotMessage(
+            'Please give a valid input. How is traffic moving along your section?',
+            quickReplies: const [
+              'Free flow',
+              'Moderate delay',
+              'Heavy congestion',
+              'Standstill',
+              'Skip live updates',
+            ],
+          );
+          return;
+        }
+
+        _traffic = validatedTraffic;
         _finishLiveUpdates(skipped: false);
         break;
 
@@ -1654,6 +1861,19 @@ final Map<String, dynamic> analysisData =
       return;
     }
 
+    if (!_isMeaningfulQuery(userMessage)) {
+      _addBotMessage(
+        'Please give a valid input. You can ask about road safety, traffic delays, Ghat weather, or tap an option below.',
+        quickReplies: const [
+          'Why is this score low?',
+          'Which road section needs care?',
+          'What precautions should I take?',
+          '📊 Open Report Again',
+        ],
+      );
+      return;
+    }
+
     // Check if we can answer immediately from _tripAnalysis for standard queries
     // to guarantee 100% mathematical consistency with the Journey Report.
     final String? localAnswer = _generateGroundedAnalysisAnswer(userMessage);
@@ -1897,6 +2117,10 @@ final Map<String, dynamic> analysisData =
       input,
     );
 
+    if (normalized.length < 2) {
+      return null;
+    }
+
     for (final point
         in _routePoints) {
       final String name =
@@ -1911,9 +2135,10 @@ final Map<String, dynamic> analysisData =
           normalized.contains(
             name,
           ) ||
-          name.contains(
-            normalized,
-          )) {
+          (normalized.length >= 4 &&
+              name.contains(
+                normalized,
+              ))) {
         return point;
       }
     }
@@ -2230,149 +2455,229 @@ final Map<String, dynamic> analysisData =
     return '${hour.toString().padLeft(2, '0')}:'
         '${minute.toString().padLeft(2, '0')}:00';
   }
-
   // ============================================================
-  // TRAVELER NORMALIZATION
+  // USER INPUT & QUERY VALIDATION HELPERS
   // ============================================================
 
-  String _normalizeUnusualCondition(
-    String value,
-  ) {
-    final String normalized =
-        value.toLowerCase().trim();
+  bool _isTripQuery(String text) {
+    final lower = text.toLowerCase().trim();
+    if (lower.contains('why') ||
+        lower.contains('score') ||
+        lower.contains('section') ||
+        lower.contains('road') ||
+        lower.contains('care') ||
+        lower.contains('precaution') ||
+        lower.contains('report') ||
+        lower.contains('safe') ||
+        lower.contains('delay') ||
+        lower.contains('ghat') ||
+        lower.contains('weather') ||
+        lower.contains('route') ||
+        lower.contains('advice') ||
+        lower.contains('advisory') ||
+        lower.contains('how is') ||
+        lower.contains('tell me') ||
+        lower.contains('what about') ||
+        lower.contains('what is')) {
+      return true;
+    }
+    return false;
+  }
 
-    if (normalized.contains(
-          'nothing',
-        ) ||
-        normalized == 'none') {
+  bool _isMeaningfulQuery(String text) {
+    final clean = text.trim();
+    if (clean.length < 2) return false;
+    // Pure symbols / punctuation
+    if (!RegExp(r'[a-zA-Z0-9]').hasMatch(clean)) return false;
+    // Pure digits
+    if (RegExp(r'^\d+$').hasMatch(clean)) return false;
+    // Keyboard mashing patterns
+    final lower = clean.toLowerCase();
+    if (RegExp(r'^(asdf|qwerty|zxcv|ghjk|hjkl|aaaa|bbbb|cccc|dddd|eeee|ffff|gggg|hhhh|zzzz)+$').hasMatch(lower)) {
+      return false;
+    }
+    // Repeating single character like "aaaaa" or "zzzzz"
+    if (RegExp(r'^(.)\1{3,}$').hasMatch(lower)) {
+      return false;
+    }
+    return true;
+  }
+
+  String? _validateRainInput(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower == 'none' ||
+        lower == 'no' ||
+        lower == 'no rain' ||
+        lower == 'dry' ||
+        lower == 'clear' ||
+        lower == 'nil' ||
+        lower == 'zero' ||
+        lower == 'nothing') {
       return 'None';
     }
-
-    if (normalized.contains(
-      'slippery',
-    )) {
-      return 'Slippery road';
+    if (lower.contains('drizzle') ||
+        lower.contains('light') ||
+        lower.contains('sprinkle')) {
+      return 'Light drizzle';
     }
-
-    if (normalized.contains(
-          'waterlogging',
-        ) ||
-        normalized.contains(
-          'flood',
-        )) {
-      return 'Flooding';
+    if (lower.contains('moderate') ||
+        lower.contains('medium') ||
+        lower.contains('normal rain')) {
+      return 'Moderate rain';
     }
-
-    if (normalized.contains(
-          'landslide',
-        ) ||
-        normalized.contains(
-          'rockfall',
-        ) ||
-        normalized.contains(
-          'rock fall',
-        )) {
-      return 'Landslide/Rockfall';
+    if (lower.contains('heavy') ||
+        lower.contains('downpour') ||
+        lower.contains('hard rain') ||
+        lower.contains('torrential') ||
+        lower.contains('very heavy')) {
+      return 'Heavy downpour';
     }
-
-    if (normalized.contains(
-      'fallen tree',
-    )) {
-      return 'Fallen Tree';
+    if (lower == 'rain' || lower == 'raining') {
+      return 'Moderate rain';
     }
-
-    if (normalized.contains(
-      'debris',
-    )) {
-      return 'Debris on Road';
-    }
-
-    if (normalized.contains(
-          'road damage',
-        ) ||
-        normalized.contains(
-          'damaged road',
-        )) {
-      return 'Road Damage';
-    }
-
-    if (normalized.contains(
-          'construction',
-        ) ||
-        normalized.contains(
-          'road work',
-        )) {
-      return 'Construction Activity';
-    }
-
-    if (normalized.contains(
-          'accident',
-        ) ||
-        normalized.contains(
-          'incident',
-        )) {
-      return 'Accident/Incident';
-    }
-
-    if (normalized.contains(
-          'closure',
-        ) ||
-        normalized.contains(
-          'closed',
-        )) {
-      return 'Road Closure';
-    }
-
-    return value.trim();
+    return null;
   }
 
-  String _normalizeTraffic(
-    String value,
-  ) {
-    final String normalized =
-        value.toLowerCase().trim();
-
-    if (normalized.contains(
-      'free',
-    )) {
-      return 'Free Flow';
+  String? _validateVisibilityInput(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower.contains('clear') ||
+        lower.contains('good') ||
+        lower.contains('normal') ||
+        lower.contains('high') ||
+        lower.contains('> 1') ||
+        lower.contains('1 km') ||
+        lower.contains('1km') ||
+        lower == 'fine') {
+      return 'Clear (> 1 km)';
     }
-
-    if (normalized ==
-        'light') {
-      return 'Light';
+    if (lower.contains('mist') ||
+        lower.contains('moderate') ||
+        lower.contains('haze') ||
+        lower.contains('hazy') ||
+        lower.contains('500m') ||
+        lower.contains('reduced')) {
+      return 'Moderate mist (500m - 1km)';
     }
-
-    if (normalized.contains(
-      'moderate',
-    )) {
-      return 'Moderate';
+    if (lower.contains('dense') ||
+        lower.contains('fog') ||
+        lower.contains('< 200') ||
+        lower.contains('foggy') ||
+        lower.contains('thick')) {
+      return 'Dense fog (< 200m)';
     }
-
-    if (normalized.contains(
-      'very heavy',
-    )) {
-      return 'Very Heavy';
+    if (lower.contains('zero') ||
+        lower.contains('near zero') ||
+        lower.contains('poor') ||
+        lower.contains('blind') ||
+        lower.contains('bad') ||
+        lower.contains('very low')) {
+      return 'Near zero visibility';
     }
+    return null;
+  }
 
-    if (normalized.contains(
-      'heavy',
-    )) {
-      return 'Heavy';
+  String? _validateFogInput(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower == 'none' ||
+        lower == 'no' ||
+        lower == 'clear' ||
+        lower == 'nil' ||
+        lower == 'nothing') {
+      return 'None';
     }
+    if (lower.contains('light') || lower.contains('mist') || lower.contains('slight')) {
+      return 'Light mist';
+    }
+    if (lower.contains('dense') || lower.contains('thick') || lower.contains('heavy') || lower.contains('fog')) {
+      return 'Dense fog';
+    }
+    return null;
+  }
 
-    if (normalized.contains(
-      'standstill',
-    )) {
+  String? _validateHazardsInput(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower.contains('smooth') ||
+        lower.contains('dry') ||
+        lower.contains('fine') ||
+        lower.contains('clean') ||
+        lower.contains('good') ||
+        lower.contains('normal') ||
+        lower == 'none' ||
+        lower == 'ok' ||
+        lower.contains('nothing')) {
+      return 'Smooth / Dry';
+    }
+    if (lower.contains('wet') ||
+        lower.contains('slippery') ||
+        lower.contains('skid')) {
+      return 'Wet / Slippery';
+    }
+    if (lower.contains('water') ||
+        lower.contains('waterlogging') ||
+        lower.contains('logging') ||
+        lower.contains('flood') ||
+        lower.contains('puddle')) {
+      return 'Waterlogging';
+    }
+    if (lower.contains('pothole') ||
+        lower.contains('potholes') ||
+        lower.contains('rough') ||
+        lower.contains('bump') ||
+        lower.contains('bad road')) {
+      return 'Potholes';
+    }
+    if (lower.contains('landslide') ||
+        lower.contains('rockfall') ||
+        lower.contains('rock fall') ||
+        lower.contains('mudslide') ||
+        lower.contains('slide')) {
+      return 'Landslide / Rockfall';
+    }
+    if (lower.contains('debris') ||
+        lower.contains('tree') ||
+        lower.contains('obstacle') ||
+        lower.contains('block') ||
+        lower.contains('accident')) {
+      return 'Debris';
+    }
+    return null;
+  }
+
+  String? _validateTrafficInput(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower.contains('free') ||
+        lower.contains('free flow') ||
+        lower.contains('clear') ||
+        lower.contains('smooth') ||
+        lower.contains('moving') ||
+        lower.contains('fast') ||
+        lower.contains('no traffic')) {
+      return 'Free flow';
+    }
+    if (lower.contains('moderate') ||
+        lower.contains('delay') ||
+        lower.contains('medium') ||
+        lower.contains('normal')) {
+      return 'Moderate delay';
+    }
+    if (lower.contains('heavy') ||
+        lower.contains('congestion') ||
+        lower.contains('congested') ||
+        lower.contains('jam') ||
+        lower.contains('traffic') ||
+        lower.contains('slow')) {
+      return 'Heavy congestion';
+    }
+    if (lower.contains('standstill') ||
+        lower.contains('stopped') ||
+        lower.contains('halt') ||
+        lower.contains('gridlock') ||
+        lower.contains('stuck') ||
+        lower.contains('blocked')) {
       return 'Standstill';
     }
-
-    return value.trim();
+    return null;
   }
-
-  // ============================================================
-  // ANALYSIS PROPERTY HELPERS
-  // ============================================================
 
   dynamic _readProperty(
     dynamic object,
