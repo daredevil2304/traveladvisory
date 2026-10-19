@@ -324,7 +324,7 @@ class GoogleMapsTrafficService:
             "description": f"Expressway flow is {status.lower()} with cruising speeds around {speed}.",
         }
 
-    def get_corridor_telemetry(self, force_refresh: bool = False) -> dict[str, Any]:
+    def get_corridor_telemetry(self, force_refresh: bool = False, db: Any = None) -> dict[str, Any]:
         """
         Generate complete dynamic expressway corridor telemetry for all 8 nodes,
         combining live OpenWeather data and Google Maps road traffic data.
@@ -390,28 +390,99 @@ class GoogleMapsTrafficService:
                 "desc": f"{base_desc} Current status: {traffic['status_label']}. Advised cruising speed: {traffic['speed_advice']}.",
             })
 
-        # Calculate high-level corridor metrics prioritizing Google Maps live traffic
+        # Calculate real corridor safety score matching Journey Analysis
+        # Evaluates the corridor sectors (R1 to R7) using the segment intelligence engine
+        evaluated_scores: list[float] = []
+        corridor_score = 83  # Calibrated baseline
+        try:
+            from services.segment_intelligence_service import segment_intelligence_service
+            from services.route_segment_service import get_segment_coordinates
+
+            active_db = db
+            need_close = False
+            if active_db is None:
+                from database import SessionLocal
+                active_db = SessionLocal()
+                need_close = True
+
+            try:
+                # Check for an active or recent trip analysis in the database
+                from models.trip import Trip
+                from services.timezone_service import get_ist_now
+
+                recent_trip = (
+                    active_db.query(Trip)
+                    .filter(Trip.analysis_data.isnot(None))
+                    .order_by(Trip.id.desc())
+                    .first()
+                )
+
+                found_recent = False
+                if recent_trip and recent_trip.created_at:
+                    age_sec = (get_ist_now() - recent_trip.created_at).total_seconds()
+                    # If analyzed within the last 30 minutes, sync directly with this analyzed trip
+                    if 0 <= age_sec <= 1800 and recent_trip.analysis_data:
+                        raw_trip_score = recent_trip.analysis_data.get("overall_safety_score")
+                        if raw_trip_score is not None:
+                            corridor_score = int(round(float(raw_trip_score)))
+                            found_recent = True
+
+                if not found_recent:
+                    # Evaluate the 7 expressway sectors (Mumbai -> Pune) live
+                    now_utc = datetime.now(timezone.utc)
+                    for reg_code in ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]:
+                        lat, lon = get_segment_coordinates(reg_code)
+                        seg_eval = segment_intelligence_service.evaluate_segment(
+                            db=active_db,
+                            region=reg_code,
+                            latitude=lat,
+                            longitude=lon,
+                            travel_datetime=now_utc,
+                            live_traffic=None,
+                            is_planner=False,
+                        )
+                        res = seg_eval.to_dict()
+                        score_val = res.get("safety_score_result", {}).get("safety_score")
+                        if score_val is not None:
+                            evaluated_scores.append(float(score_val))
+
+                    if evaluated_scores:
+                        corridor_score = int(round(min(evaluated_scores)))
+            finally:
+                if need_close:
+                    active_db.close()
+        except Exception as e:
+            logger.warning(f"Corridor safety score evaluation fallback: {e}")
+            if total_delay >= 20:
+                corridor_score = 68
+            elif total_delay >= 8:
+                corridor_score = 78
+            else:
+                corridor_score = 83
+
+        # Determine corridor safety badge matching Journey Analysis classifications
+        if corridor_score >= 90:
+            corridor_badge = "Optimal"
+        elif corridor_score >= 80:
+            corridor_badge = "Safe"
+        elif corridor_score >= 65:
+            corridor_badge = "Caution"
+        else:
+            corridor_badge = "High Risk"
+
         if total_delay >= 20:
-            corridor_score = 72
-            corridor_badge = "Congestion"
             traffic_summary = f"+{total_delay}m Delay"
             traffic_badge = "Heavy"
             traffic_color = "#EF4444"
         elif total_delay >= 8:
-            corridor_score = 86
-            corridor_badge = "Caution"
             traffic_summary = f"+{total_delay}m Slow"
             traffic_badge = "Caution"
             traffic_color = "#F59E0B"
         elif total_delay > 0:
-            corridor_score = 94
-            corridor_badge = "Optimal"
             traffic_summary = f"+{total_delay}m Normal"
             traffic_badge = "Fluid"
             traffic_color = "#10B981"
         else:
-            corridor_score = 98
-            corridor_badge = "Optimal"
             traffic_summary = "Free Flow"
             traffic_badge = "Fluid"
             traffic_color = "#10B981"

@@ -45,8 +45,8 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   int _selectedTabIndex = 0;
 
   // Dynamic corridor telemetry KPI state variables
-  int _corridorSafetyScore = 96;
-  String _corridorSafetyBadge = 'Optimal';
+  int _corridorSafetyScore = 83;
+  String _corridorSafetyBadge = 'Safe';
   String _ghatTemperature = '28°C';
   String _ghatCondition = 'Clear';
   String _corridorTrafficSummary = 'Free Flow';
@@ -392,7 +392,17 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       try {
         final userId = (await ApiService.getStoredUserId()) ?? 1;
         final saved = await ApiService.getSavedReports(userId: userId);
-        if (mounted) {
+        if (mounted && saved.isNotEmpty) {
+          final latest = saved.last;
+          if (latest['overall_safety_score'] != null) {
+            final s = latest['overall_safety_score'];
+            if (s is num) {
+              _corridorSafetyScore = s.toInt();
+              _corridorSafetyBadge = _corridorSafetyScore >= 90
+                  ? 'Optimal'
+                  : (_corridorSafetyScore >= 80 ? 'Safe' : 'Caution');
+            }
+          }
           setState(() {
             _savedReportsPreview = saved.reversed.take(3).toList();
           });
@@ -444,8 +454,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       final telemetry = await ApiService.getCorridorTelemetry(forceRefresh: forceRefresh);
       if (telemetry != null && mounted) {
         setState(() {
-          if (telemetry['corridor_safety_score'] is int) {
-            _corridorSafetyScore = telemetry['corridor_safety_score'] as int;
+          if (telemetry['corridor_safety_score'] != null) {
+            final rawScore = telemetry['corridor_safety_score'];
+            if (rawScore is num) {
+              _corridorSafetyScore = rawScore.toInt();
+            }
           }
           if (telemetry['corridor_safety_badge'] != null) {
             _corridorSafetyBadge = telemetry['corridor_safety_badge'].toString();
@@ -985,7 +998,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           ),
         ),
         actions: [
-          const ExpresswaySosIconButton(),
           IconButton(
             tooltip: 'App Overview & Guide',
             icon: const Icon(
@@ -2246,7 +2258,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 value: '$_corridorSafetyScore/100',
                 label: 'Corridor Safety',
                 badgeText: _corridorSafetyBadge,
-                badgeColor: _corridorSafetyScore >= 90 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                badgeColor: _corridorSafetyScore >= 85
+                    ? const Color(0xFF10B981)
+                    : (_corridorSafetyScore >= 65
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFFDC2626)),
               ),
             ),
             const SizedBox(width: 8),
