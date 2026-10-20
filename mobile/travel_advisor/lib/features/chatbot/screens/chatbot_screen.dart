@@ -1260,6 +1260,17 @@ final Map<String, dynamic> analysisData =
     _isCollectingLiveUpdates = false;
     _step = _ConversationStep.postAnalysis;
 
+    if (_role == 'traveler' && _liveUpdatesSubmitted && _tripId != null) {
+      try {
+        final dynamic fresh = await ApiService.analyzeTrip(tripId: _tripId!);
+        if (fresh != null && fresh is Map) {
+          _tripAnalysis = Map<String, dynamic>.from(fresh);
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+
     await Navigator.pushNamed(
       context,
       AppRoutes.journeyAnalysis,
@@ -1632,7 +1643,7 @@ final Map<String, dynamic> analysisData =
 
     if (_tripId != null) {
       try {
-        await ApiService.submitObservation(
+        final submitRes = await ApiService.submitObservation(
           tripId: _tripId!,
           routeRegion: _selectedReportRegion,
           latitude: _latitude,
@@ -1643,6 +1654,21 @@ final Map<String, dynamic> analysisData =
           unusualConditions: _unusualConditions,
           rawMessage: 'Section: ${_corridorSegmentMap[_selectedReportRegion] ?? _selectedReportRegion}; Rain: $_rain; Visibility: $_visibility; Road: $_unusualConditions; Traffic: $_traffic',
         );
+        final dynamic analysisPayload = submitRes['analysis'];
+        if (analysisPayload != null && analysisPayload is Map) {
+          if (mounted) {
+            setState(() {
+              _tripAnalysis = Map<String, dynamic>.from(analysisPayload);
+            });
+          }
+        } else {
+          final dynamic fresh = await ApiService.analyzeTrip(tripId: _tripId!);
+          if (fresh != null && fresh is Map && mounted) {
+            setState(() {
+              _tripAnalysis = Map<String, dynamic>.from(fresh);
+            });
+          }
+        }
       } catch (_) {}
     }
 

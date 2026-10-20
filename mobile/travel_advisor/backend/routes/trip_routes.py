@@ -558,12 +558,20 @@ def submit_trip_observation(
         extraction_confidence=1.0,
     )
 
+    # Immediately re-analyze the trip so the updated analysis incorporating
+    # this fresh observation is returned right away
+    analysis_result = trip_analysis_service.analyze_trip(
+        db=db,
+        trip_id=trip.id,
+    )
+
     return {
         "status": "success",
         "trip_id": trip_id,
         "report_id": report.id,
         "route_region": resolved_region,
         "message": "Observation recorded successfully.",
+        "analysis": analysis_result.to_dict(),
     }
 
 

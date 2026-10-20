@@ -18,6 +18,21 @@ class TravelerReportRetrievalService:
     Safety interpretation belongs to the later fusion/safety layer.
     """
 
+    @staticmethod
+    def _to_db_datetime(dt: datetime) -> datetime:
+        """
+        Normalize reference datetime to naive IST matching TravelerReport.created_at.
+        """
+        if dt.tzinfo is not None:
+            from services.timezone_service import to_ist
+            return to_ist(dt).replace(tzinfo=None)
+        from services.timezone_service import get_ist_now
+        ist_now = get_ist_now()
+        diff = (ist_now - dt).total_seconds()
+        if 18000 <= diff <= 21600:
+            return dt + timedelta(hours=5, minutes=30)
+        return dt
+
     def get_recent_reports(
         self,
         db: Session,
@@ -49,17 +64,16 @@ class TravelerReportRetrievalService:
 
         normalized_region = self._normalize_region(region)
 
-        start_datetime = (
-            reference_datetime
-            - timedelta(hours=lookback_hours)
-        )
+        ref_dt = self._to_db_datetime(reference_datetime)
+        start_datetime = ref_dt - timedelta(hours=lookback_hours)
+        end_datetime = ref_dt + timedelta(minutes=5)
 
         statement = (
             select(TravelerReport)
             .where(
                 TravelerReport.route_region == normalized_region,
                 TravelerReport.created_at >= start_datetime,
-                TravelerReport.created_at <= reference_datetime,
+                TravelerReport.created_at <= end_datetime,
             )
             .order_by(
                 TravelerReport.created_at.desc()
@@ -120,14 +134,16 @@ class TravelerReportRetrievalService:
         if not results:
             return results
 
-        start_datetime = reference_datetime - timedelta(hours=lookback_hours)
+        ref_dt = self._to_db_datetime(reference_datetime)
+        start_datetime = ref_dt - timedelta(hours=lookback_hours)
+        end_datetime = ref_dt + timedelta(minutes=5)
 
         statement = (
             select(TravelerReport)
             .where(
                 TravelerReport.route_region.in_(list(results.keys())),
                 TravelerReport.created_at >= start_datetime,
-                TravelerReport.created_at <= reference_datetime,
+                TravelerReport.created_at <= end_datetime,
             )
             .order_by(
                 TravelerReport.created_at.desc()
@@ -144,33 +160,36 @@ class TravelerReportRetrievalService:
 
     def serialize_report(
         self,
-        report: TravelerReport,
+        report: Any,
     ) -> dict:
         """
-        Convert a database report into a JSON-safe dictionary.
+        Convert a database report or dict into a JSON-safe dictionary.
 
         The stored normalized_data is preserved as-is because the
         later fusion layer may need the normalized observations.
         """
+        if isinstance(report, dict):
+            return report
 
+        created = getattr(report, "created_at", None)
         return {
-            "id": report.id,
-            "user_id": report.user_id,
-            "trip_id": report.trip_id,
-            "latitude": report.latitude,
-            "longitude": report.longitude,
-            "route_region": report.route_region,
-            "raw_message": report.raw_message,
-            "rain": report.rain,
-            "visibility": report.visibility,
-            "fog": report.fog,
-            "unusual_conditions": report.unusual_conditions,
-            "traffic": report.traffic,
-            "normalized_data": report.normalized_data,
-            "extraction_confidence": report.extraction_confidence,
+            "id": getattr(report, "id", None),
+            "user_id": getattr(report, "user_id", None),
+            "trip_id": getattr(report, "trip_id", None),
+            "latitude": getattr(report, "latitude", None),
+            "longitude": getattr(report, "longitude", None),
+            "route_region": getattr(report, "route_region", None),
+            "raw_message": getattr(report, "raw_message", None),
+            "rain": getattr(report, "rain", None),
+            "visibility": getattr(report, "visibility", None),
+            "fog": getattr(report, "fog", None),
+            "unusual_conditions": getattr(report, "unusual_conditions", None),
+            "traffic": getattr(report, "traffic", None),
+            "normalized_data": getattr(report, "normalized_data", None),
+            "extraction_confidence": getattr(report, "extraction_confidence", None),
             "created_at": (
-                report.created_at.isoformat()
-                if report.created_at
+                created.isoformat()
+                if created and hasattr(created, "isoformat")
                 else None
             ),
         }

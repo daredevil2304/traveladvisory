@@ -109,11 +109,11 @@ class SafetyScoreService:
     #   ML Model                = 10% (Reduced on highway sections)
     # -------------------------------------------------------------
     TRAVELER_SOURCE_WEIGHTS = {
-        "weather": 0.40,
-        "traffic": 0.25,
-        "terrain": 0.15,
+        "weather": 0.35,
+        "traffic": 0.20,
+        "traveler": 0.25,
+        "terrain": 0.10,
         "ml": 0.10,
-        "traveler": 0.10,
     }
 
     # -------------------------------------------------------------
@@ -146,11 +146,11 @@ class SafetyScoreService:
     }
 
     TRAVELER_GHAT_SOURCE_WEIGHTS = {
-        "ml": 0.35,
         "weather": 0.25,
+        "traveler": 0.25,
         "terrain": 0.20,
+        "ml": 0.20,
         "traffic": 0.10,
-        "traveler": 0.10,
     }
 
     SOURCE_WEIGHTS = TRAVELER_SOURCE_WEIGHTS
@@ -161,24 +161,43 @@ class SafetyScoreService:
 
     RAIN_SCORES = {
         "no rain": 100.0,
+        "none": 100.0,
+        "nil": 100.0,
+        "zero": 100.0,
+        "no": 100.0,
+        "dry": 100.0,
+        "clear": 100.0,
         "drizzle": 95.0,
+        "light drizzle": 95.0,
         "light rain": 85.0,
         "moderate rain": 70.0,
         "heavy rain": 45.0,
+        "heavy downpour": 35.0,
+        "downpour": 35.0,
         "very heavy rain": 20.0,
     }
 
     VISIBILITY_SCORES = {
         "very clear": 100.0,
-        "clear": 95.0,
+        "clear": 100.0,
+        "clear (> 1 km)": 100.0,
+        "clear (>1 km)": 100.0,
+        "good": 100.0,
         "slightly reduced": 85.0,
+        "moderate mist (500m - 1km)": 75.0,
+        "moderate mist": 75.0,
         "moderately reduced": 70.0,
         "poor": 45.0,
+        "dense fog (< 200m)": 40.0,
+        "dense fog": 40.0,
         "very poor": 20.0,
+        "near zero visibility": 15.0,
     }
 
     FOG_SCORES = {
         "none": 100.0,
+        "no fog": 100.0,
+        "clear": 100.0,
         "light mist": 90.0,
         "moderate mist": 75.0,
         "dense fog": 40.0,
@@ -191,30 +210,45 @@ class SafetyScoreService:
 
     UNUSUAL_CONDITION_SCORES = {
         "none": 100.0,
+        "nothing": 100.0,
+        "nothing unusual": 100.0,
+        "smooth / dry": 100.0,
+        "smooth/dry": 100.0,
+        "smooth": 100.0,
+        "dry": 100.0,
+        "clear": 100.0,
+        "good": 100.0,
+        "normal": 100.0,
+        "safe": 100.0,
         "slippery_road": 65.0,
         "slippery road": 65.0,
-        "debris on road": 45.0,
-        "debris_on_road": 45.0,
+        "wet / slippery": 65.0,
+        "wet/slippery": 65.0,
+        "potholes": 55.0,
         "road damage": 50.0,
         "road_damage": 50.0,
+        "debris on road": 45.0,
+        "debris_on_road": 45.0,
+        "debris": 45.0,
+        "water_runoff": 45.0,
+        "water runoff": 45.0,
         "construction activity": 70.0,
         "construction_activity": 70.0,
         "fallen tree": 40.0,
         "fallen_tree": 40.0,
         "accident/incident": 40.0,
         "accident_incident": 40.0,
+        "waterlogging": 30.0,
         "landslide/rockfall": 25.0,
         "landslide_rockfall": 25.0,
+        "landslide / rockfall": 25.0,
         "mud_rockfall_alert": 25.0,
         "mud/rockfall alert": 25.0,
-        "flooding": 20.0,
-        "waterlogging": 30.0,
-        "severe_waterlogging": 20.0,
-        "severe waterlogging": 20.0,
         "aquaplaning_risk": 25.0,
         "aquaplaning risk": 25.0,
-        "water_runoff": 45.0,
-        "water runoff": 45.0,
+        "flooding": 20.0,
+        "severe_waterlogging": 20.0,
+        "severe waterlogging": 20.0,
         "wet_surface": 65.0,
         "wet surface": 65.0,
         "road closure": 0.0,
@@ -336,13 +370,26 @@ class SafetyScoreService:
             weights=active_weights,
         )
 
-        # 4. Critical Hazard Floor Override
+        # 4. Critical Hazard Floor Override & Live Traveler Safe Verification
         # If an active catastrophic hazard is reported (road closure, severe landslide, flooding),
         # cap the segment score at that hazard's floor so high scores elsewhere cannot mask it.
         if traveler_dimensions.get("unusual_conditions") is not None:
             unusual_val = traveler_dimensions["unusual_conditions"]
             if unusual_val < 35.0 and safety_score is not None:
                 safety_score = min(safety_score, unusual_val)
+
+        # Ground-truth traveler safe verification:
+        # If a traveler on the road confirms that conditions are safe (roads smooth/dry,
+        # visibility clear, no rain, and free flow traffic), honor this real-world human ground truth
+        # so the segment safety score remains safe (at least 92.0) and never shows false caution.
+        is_traveler_safe = (
+            traveler_score is not None
+            and traveler_score >= 95.0
+            and (traffic_score is None or traffic_score >= 85.0)
+            and (weather_score is None or weather_score >= 85.0)
+        )
+        if not is_planner and is_traveler_safe and safety_score is not None:
+            safety_score = max(safety_score, 92.0)
 
         # 5. Generate human-readable reasons
         if is_planner:
@@ -440,13 +487,27 @@ class SafetyScoreService:
             if isinstance(fog, str) and fog.casefold() not in {"none"}:
                 risk_factors.append(f"Fog hazard: {fog} reported on stretch.")
 
+        SAFE_ROAD_CONDITIONS = {
+            "none", "nothing", "nothing unusual", "smooth", "dry", "smooth / dry",
+            "smooth/dry", "clear", "good", "normal", "fine", "ok", "safe"
+        }
         if isinstance(traveler_result, dict):
             unusual = traveler_result.get("unusual_conditions")
-            if isinstance(unusual, str) and unusual.casefold() not in {"none", "nothing unusual"}:
+            if (
+                isinstance(unusual, str)
+                and unusual.strip()
+                and unusual.casefold() not in SAFE_ROAD_CONDITIONS
+                and not any(s in unusual.casefold() for s in ["smooth", "dry", "clear", "normal", "good", "safe"])
+            ):
                 risk_factors.append(f"Road hazard: {unusual}.")
 
-        # Traffic delay / bottleneck risk
-        if not is_planner and isinstance(traffic_result, dict):
+        # Traffic delay / bottleneck risk (suppressed if traveler confirmed free flow)
+        user_traffic = traveler_result.get("traffic") if isinstance(traveler_result, dict) else None
+        is_user_free_flow = isinstance(user_traffic, str) and any(
+            w in user_traffic.casefold() for w in ["free", "smooth", "clear", "fast", "no traffic"]
+        )
+
+        if not is_planner and isinstance(traffic_result, dict) and not is_user_free_flow:
             delay = traffic_result.get("delay_minutes", 0)
             congestion = str(traffic_result.get("congestion_level", "")).lower()
             status_lbl = traffic_result.get("status_label", "")
@@ -456,8 +517,8 @@ class SafetyScoreService:
                     f"Traffic bottleneck: {status_lbl} (~{delay}m delay, speed {speed_adv})."
                 )
 
-        # Inherent steep terrain or night driving risks (only flagged as risk factors when overall safety is degraded < 85)
-        if terrain_reasons and (safety_score is None or safety_score < 85.0):
+        # Inherent steep terrain or night driving risks (strictly suppressed if score is safe >= 85 or traveler confirmed safe)
+        if terrain_reasons and not is_traveler_safe and (safety_score is None or safety_score < 85.0):
             for tr in terrain_reasons:
                 tr_lower = tr.lower()
                 if "steep bhor ghat" in tr_lower:
@@ -950,9 +1011,15 @@ class SafetyScoreService:
 
         # 3. Fuse Google Maps and User Report with Ground-Truth Protection
         if google_maps_score is not None and user_traffic_score is not None:
-            # If user report sharply conflicts with Google Maps (e.g. discrepancy > 30 pts),
-            # give overwhelming preference (92%) to Google Maps to guard against false reports
-            if abs(google_maps_score - user_traffic_score) > 30.0:
+            # If Google Maps is synthetic fallback and user reported live on road, prioritize user ground truth
+            is_fallback = isinstance(traffic_result, dict) and traffic_result.get("source") == "corridor_radar"
+            if is_fallback and user_traffic_score >= 95.0:
+                fused_score = user_traffic_score
+                if isinstance(traffic_result, dict):
+                    traffic_result["status_label"] = "Free Flow (Live Confirmed)"
+                    traffic_result["delay_minutes"] = 0
+                    traffic_result["congestion_level"] = "free_flow"
+            elif abs(google_maps_score - user_traffic_score) > 30.0:
                 fused_score = (
                     0.92 * google_maps_score
                     + 0.08 * user_traffic_score
@@ -1202,13 +1269,16 @@ class SafetyScoreService:
 
         if isinstance(traveler_result, dict):
             unusual = traveler_result.get("unusual_conditions")
-            if isinstance(unusual, str) and unusual.casefold() not in {
-                "none",
-                "nothing unusual",
-            }:
-                reasons.append(
-                    f"Traveler reports indicate {unusual}."
-                )
+            if isinstance(unusual, str) and unusual.strip():
+                u_lower = unusual.casefold()
+                if any(s in u_lower for s in ["smooth", "dry", "clear", "good", "safe"]):
+                    reasons.append(
+                        "Traveler reports confirm smooth and dry road conditions."
+                    )
+                elif u_lower not in {"none", "nothing", "nothing unusual"}:
+                    reasons.append(
+                        f"Traveler reports indicate {unusual}."
+                    )
 
             visibility = traveler_result.get("visibility")
             if isinstance(visibility, str) and visibility.casefold() in {
@@ -1295,9 +1365,14 @@ class SafetyScoreService:
             .casefold()
         )
 
-        return mapping.get(
-            normalized
-        )
+        if normalized in mapping:
+            return mapping[normalized]
+
+        for k, v in mapping.items():
+            if k == normalized or k in normalized or normalized in k:
+                return v
+
+        return None
 
     @staticmethod
     def _numeric_0_100(

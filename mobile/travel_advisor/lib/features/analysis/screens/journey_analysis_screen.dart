@@ -136,12 +136,22 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       final rawScore = segment['safety_score'];
       final double scoreVal = (rawScore is num) ? rawScore.toDouble() : 100.0;
       if (scoreVal < 80.0) return true;
-      // High-safety segments (>= 80) are safe to travel and must never be shown as caution areas unless active hazard exists
+      // High-safety segments (>= 80) are safe to travel and must never be shown as caution areas unless active critical hazard exists
       final reasonsRaw = segment['reasons'];
       if (reasonsRaw is List) {
         for (final r in reasonsRaw) {
           final s = r.toString().toLowerCase();
-          if (s.contains('rain') || s.contains('fog') || s.contains('delay') || s.contains('bottleneck') || s.contains('hazard') || s.contains('standstill')) {
+          if (s.contains('no rain') || s.contains('no delay') || s.contains('no delays') || s.contains('optimal') || s.contains('smooth') || s.contains('dry') || s.contains('clear') || s.contains('safe') || s.contains('normal flow') || s.contains('free flow')) {
+            continue;
+          }
+          if ((s.contains('rain') && !s.contains('no rain')) ||
+              (s.contains('fog') && !s.contains('no fog')) ||
+              (s.contains('delay') && !s.contains('no delay')) ||
+              s.contains('bottleneck') ||
+              (s.contains('hazard') && !s.contains('no hazard')) ||
+              s.contains('standstill') ||
+              s.contains('landslide') ||
+              s.contains('flooding')) {
             return true;
           }
         }
@@ -1088,7 +1098,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       isRain = hasRainCond || hasRainMm;
       if (isRain) {
         precipitationStr = hasRainMm ? '${rainMm.toStringAsFixed(1)} mm Rain' : (weather['rain_condition'] ?? weather['rain'] ?? 'Rain Expected').toString();
-        roadGripStr = 'Wet Roads Caution';
+        roadGripStr = 'Damp Road Surface';
       } else {
         precipitationStr = 'No Rain Forecast';
         roadGripStr = 'Dry Road Surface';
@@ -1147,24 +1157,31 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
               !s.contains('no delays reported') &&
               !s.contains('advance planning mode') &&
               !s.contains('corridor geometry') &&
-              !s.contains('terrain geometry');
+              !s.contains('terrain geometry') &&
+              !s.contains('smooth') &&
+              !s.contains('dry') &&
+              !s.contains('free flow') &&
+              !s.contains('normal flow') &&
+              !s.contains('no rain') &&
+              !s.contains('no delay') &&
+              !s.contains('safe');
         })
         .toList();
 
     // Human-readable condition & safety assessment ("Why is the score this?")
     String conditionAssessment;
     final int sVal = score ?? 90;
-    if (sVal >= 85) {
+    if (sVal >= 80) {
       if (isNight) {
         conditionAssessment = 'Route is safe for night travel ($sVal/100). Clear roads and fluid traffic flow. Maintain standard night driving vigilance.';
       } else {
         conditionAssessment = 'Route is clear and safe to travel ($sVal/100). Smooth road conditions, good visibility, and fluid traffic flow.';
       }
-    } else if (sVal >= 70) {
+    } else if (sVal >= 65) {
       if (isRain) {
         conditionAssessment = 'Moderate conditions ($sVal/100). Rain reported ($precipitationStr). Maintain safe following distance on damp roads.';
       } else if (isNight) {
-        conditionAssessment = 'Moderate night caution ($sVal/100). Low lighting and darkness on unlit stretches. Use high beam with care.';
+        conditionAssessment = 'Night driving ($sVal/100). Low lighting and darkness on unlit stretches. Use high beam with care.';
       } else if (visKm != null && visKm < 5.0) {
         conditionAssessment = 'Moderate conditions ($sVal/100). Reduced atmospheric visibility ($visibilityStr). Use low-beam headlamps.';
       } else {
@@ -1720,8 +1737,8 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                         ),
                       ),
 
-                      // Active Hazards Warning (if any)
-                      if (cleanRisks.isNotEmpty) ...[
+                      // Active Hazards Warning (strictly genuine hazards when conditions are degraded < 80)
+                      if (cleanRisks.isNotEmpty && sVal < 80) ...[
                         const SizedBox(height: 8),
                         Container(
                           width: double.infinity,
