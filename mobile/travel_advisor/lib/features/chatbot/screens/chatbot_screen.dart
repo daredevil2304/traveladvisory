@@ -3668,6 +3668,156 @@ List<String> _stringList(
   // QUICK REPLIES
   // ============================================================
 
+  static _QuickReplyStyle _getQuickReplyStyle(String reply) {
+    final lower = reply.toLowerCase().trim();
+
+    // 1. Skip / Cancel / Change options -> Slate Neutral
+    if (lower.contains('skip') ||
+        lower.contains('change start') ||
+        lower.contains('change source') ||
+        lower == 'cancel' ||
+        lower == 'exit') {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFF1F5F9), // Slate 100
+        border: Color(0xFFCBD5E1), // Slate 300
+        text: Color(0xFF475569), // Slate 600
+        dot: Color(0xFF94A3B8), // Slate 400
+      );
+    }
+
+    // 2. Report actions & Precaution tips -> Brand Blue
+    if (reply.contains('Report') ||
+        lower.contains('open report') ||
+        lower.contains('view full') ||
+        lower.contains('precaution') ||
+        lower.contains('tip') ||
+        lower.contains('calendar') ||
+        lower.contains('clock') ||
+        lower.contains('analyze route')) {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFEFF6FF), // Blue 50
+        border: Color(0xFF93C5FD), // Blue 300
+        text: Color(0xFF1D4ED8), // Blue 700
+        dot: Color(0xFF2563EB), // Blue 600
+      );
+    }
+
+    // 3. SEVERE / HIGH RISK (RED)
+    // Rain: Heavy downpour
+    // Visibility: Near zero visibility, Poor
+    // Road: Landslide / Rockfall, Waterlogging, Flooding, Road Closure
+    // Traffic: Standstill
+    final bool isHighRisk = lower.contains('heavy downpour') ||
+        lower.contains('torrential') ||
+        lower.contains('near zero') ||
+        lower == 'poor' ||
+        lower.contains('landslide') ||
+        lower.contains('rockfall') ||
+        lower.contains('waterlogging') ||
+        lower.contains('flood') ||
+        lower.contains('standstill') ||
+        lower.contains('closure');
+
+    if (isHighRisk) {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFFEF2F2), // Red 50
+        border: Color(0xFFF87171), // Red 400
+        text: Color(0xFF991B1B), // Red 800
+        dot: Color(0xFFDC2626), // Red 600
+      );
+    }
+
+    // 4. MODERATE / ELEVATED RISK (ORANGE)
+    // Rain: Moderate rain
+    // Visibility: Dense fog (< 200m), Dense fog, Moderately reduced
+    // Road: Potholes, Debris, Construction, Damage
+    // Traffic: Heavy congestion, Heavy
+    final bool isModerateRisk = lower == 'moderate rain' ||
+        (lower.contains('moderate') && lower.contains('rain')) ||
+        lower.contains('dense fog') ||
+        lower.contains('dense') ||
+        lower.contains('moderately reduced') ||
+        lower.contains('pothole') ||
+        lower.contains('debris') ||
+        lower.contains('construction') ||
+        lower.contains('damage') ||
+        lower.contains('heavy congestion') ||
+        (lower.contains('heavy') && !lower.contains('downpour'));
+
+    if (isModerateRisk) {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFFFF7ED), // Orange 50
+        border: Color(0xFFFB923C), // Orange 400
+        text: Color(0xFF9A3412), // Orange 800
+        dot: Color(0xFFEA580C), // Orange 600
+      );
+    }
+
+    // 5. LOW RISK / CAUTION (AMBER / YELLOW)
+    // Rain: Light drizzle
+    // Visibility: Moderate mist (500m - 1km), Light mist, Slightly reduced
+    // Road: Wet / Slippery, Slippery road
+    // Traffic: Moderate delay, Moderate
+    // Questions: Why is this score low?, Which road section needs care?
+    final bool isLowRisk = lower.contains('light drizzle') ||
+        lower.contains('drizzle') ||
+        lower.contains('mist') ||
+        lower.contains('slightly reduced') ||
+        lower.contains('slippery') ||
+        lower.contains('wet') ||
+        lower.contains('moderate delay') ||
+        (lower.contains('moderate') && !lower.contains('rain') && !lower.contains('fog')) ||
+        lower.contains('care') ||
+        lower.contains('why is this score low') ||
+        lower.contains('why the score is low') ||
+        (lower.contains('low') && !lower.contains('flow'));
+
+    if (isLowRisk) {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFFFFBEB), // Amber 50
+        border: Color(0xFFFBBF24), // Amber 400
+        text: Color(0xFF92400E), // Amber 800
+        dot: Color(0xFFD97706), // Amber 600
+      );
+    }
+
+    // 6. SAFE / MINIMAL RISK / POSITIVE (GREEN)
+    // Rain: None
+    // Visibility: Clear (> 1 km), Clear
+    // Road: Smooth / Dry, Nothing unusual
+    // Traffic: Free flow
+    // Affirmative: Yes, start here, Yes, Same Day, Tomorrow
+    final bool isSafe = lower == 'none' ||
+        lower.contains('no rain') ||
+        lower.contains('clear') ||
+        lower.contains('good') ||
+        lower.contains('dry') ||
+        lower.contains('smooth') ||
+        lower.contains('nothing unusual') ||
+        lower.contains('free flow') ||
+        lower.contains('free') ||
+        lower.contains('yes') ||
+        lower == 'same day' ||
+        lower == 'tomorrow';
+
+    if (isSafe) {
+      return const _QuickReplyStyle(
+        bg: Color(0xFFECFDF5), // Emerald 50
+        border: Color(0xFF34D399), // Emerald 400
+        text: Color(0xFF065F46), // Emerald 800
+        dot: Color(0xFF059669), // Emerald 600
+      );
+    }
+
+    // 7. Default fallback (e.g. city names, corridor segments) -> Soft Slate
+    return const _QuickReplyStyle(
+      bg: Color(0xFFF8FAFC),
+      border: Color(0xFFCBD5E1),
+      text: Color(0xFF1E293B),
+      dot: Color(0xFF64748B),
+    );
+  }
+
   Widget _buildQuickReplies(
     List<String> replies,
   ) {
@@ -3678,54 +3828,7 @@ List<String> _stringList(
         runSpacing: 8,
         children: replies.map(
           (reply) {
-            final lower = reply.toLowerCase();
-            final isReport = reply.contains('Report');
-            final isSafe = lower.contains('free') ||
-                lower.contains('clear') ||
-                lower.contains('good') ||
-                lower.contains('dry') ||
-                lower.contains('smooth');
-            final isWarning = !isSafe &&
-                (lower.contains('attention') ||
-                    lower.contains('care') ||
-                    lower.contains('heavy') ||
-                    lower.contains('slow') ||
-                    lower.contains('jam') ||
-                    lower.contains('rain') ||
-                    lower.contains('wet') ||
-                    lower.contains('fog') ||
-                    lower.contains('low score') ||
-                    lower.contains('why the score is low') ||
-                    (lower.contains('low') && !lower.contains('flow')));
-            final isTip = lower.contains('precaution') || lower.contains('tip');
-            final isCalendar =
-                reply.contains('Calendar') || reply.contains('Clock');
-
-            Color bg = const Color(0xFFF8FAFC);
-            Color border = const Color(0xFFCBD5E1);
-            Color text = const Color(0xFF1E293B);
-
-            if (isSafe) {
-              bg = const Color(0xFFECFDF5);
-              border = const Color(0xFFA7F3D0);
-              text = const Color(0xFF047857);
-            } else if (isReport) {
-              bg = const Color(0xFFEFF6FF);
-              border = const Color(0xFF93C5FD);
-              text = const Color(0xFF1D4ED8);
-            } else if (isWarning) {
-              bg = const Color(0xFFFFFBEB);
-              border = const Color(0xFFFDE68A);
-              text = const Color(0xFFB45309);
-            } else if (isTip) {
-              bg = const Color(0xFFF0F9FF);
-              border = const Color(0xFFBAE6FD);
-              text = const Color(0xFF0284C7);
-            } else if (isCalendar) {
-              bg = const Color(0xFFEFF6FF);
-              border = const Color(0xFFBFDBFE);
-              text = const Color(0xFF1D4ED8);
-            }
+            final style = _getQuickReplyStyle(reply);
 
             return Material(
               color: Colors.transparent,
@@ -3738,9 +3841,9 @@ List<String> _stringList(
                     vertical: 9,
                   ),
                   decoration: BoxDecoration(
-                    color: bg,
+                    color: style.bg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: border, width: 1.2),
+                    border: Border.all(color: style.border, width: 1.3),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x080F172A),
@@ -3749,13 +3852,29 @@ List<String> _stringList(
                       ),
                     ],
                   ),
-                  child: Text(
-                    reply,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: text,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (style.dot != null) ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: style.dot,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                      ],
+                      Text(
+                        reply,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: style.text,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -4035,6 +4154,24 @@ enum _ConversationStep {
 // ============================================================
 // CHAT MESSAGE
 // ============================================================
+
+// ============================================================
+// QUICK REPLY STYLE
+// ============================================================
+
+class _QuickReplyStyle {
+  final Color bg;
+  final Color border;
+  final Color text;
+  final Color? dot;
+
+  const _QuickReplyStyle({
+    required this.bg,
+    required this.border,
+    required this.text,
+    this.dot,
+  });
+}
 
 class _ChatMessage {
   final String text;
