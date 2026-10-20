@@ -203,7 +203,7 @@ class TripAnalysisService:
         travel_dt = trip.travel_datetime or datetime.now(timezone.utc)
         ist_travel_dt = to_ist(travel_dt)
         ist_hour = ist_travel_dt.hour
-        is_night_travel = (ist_hour >= 22 or ist_hour <= 5)
+        is_night_travel = (ist_hour >= 19 or ist_hour < 6)
 
         # Batch fetch all recent traveler reports in a single query across segments
         reports_by_region: dict[str, list[Any]] = {}
@@ -357,20 +357,27 @@ class TripAnalysisService:
                 end_name=end_name,
             )
         else:
-            if reg_code == "R4":  # Khopoli to Khandala (Steepest Bhor Ghat incline)
-                t_score = 90.0
-            elif reg_code == "R5":  # Khandala to Lonavala (Crest transition)
-                t_score = 94.0
-            elif reg_code == "R3":  # Khalapur to Khopoli (Ghat foothills)
+            if reg_code in ("R4", "R5"):  # Bhor Ghat mountain pass & crest
+                t_score = 90.0 if reg_code == "R4" else 94.0
+                if is_night_travel:
+                    t_score -= 15.0  # Drops to 75 / 79 for night mountain curves & low lighting
+                    seg_terrain_reasons.append(
+                        f"Night mountain driving ({ist_hour:02d}:00 IST): Low lighting, darkness and sharp hairpin turns."
+                    )
+            elif reg_code in ("R3", "R6"):  # Foothills & descending plateau
                 t_score = 97.0
-            else:
+                if is_night_travel:
+                    t_score -= 8.0  # Drops to 89
+                    seg_terrain_reasons.append(
+                        f"Night highway approach ({ist_hour:02d}:00 IST): Darkness on unlit stretches approaching Ghat."
+                    )
+            else:  # R1, R2, R7 plain expressway
                 t_score = 100.0
-
-            if is_night_travel:
-                t_score -= 5.0
-                seg_terrain_reasons.append(
-                    f"Night departure window ({ist_hour:02d}:00 IST): Reduced ambient lighting on unlit sections."
-                )
+                if is_night_travel:
+                    t_score -= 6.0  # Drops to 94
+                    seg_terrain_reasons.append(
+                        f"Night travel window ({ist_hour:02d}:00 IST): Darkness on unlit stretches and headlight glare."
+                    )
 
             seg_terrain_score = max(0.0, min(100.0, t_score))
 
@@ -636,13 +643,14 @@ class TripAnalysisService:
                 )
             ]
 
-            # If score is safe (>= 85) and there are no active severe risks, do NOT watch out for it
-            if score_val >= 85.0 and not clean_risks:
+            # Only flag as caution area if score < 80.0 OR active critical hazards exist
+            # If route is safe without problems (score >= 80.0 and no active hazards), keep it safe!
+            if score_val >= 80.0 and not clean_risks:
                 continue
 
-            # If score is below 85 but clean_risks is empty, give a clean risk explanation
+            # If score is below 80 but clean_risks is empty, give a clean simple reason
             if not clean_risks:
-                clean_risks = [f"Reduced safety margin: composite sector score is {round(score_val)}/100."]
+                clean_risks = [f"Moderate caution advised on this stretch ({round(score_val)}/100)."]
 
             reg_display = SEGMENT_NAME_MAP.get(str(region).upper(), region)
             problematic.append(

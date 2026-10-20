@@ -130,13 +130,23 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     final List<dynamic> rawProblematic =
         (problematicSegmentsRaw is List) ? problematicSegmentsRaw : [];
 
-    // Only segments with low safety scores (< 85) belong in "Regions to Watch Out For"
+    // Only segments with genuine hazards or low safety scores (< 80) belong in "Caution Areas"
     final List<dynamic> problematicSegments = rawProblematic.where((segment) {
       if (segment is! Map) return false;
       final rawScore = segment['safety_score'];
       final double scoreVal = (rawScore is num) ? rawScore.toDouble() : 100.0;
-      // High-safety segments (>= 85) are safe to travel and must never be shown as danger watch-outs
-      return scoreVal < 85.0;
+      if (scoreVal < 80.0) return true;
+      // High-safety segments (>= 80) are safe to travel and must never be shown as caution areas unless active hazard exists
+      final reasonsRaw = segment['reasons'];
+      if (reasonsRaw is List) {
+        for (final r in reasonsRaw) {
+          final s = r.toString().toLowerCase();
+          if (s.contains('rain') || s.contains('fog') || s.contains('delay') || s.contains('bottleneck') || s.contains('hazard') || s.contains('standstill')) {
+            return true;
+          }
+        }
+      }
+      return false;
     }).toList();
 
     final segmentResultsRaw = analysis['segment_results'];
@@ -391,11 +401,11 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
               const SizedBox(height: 32),
 
-              // PROBLEMATIC REGIONS SECTION
+              // CAUTION AREAS SECTION
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Regions to Watch Out For',
+                  'Caution Areas',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -426,13 +436,27 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                                   Icon(Icons.check_circle_rounded, color: AppTheme.forestGreen, size: 28),
                                   SizedBox(width: 16),
                                   Expanded(
-                                    child: Text(
-                                      'All regions along your corridor appear secure with no major hazards.',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.forestGreen,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'All Route Areas Clear',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppTheme.forestGreen,
+                                          ),
+                                        ),
+                                        SizedBox(height: 3),
+                                        Text(
+                                          'No caution areas detected on this route. Road conditions and traffic are safe.',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.forestGreen,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -811,7 +835,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     }
   }
 
-  String _getSectorAdvisory(String code, {bool isRain = false}) {
+  String _getSectorAdvisory(String code, {bool isRain = false, bool isNight = false}) {
     String base;
     switch (code) {
       case 'R1':
@@ -843,7 +867,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     }
 
     if (isRain) {
-      base += ' [WET SURFACE ADVISORY: Reduced pavement grip. Reduce cruising speed by 15-20 km/h and double braking distance.]';
+      base += ' [WET SURFACE ADVISORY: Reduced road grip. Reduce cruising speed by 15-20 km/h and double braking distance.]';
+    } else if (isNight) {
+      base += ' [NIGHT TRAVEL ADVISORY: Reduced ambient lighting. Keep headlights on high-beam on unlit stretches and maintain safe following gap.]';
     }
     return base;
   }
@@ -874,8 +900,8 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         })
         .toList();
 
-    if (reasons.isEmpty && score != null && score < 85) {
-      reasons.add('Reduced safety margin on this stretch ($score/100). Exercise caution.');
+    if (reasons.isEmpty && score != null && score < 80) {
+      reasons.add('Moderate caution advised on this stretch ($score/100).');
     }
 
     return Container(
@@ -1048,20 +1074,46 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       if (rm != null && rm is num) {
         rainMm = rm.toDouble();
       }
-      final rc = weather['rain_condition']?.toString() ?? weather['rain']?.toString();
-      isRain = (rainMm != null && rainMm > 0) || (rc != null && rc.toLowerCase() != 'no rain' && rc.toLowerCase() != 'none');
+      final rawRc = (weather['rain_condition'] ?? weather['rain'])?.toString().trim().toLowerCase();
+      final bool hasRainCond = rawRc != null &&
+          rawRc.isNotEmpty &&
+          rawRc != 'no rain' &&
+          rawRc != 'none' &&
+          rawRc != 'clear' &&
+          rawRc != 'nil' &&
+          rawRc != '0' &&
+          rawRc != 'dry' &&
+          (rawRc.contains('rain') || rawRc.contains('drizzle') || rawRc.contains('shower') || rawRc.contains('storm') || rawRc.contains('monsoon'));
+      final bool hasRainMm = rainMm != null && rainMm > 0.0;
+      isRain = hasRainCond || hasRainMm;
       if (isRain) {
-        precipitationStr = (rainMm != null && rainMm > 0) ? '${rainMm.toStringAsFixed(1)} mm Rain' : (rc ?? 'Rain Expected');
-        roadGripStr = 'Wet Surface Caution';
+        precipitationStr = hasRainMm ? '${rainMm.toStringAsFixed(1)} mm Rain' : (weather['rain_condition'] ?? weather['rain'] ?? 'Rain Expected').toString();
+        roadGripStr = 'Wet Roads Caution';
       } else {
         precipitationStr = 'No Rain Forecast';
-        roadGripStr = 'Dry Pavement';
+        roadGripStr = 'Dry Road Surface';
       }
 
       final ws = weather['wind_speed_kmh'];
       if (ws != null && ws is num) {
         windKmh = ws.toDouble();
       }
+    }
+
+    // Detect night travel (19:00 to 06:00 IST)
+    bool isNight = false;
+    if (isPlanner && travelTime != null && travelTime.isNotEmpty) {
+      final hourMatch = RegExp(r'(\d{1,2})').firstMatch(travelTime);
+      if (hourMatch != null) {
+        int hr = int.tryParse(hourMatch.group(1) ?? '12') ?? 12;
+        final tLower = travelTime.toLowerCase();
+        if (tLower.contains('pm') && hr < 12) hr += 12;
+        if (tLower.contains('am') && hr == 12) hr = 0;
+        isNight = (hr >= 19 || hr < 6);
+      }
+    } else {
+      final nowHr = DateTime.now().hour;
+      isNight = (nowHr >= 19 || nowHr < 6);
     }
 
     // Traffic Telemetry (Traveler mode)
@@ -1102,33 +1154,33 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     // Human-readable condition & safety assessment ("Why is the score this?")
     String conditionAssessment;
     final int sVal = score ?? 90;
-    if (isPlanner) {
-      if (sVal >= 95) {
-        conditionAssessment = 'Optimal conditions predicted. Atmospheric visibility is clear ($visibilityStr), road surfaces will be dry, and forecast models project fluid transit throughout this corridor.';
-      } else if (sVal >= 85) {
-        conditionAssessment = 'Favorable travel conditions ($sVal/100). Standard highway speeds with normal regional terrain and calm atmospheric outlook.';
-      } else if (sVal >= 70) {
-        if (isRain) {
-          conditionAssessment = 'Caution advised ($sVal/100). Predicted precipitation ($precipitationStr) creates wet pavement. Expect reduced traction and reduce cruising speeds.';
-        } else if (visKm != null && visKm < 5.0) {
-          conditionAssessment = 'Caution advised ($sVal/100). Reduced atmospheric visibility ($visibilityStr) forecast. Use low-beam headlamps and maintain safe following distance.';
-        } else {
-          conditionAssessment = 'Moderate caution advised ($sVal/100). Localized atmospheric variations forecast for this scheduled departure.';
-        }
+    if (sVal >= 85) {
+      if (isNight) {
+        conditionAssessment = 'Route is safe for night travel ($sVal/100). Clear roads and fluid traffic flow. Maintain standard night driving vigilance.';
       } else {
-        conditionAssessment = 'Adverse conditions predicted ($sVal/100). Noticeable weather or roadway hazards expected. Consider adjusting planned departure window.';
+        conditionAssessment = 'Route is clear and safe to travel ($sVal/100). Smooth road conditions, good visibility, and fluid traffic flow.';
+      }
+    } else if (sVal >= 70) {
+      if (isRain) {
+        conditionAssessment = 'Moderate conditions ($sVal/100). Rain reported ($precipitationStr). Maintain safe following distance on damp roads.';
+      } else if (isNight) {
+        conditionAssessment = 'Moderate night caution ($sVal/100). Low lighting and darkness on unlit stretches. Use high beam with care.';
+      } else if (visKm != null && visKm < 5.0) {
+        conditionAssessment = 'Moderate conditions ($sVal/100). Reduced atmospheric visibility ($visibilityStr). Use low-beam headlamps.';
+      } else {
+        conditionAssessment = 'Moderate conditions ($sVal/100). Standard highway movement with normal precautions.';
       }
     } else {
-      if (sVal >= 95) {
-        conditionAssessment = 'Clear route conditions. Fluid traffic flow, dry pavement, and unrestricted cruising speeds.';
-      } else if (sVal >= 85) {
-        conditionAssessment = 'Good travel conditions ($sVal/100). Normal traffic movement with standard mountain or urban expressway flow.';
+      if (isRain) {
+        conditionAssessment = 'Caution advised ($sVal/100). Heavy rainfall and wet road surface. Reduce cruising speed.';
+      } else if (isNight) {
+        conditionAssessment = 'Caution advised ($sVal/100). Low visibility and darkness on unlit stretches. Drive slowly.';
       } else {
-        conditionAssessment = 'Caution advised ($sVal/100). Live traffic delays or degraded road surface reported on this stretch.';
+        conditionAssessment = 'Caution advised ($sVal/100). Notable traffic delays or road hazards reported.';
       }
     }
 
-    final sectorAdvisory = _getSectorAdvisory(regCode, isRain: isRain);
+    final sectorAdvisory = _getSectorAdvisory(regCode, isRain: isRain, isNight: isNight);
 
     // Safe Speed Advisory
     final safeSpeedAdv = segment['safe_speed_advisory'];
@@ -1729,16 +1781,16 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
   String _getRiskLabel(int score) {
     if (score < 45) return 'High Risk';
-    if (score < 65) return 'Caution';
-    if (score < 85) return 'Moderate';
+    if (score < 70) return 'Caution';
+    if (score < 85) return 'Safe';
     return 'Optimal';
   }
 
   String _getOverallVerdict(int score) {
     if (score < 45) return 'Hazardous conditions detected. Caution strongly advised.';
-    if (score < 65) return 'Moderate adverse weather or traffic. Drive with extra care.';
-    if (score < 85) return 'Generally clear corridor conditions with standard precautions.';
-    return 'Optimal travel conditions along the expressway corridor.';
+    if (score < 70) return 'Moderate adverse weather or traffic. Drive with extra care.';
+    if (score < 85) return 'Safe highway conditions with standard travel precautions.';
+    return 'Optimal travel conditions with clear roads and fluid traffic flow.';
   }
 
   // ============================================================

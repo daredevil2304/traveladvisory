@@ -453,17 +453,32 @@ Answer the user's question using the backend context below.
 
         msg_lower = message.lower()
         if "score" in msg_lower or "why" in msg_lower or "low" in msg_lower:
+            if score >= 85:
+                return (
+                    f"Your journey from {src} to {dst} is safe to travel with an optimal Safety Score of {score}/100. "
+                    f"The route has clear weather, smooth roads, and fluid traffic flow throughout the corridor."
+                )
             ans = f"Your journey from {src} to {dst} has an overall Safety Score of {score}/100. "
             if reasons:
-                ans += f"Key factors affecting the score: {'; '.join(str(r) for r in reasons[:3])}."
+                ans += f"Key factors affecting the score: {'; '.join(str(r) for r in reasons[:2])}."
             else:
                 ans += "Corridor road conditions are generally stable with standard expressway precautions."
             return ans
 
-        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower or "care" in msg_lower or "attention" in msg_lower:
-            if problematic:
+        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower or "care" in msg_lower or "attention" in msg_lower or "caution" in msg_lower:
+            genuine_problematic = [
+                p for p in problematic
+                if isinstance(p, dict) and (
+                    (p.get("safety_score") is not None and float(p.get("safety_score")) < 80.0)
+                    or any(
+                        r for r in (p.get("reasons") or [])
+                        if any(hz in str(r).lower() for hz in ("rain", "fog", "delay", "hazard", "congestion", "unlit", "night"))
+                    )
+                )
+            ]
+            if genuine_problematic:
                 names = []
-                for p in problematic[:3]:
+                for p in genuine_problematic[:3]:
                     d = p.get("segment_details") or {}
                     s_val = p.get("safety_score")
                     s_str = f"{int(round(float(s_val)))}/100" if s_val is not None else "caution"
@@ -471,29 +486,8 @@ Answer the user's question using the backend context below.
                         names.append(f"{d['start']} to {d['end']} (Safety Score: {s_str})")
                     else:
                         names.append(str(p.get("region", "Corridor section")))
-                return f"Sections requiring closer attention along your route: {'; '.join(names)}."
-            elif segment_results:
-                sorted_segs = []
-                from services.trip_analysis_service import SEGMENT_NAME_MAP
-                for s in segment_results:
-                    if not isinstance(s, dict):
-                        continue
-                    si = s.get("safety_score_result") or {}
-                    raw_s = si.get("safety_score") or si.get("score") or s.get("safety_score")
-                    if raw_s is not None:
-                        sorted_segs.append((int(round(float(raw_s))), s))
-                sorted_segs.sort(key=lambda x: x[0])
-                if sorted_segs:
-                    lowest_items = []
-                    for s_val, s_obj in sorted_segs[:2]:
-                        d = s_obj.get("segment_details") or {}
-                        st = d.get("start")
-                        en = d.get("end")
-                        reg = s_obj.get("region", "")
-                        lbl = f"{st} to {en}" if (st and en) else SEGMENT_NAME_MAP.get(str(reg).upper(), reg)
-                        lowest_items.append(f"{lbl} (Safety Score: {s_val}/100)")
-                    return f"The sections that require the most attention along your corridor are: {', '.join(lowest_items)}. Overall highway conditions remain stable."
-            return f"All expressway segments between {src} and {dst} are clear with normal driving conditions."
+                return f"Sections requiring caution along your route: {'; '.join(names)}."
+            return f"All route sections between {src} and {dst} are clear and safe. There are no caution areas on your route."
 
         if "precaution" in msg_lower or "tip" in msg_lower or "advice" in msg_lower:
             if precautions:

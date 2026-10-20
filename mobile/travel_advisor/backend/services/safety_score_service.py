@@ -109,10 +109,11 @@ class SafetyScoreService:
     #   ML Model                = 10% (Reduced on highway sections)
     # -------------------------------------------------------------
     TRAVELER_SOURCE_WEIGHTS = {
-        "weather": 0.50,
-        "traffic": 0.30,
-        "traveler": 0.10,
+        "weather": 0.40,
+        "traffic": 0.25,
+        "terrain": 0.15,
         "ml": 0.10,
+        "traveler": 0.10,
     }
 
     # -------------------------------------------------------------
@@ -145,9 +146,10 @@ class SafetyScoreService:
     }
 
     TRAVELER_GHAT_SOURCE_WEIGHTS = {
-        "ml": 0.40,
-        "weather": 0.30,
-        "traffic": 0.20,
+        "ml": 0.35,
+        "weather": 0.25,
+        "terrain": 0.20,
+        "traffic": 0.10,
         "traveler": 0.10,
     }
 
@@ -295,8 +297,12 @@ class SafetyScoreService:
                 traveler_result=traveler_result,
             )
             traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
-            terrain_val = None
-            terrain_dims = {}
+            if terrain_score is not None:
+                terrain_val, terrain_dims = self._calculate_terrain_score(terrain_score)
+                dimension_scores.update(terrain_dims)
+            else:
+                terrain_val = None
+                terrain_dims = {}
             dimension_scores.update(traveler_dimensions)
             dimension_scores.update(traffic_dimensions)
 
@@ -305,6 +311,7 @@ class SafetyScoreService:
                 "weather": weather_score,
                 "traffic": traffic_score,
                 "traveler": traveler_score,
+                "terrain": terrain_val,
             }
 
         if ml_score is not None:
@@ -391,6 +398,8 @@ class SafetyScoreService:
                 traveler_result=traveler_result,
                 dimension_scores=dimension_scores,
             )
+            if terrain_reasons:
+                reasons.extend(terrain_reasons)
 
             # Append Traffic reason (Traveler mode)
             if isinstance(traffic_result, dict):
@@ -453,7 +462,7 @@ class SafetyScoreService:
                 tr_lower = tr.lower()
                 if "steep bhor ghat" in tr_lower:
                     risk_factors.append("Steep mountain gradient: low gear and truck clearance advised.")
-                elif "night travel window" in tr_lower:
+                elif "night" in tr_lower:
                     risk_factors.append("Night driving: reduced ambient visibility on unlit expressway sections.")
 
         # 7. Confidence
@@ -1155,7 +1164,7 @@ class SafetyScoreService:
                     else ""
                 )
                 reasons.append(
-                    f"Weather indicates {rain}{rain_detail}. Reduce speed for wet asphalt."
+                    f"Weather indicates {rain}{rain_detail}. Reduce speed on wet roads."
                 )
 
             visibility = weather_result.get("visibility") or weather_result.get("visibility_condition")
@@ -1218,7 +1227,7 @@ class SafetyScoreService:
                 "standstill",
             }:
                 reasons.append(
-                    f"Traffic condition '{traffic}' reported by travelers (calibrated at secondary 20% weight against Google Maps 80%)."
+                    f"Traffic condition '{traffic}' reported by travelers."
                 )
 
         # ---------------------------------------------------------

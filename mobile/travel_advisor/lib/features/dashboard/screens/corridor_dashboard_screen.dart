@@ -72,7 +72,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       'status': 'Expressway Entry',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '80-100 km/h',
-      'desc': 'NE-1 Expressway entry & Kalamboli junction. 6 wide asphalt lanes open.',
+      'desc': 'NE-1 Expressway entry & Kalamboli junction. 6 wide lanes open.',
     },
     {
       'name': 'Khalapur',
@@ -108,7 +108,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       'status': 'Plateau Section',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '70-80 km/h',
-      'desc': 'Khandala viaduct & tunnel bypasses. Smooth asphalt surface and clear conditions.',
+      'desc': 'Khandala viaduct & tunnel bypasses. Smooth road surface and clear conditions.',
     },
     {
       'name': 'Kamshet',

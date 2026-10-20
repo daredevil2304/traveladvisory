@@ -44,7 +44,7 @@ class DepartureOptimizerService:
         """
         slot_ist = to_ist(slot_time)
         ist_hour = slot_ist.hour
-        is_night = (ist_hour >= 22 or ist_hour <= 5)
+        is_night = (ist_hour >= 19 or ist_hour < 6)
 
         segment_scores: list[float] = []
         weakest_reasons: list[str] = []
@@ -74,6 +74,17 @@ class DepartureOptimizerService:
                             )
                             seg_traffic["traffic_score"] = proj_traffic_score
 
+                t_score = 90.0 if reg_code == "R4" else (94.0 if reg_code == "R5" else (97.0 if reg_code in ("R3", "R6") else 100.0))
+                t_reasons = []
+                if is_night:
+                    if reg_code in ("R4", "R5"):
+                        t_score -= 15.0
+                    elif reg_code in ("R3", "R6"):
+                        t_score -= 8.0
+                    else:
+                        t_score -= 6.0
+                    t_reasons.append(f"Night window ({ist_hour:02d}:00): Low lighting and darkness on unlit stretches")
+
                 try:
                     seg_eval = segment_intelligence_service.evaluate_segment(
                         db=None,
@@ -83,6 +94,8 @@ class DepartureOptimizerService:
                         travel_datetime=slot_time,
                         live_traffic=seg_traffic,
                         is_planner=False,
+                        terrain_score=t_score,
+                        terrain_reasons=t_reasons,
                         prefetched_reports=[],
                     )
                     score_val = seg_eval.safety_score_result.get("safety_score")
@@ -98,20 +111,23 @@ class DepartureOptimizerService:
 
             else:
                 # Planner mode
-                # Inherent terrain geometry baseline
-                if reg_code == "R4":
-                    t_score = 90.0
-                elif reg_code == "R5":
-                    t_score = 94.0
-                elif reg_code == "R3":
+                # Inherent terrain geometry baseline & night impact
+                if reg_code in ("R4", "R5"):
+                    t_score = 90.0 if reg_code == "R4" else 94.0
+                    if is_night:
+                        t_score -= 15.0
+                elif reg_code in ("R3", "R6"):
                     t_score = 97.0
+                    if is_night:
+                        t_score -= 8.0
                 else:
                     t_score = 100.0
+                    if is_night:
+                        t_score -= 6.0
 
                 t_reasons = []
                 if is_night:
-                    t_score -= 5.0
-                    t_reasons.append(f"Night window ({ist_hour:02d}:00): Reduced ambient lighting")
+                    t_reasons.append(f"Night window ({ist_hour:02d}:00): Low lighting and darkness on unlit stretches")
 
                 try:
                     seg_eval = segment_intelligence_service.evaluate_segment(

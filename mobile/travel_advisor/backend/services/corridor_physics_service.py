@@ -120,66 +120,85 @@ class CorridorPhysicsService:
         d_brake = v^2 / [2 * g * (mu * cos(theta) - sin(theta))]
 
         Friction (mu):
-          - Dry asphalt: ~0.80
+          - Dry roads: ~0.80
           - Drizzle / damp: ~0.55
           - Moderate rain: ~0.40
-          - Heavy rain / standing water: ~0.25 (high aquaplaning danger)
+          - Heavy rain / standing water: ~0.25 (high skidding danger)
         """
         reg = region.upper()
         statutory = self.STATUTORY_SPEED_LIMITS.get(reg, 80)
         is_ghat = reg in ("R4", "R5")
 
-        rain_cond = (
+        raw_rain = (
             (weather_data.get("rain_condition") or weather_data.get("rain") or "")
-        ).lower() if weather_data else ""
+        ).lower().strip() if weather_data else ""
+        rain_mm = weather_data.get("rainfall_mm") if weather_data else None
         vis_km = weather_data.get("visibility_km") if weather_data else None
         fog_cond = (
             (weather_data.get("fog_condition") or weather_data.get("fog") or "")
-        ).lower() if weather_data else ""
+        ).lower().strip() if weather_data else ""
+
+        # Strictly verify genuine rain conditions (avoid false triggers on "no rain", "none", etc.)
+        is_real_rain = False
+        if raw_rain and raw_rain not in ("no rain", "none", "clear", "nil", "0", "false"):
+            if any(w in raw_rain for w in ("heavy", "moderate", "drizzle", "shower", "thunderstorm", "monsoon")):
+                is_real_rain = True
+            elif "rain" in raw_rain and "no rain" not in raw_rain:
+                is_real_rain = True
+
+        if rain_mm is not None and rain_mm > 0.0:
+            is_real_rain = True
 
         reduction_kmh = 0
         reasons: list[str] = []
 
         # 1. Road Surface Friction Degradation
-        if "heavy" in rain_cond:
-            reduction_kmh += int(statutory * 0.40)  # -40%
-            reasons.append("Standing water aquaplaning hazard (-40% braking friction)")
-        elif "moderate" in rain_cond or "rain" in rain_cond:
-            reduction_kmh += int(statutory * 0.25)  # -25%
-            reasons.append("Wet asphalt with reduced tire grip")
-        elif "drizzle" in rain_cond:
-            reduction_kmh += int(statutory * 0.15)  # -15%
-            reasons.append("Damp road surface caution")
+        if is_real_rain:
+            if "heavy" in raw_rain or (rain_mm is not None and rain_mm >= 15.0):
+                reduction_kmh += int(statutory * 0.35)  # -35%
+                reasons.append("Heavy rain: Standing water and high skidding risk. Drive slowly.")
+            elif "moderate" in raw_rain or (rain_mm is not None and rain_mm >= 3.0):
+                reduction_kmh += int(statutory * 0.20)  # -20%
+                reasons.append("Wet road surface from rain: Reduced tire grip. Keep safe following distance.")
+            else:
+                reduction_kmh += int(statutory * 0.10)  # -10%
+                reasons.append("Damp road surface from light rain: Drive with care.")
 
         # 2. Visibility / Fog Constraints
-        if vis_km is not None and vis_km < 1.0 or "dense" in fog_cond:
+        if (vis_km is not None and vis_km < 1.0) or ("dense" in fog_cond):
             reduction_kmh += int(statutory * 0.30)
-            reasons.append("Severely restricted visibility (<1 km) in Ghat mist")
-        elif vis_km is not None and vis_km < 3.0 or "mist" in fog_cond:
+            reasons.append("Dense fog (<1 km visibility): Turn on fog lamps and reduce speed.")
+        elif (vis_km is not None and vis_km < 3.0) or ("mist" in fog_cond):
             reduction_kmh += int(statutory * 0.15)
-            reasons.append("Moderate mist: reduced headlight sight distance")
+            reasons.append("Morning mist: Reduced sight distance. Use low-beam headlights.")
 
         # 3. Mountain Incline & Hairpin Gradient (Ghats)
         if is_ghat:
-            if "rain" in rain_cond:
-                # Downhill momentum on 6% grade severely degrades stopping distance
+            if is_real_rain:
                 reduction_kmh += 10
-                reasons.append("Steep 6% downhill grade: low gear required to prevent brake fade")
-            else:
-                reasons.append("Curved mountain hairpin pass: 50 km/h statutory maximum")
+                reasons.append("Steep mountain descent with wet roads: Use lower gears to avoid brake fading.")
+            elif not is_night and reduction_kmh == 0:
+                reasons.append("Mountain pass: Maintain steady 50 km/h speed around sharp curves.")
 
-        # 4. Night Driving Adjustment
-        if is_night and statutory > 60:
-            reduction_kmh += 10
-            reasons.append("Unlit highway section: sight distance limited to high-beam radius")
+        # 4. Night Driving Adjustment (Darkness & Low Lighting)
+        if is_night:
+            if is_ghat:
+                reduction_kmh += 10
+                reasons.append("Night driving in Ghats: Poor lighting and sharp turns. Drive under 40 km/h.")
+            elif statutory >= 80:
+                reduction_kmh += 10
+                reasons.append("Night driving: Darkness on unlit stretches. Maintain extra following distance.")
 
         recommended = max(35 if is_ghat else 50, statutory - reduction_kmh)
 
         status = "NORMAL"
-        if recommended <= statutory - 20 or (is_ghat and recommended <= 40):
+        if recommended <= statutory - 20 or (is_ghat and recommended <= 35):
             status = "CRITICAL_CAUTION"
         elif recommended < statutory:
             status = "ADVISORY_REDUCED"
+
+        # Provide a clean, natural reason when highway is clear and conditions are normal
+        final_reasons = reasons if reasons else ["Clear weather and dry, smooth roads. Normal cruising speed recommended."]
 
         return {
             "statutory_speed_kmh": statutory,
@@ -187,7 +206,7 @@ class CorridorPhysicsService:
             "speed_reduction_kmh": statutory - recommended,
             "status": status,
             "is_ghat_section": is_ghat,
-            "advisory_reasons": reasons if reasons else ["Clear dry highway: maintain statutory speed."],
+            "advisory_reasons": final_reasons,
         }
 
     def get_elevation_profile(self) -> list[dict[str, Any]]:
