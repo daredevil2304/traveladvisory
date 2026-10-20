@@ -929,21 +929,27 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 },
               ),
               const SizedBox(width: 4),
-              // Compact "Call Now" action pill
-              ElevatedButton.icon(
+              // Compact "Call" action pill without awkward gap before label
+              ElevatedButton(
                 onPressed: () => _makeCall(title, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPrimary ? const Color(0xFFDC2626) : const Color(0xFF1D4ED8),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   minimumSize: const Size(0, 32),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.call_rounded, size: 12),
-                label: const Text(
-                  'Call Now',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.call_rounded, size: 13),
+                    SizedBox(width: 4),
+                    Text(
+                      'Call',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1116,7 +1122,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 },
               ),
               const SizedBox(width: 4),
-              ElevatedButton.icon(
+              ElevatedButton(
                 onPressed: () => _makeCall(name, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDC2626),
@@ -1126,8 +1132,14 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.call_rounded, size: 12),
-                label: const Text('Call', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.call_rounded, size: 12),
+                    SizedBox(width: 4),
+                    Text('Call', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  ],
+                ),
               ),
             ],
           ),
