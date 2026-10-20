@@ -7,6 +7,7 @@ import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/commute_habit_service.dart';
 import '../../location/services/location_service.dart';
+import '../widgets/robot_chatbot_icon.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -3545,8 +3546,7 @@ List<String> _stringList(
               color: const Color(0xFFEFF6FF),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(
-              Icons.smart_toy_rounded,
+            child: const RobotChatbotIcon(
               size: 12,
               color: Color(0xFF2563EB),
             ),
@@ -4001,11 +4001,19 @@ Widget build(
               decoration: BoxDecoration(
                 color: const Color(0xFF1D4ED8),
                 borderRadius: BorderRadius.circular(13),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x471D4ED8),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.smart_toy_rounded,
-                color: AppTheme.white,
-                size: 22,
+              child: const Center(
+                child: RobotChatbotIcon(
+                  size: 24,
+                  color: AppTheme.white,
+                ),
               ),
             ),
             const SizedBox(
