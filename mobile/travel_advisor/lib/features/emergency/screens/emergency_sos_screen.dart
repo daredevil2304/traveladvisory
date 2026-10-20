@@ -422,7 +422,13 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
     sb.writeln('🚨 MUMBAI-PUNE EXPRESSWAY EMERGENCY');
     sb.writeln('Corridor: Mumbai-Pune Expressway (NH-48)');
     if (_nearestLandmark != null) {
-      sb.writeln('📍 Current Location: Near $_nearestLandmark (~${_nearestChainageKm}km)');
+      if (_distanceToLandmarkKm != null) {
+        sb.writeln('📍 Current Location: Near $_nearestLandmark (${_distanceToLandmarkKm!.toStringAsFixed(1)} km away)');
+      } else if (_nearestChainageKm != null && _nearestChainageKm! > 0) {
+        sb.writeln('📍 Current Location: Near $_nearestLandmark (Km $_nearestChainageKm)');
+      } else {
+        sb.writeln('📍 Current Location: Near $_nearestLandmark');
+      }
     }
     if (_currentPosition != null) {
       sb.writeln(
@@ -827,7 +833,11 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                       if (_currentPosition != null) ...[
                         Text(
                           _nearestLandmark != null
-                              ? '📍 Near $_nearestLandmark (~${_nearestChainageKm}km${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)}km away' : ''})'
+                              ? (_distanceToLandmarkKm != null
+                                  ? '📍 Near $_nearestLandmark (${_distanceToLandmarkKm!.toStringAsFixed(1)} km away)'
+                                  : (_nearestChainageKm != null && _nearestChainageKm! > 0
+                                      ? '📍 Near $_nearestLandmark (Km $_nearestChainageKm)'
+                                      : '📍 Near $_nearestLandmark'))
                               : '📍 Mumbai-Pune Expressway Corridor',
                           style: const TextStyle(
                             fontSize: 14,
