@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/commute_habit_service.dart';
 
-/// Clean, modern, and uncluttered Daily Commute Setup & Proactive Alerts screen.
+/// Clean, simple, and intuitive Daily Travel Alerts screen.
+/// Designed with easy English so any commuter, cab driver, or elder can use it effortlessly.
 class CommuteAlertsScreen extends StatefulWidget {
   const CommuteAlertsScreen({super.key});
 
@@ -134,7 +135,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Commute schedule saved! Alerts will arrive 15 mins prior.'),
+          content: Text('Daily travel alerts saved! You will receive updates 15 mins before leaving.'),
           backgroundColor: Color(0xFF1D4ED8),
           behavior: SnackBarBehavior.floating,
         ),
@@ -162,14 +163,14 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     });
   }
 
-  void _toggleDay(String dayCode) {
+  void _toggleDay(String code) {
     setState(() {
-      if (_selectedDays.contains(dayCode)) {
+      if (_selectedDays.contains(code)) {
         if (_selectedDays.length > 1) {
-          _selectedDays.remove(dayCode);
+          _selectedDays.remove(code);
         }
       } else {
-        _selectedDays.add(dayCode);
+        _selectedDays.add(code);
       }
     });
   }
@@ -178,10 +179,16 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _depTime,
-      builder: (ctx, child) {
-        return MediaQuery(
-          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
-          child: child ?? const SizedBox.shrink(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1D4ED8),
+              onPrimary: Colors.white,
+              onSurface: AppTheme.darkNavy,
+            ),
+          ),
+          child: child!,
         );
       },
     );
@@ -189,10 +196,10 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     if (picked != null) {
       setState(() {
         _depTime = picked;
-        int depMin = picked.hour * 60 + picked.minute;
-        int alertMin = depMin - 15;
-        if (alertMin < 0) alertMin += 1440;
-        _alertTime = TimeOfDay(hour: alertMin ~/ 60, minute: alertMin % 60);
+        // Auto-calculate alert notice 15 minutes before
+        final totalMin = picked.hour * 60 + picked.minute;
+        final alertTotal = (totalMin - 15) % 1440;
+        _alertTime = TimeOfDay(hour: (alertTotal ~/ 60), minute: (alertTotal % 60));
       });
     }
   }
@@ -201,10 +208,16 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _alertTime,
-      builder: (ctx, child) {
-        return MediaQuery(
-          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
-          child: child ?? const SizedBox.shrink(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF059669),
+              onPrimary: Colors.white,
+              onSurface: AppTheme.darkNavy,
+            ),
+          ),
+          child: child!,
         );
       },
     );
@@ -217,22 +230,18 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   }
 
   String _getDaysSummaryText() {
-    if (_selectedDays.length == 7) {
-      return 'Everyday (Monday to Sunday)';
-    }
+    if (_selectedDays.length == 7) return 'Alerts will arrive everyday before departure';
     if (_selectedDays.length == 5 &&
         !_selectedDays.contains('Sat') &&
         !_selectedDays.contains('Sun')) {
-      return 'Weekdays (Monday to Friday)';
+      return 'Alerts will arrive on weekdays (Monday to Friday)';
     }
     if (_selectedDays.length == 2 &&
         _selectedDays.contains('Sat') &&
         _selectedDays.contains('Sun')) {
-      return 'Weekends (Saturday & Sunday)';
+      return 'Alerts will arrive on weekends (Saturday & Sunday)';
     }
-    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final sorted = order.where((d) => _selectedDays.contains(d)).toList();
-    return sorted.join(', ');
+    return 'Alerts active on ${_selectedDays.length} selected days';
   }
 
   @override
@@ -250,7 +259,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Daily Commute Setup',
+              'Daily Travel Alerts',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -258,7 +267,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
               ),
             ),
             Text(
-              'Proactive corridor departure alerts',
+              'Automatic road & weather alerts before you leave',
               style: TextStyle(
                 fontSize: 11.5,
                 color: Color(0xFF64748B),
@@ -282,27 +291,27 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                // 1. LIVE ROUTE ASSESSMENT / STATUS
+                // 1. TODAY'S ROAD STATUS
                 _buildLiveStatusCard(),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // 2. ROUTE CORRIDOR SELECTION
+                // 2. YOUR TRAVEL ROUTE
                 _buildRouteSection(),
 
                 const SizedBox(height: 16),
 
-                // 3. DEPARTURE & ALERT TIME
+                // 3. TRAVEL TIMINGS
                 _buildTimeSection(),
 
                 const SizedBox(height: 16),
 
-                // 4. ACTIVE COMMUTE DAYS
+                // 4. DAYS YOU TRAVEL
                 _buildDaysSection(),
 
                 const SizedBox(height: 16),
 
-                // 5. PROACTIVE NOTIFICATIONS TOGGLE
+                // 5. AUTOMATIC NOTIFICATIONS TOGGLE
                 _buildNotificationToggleCard(),
 
                 const SizedBox(height: 24),
@@ -315,7 +324,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   }
 
   // ============================================================
-  // CLEAN SECTIONS
+  // CLEAN & SIMPLE WIDGETS
   // ============================================================
 
   Widget _buildLiveStatusCard() {
@@ -324,32 +333,32 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
       builder: (context, alert, child) {
         if (alert == null) {
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFA7F3D0)),
             ),
             child: Row(
               children: [
                 const Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 22),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Corridor Safe • $_source ➔ $_destination',
+                        'Expressway is Clear • $_source ➔ $_destination',
                         style: const TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF065F46),
                         ),
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'No severe hazards reported on the expressway.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF047857)),
+                        'No road closures, bad weather, or heavy delays reported.',
+                        style: TextStyle(fontSize: 11.5, color: Color(0xFF047857)),
                       ),
                     ],
                   ),
@@ -369,17 +378,17 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.2),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 10,
+                color: Color(0x06000000),
+                blurRadius: 6,
                 offset: Offset(0, 2),
               ),
             ],
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -404,7 +413,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   Text(
                     '$_source ➔ $_destination',
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF64748B),
                     ),
@@ -412,20 +421,20 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                 ],
               ),
               if (warnings.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 for (final w in warnings.take(2))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.only(bottom: 3),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 15, color: accentColor),
+                        Icon(Icons.info_outline_rounded, size: 14, color: accentColor),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             w.toString(),
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: AppTheme.darkNavy,
                               fontWeight: FontWeight.w500,
                             ),
@@ -446,23 +455,23 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'TRAVEL CORRIDOR',
+            'YOUR TRAVEL ROUTE',
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF475569),
               letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               // Origin
@@ -471,21 +480,21 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _source,
                       isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
                       items: _corridorPoints.map((pt) {
                         return DropdownMenuItem(
                           value: pt,
                           child: Text(
                             pt,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.darkNavy,
                             ),
@@ -507,7 +516,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   onTap: _swapDirection,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(7),
                     decoration: const BoxDecoration(
                       color: Color(0xFFEFF6FF),
                       shape: BoxShape.circle,
@@ -527,21 +536,21 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _destination,
                       isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
                       items: _corridorPoints.map((pt) {
                         return DropdownMenuItem(
                           value: pt,
                           child: Text(
                             pt,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.darkNavy,
                             ),
@@ -569,12 +578,12 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         Expanded(
           child: InkWell(
             onTap: _pickDepartureTime,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
@@ -583,7 +592,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   const Row(
                     children: [
                       Icon(Icons.access_time_filled_rounded, size: 14, color: Color(0xFF1D4ED8)),
-                      SizedBox(width: 6),
+                      SizedBox(width: 5),
                       Text(
                         'DEPARTURE TIME',
                         style: TextStyle(
@@ -595,18 +604,18 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     CommuteHabitService.formatTime12h(_depTime),
                     style: const TextStyle(
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.darkNavy,
                     ),
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Tap to adjust',
+                    'Tap to set time',
                     style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                   ),
                 ],
@@ -615,18 +624,18 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
         // Alert Notice Time Card
         Expanded(
           child: InkWell(
             onTap: _pickAlertTime,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
@@ -635,7 +644,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   const Row(
                     children: [
                       Icon(Icons.notifications_active_rounded, size: 14, color: Color(0xFF059669)),
-                      SizedBox(width: 6),
+                      SizedBox(width: 5),
                       Text(
                         'ALERT NOTICE',
                         style: TextStyle(
@@ -647,18 +656,18 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     CommuteHabitService.formatTime12h(_alertTime),
                     style: const TextStyle(
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.darkNavy,
                     ),
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    '15 min prior notice',
+                    '15 min prior alert',
                     style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -674,21 +683,21 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               const Text(
-                'ACTIVE COMMUTE DAYS',
+                'DAYS YOU TRAVEL',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF475569),
                   letterSpacing: 0.8,
                 ),
               ),
@@ -696,27 +705,27 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
               Text(
                 '${_selectedDays.length} days active',
                 style: const TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1D4ED8),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Preset Chips Row
           Row(
             children: [
-              _buildPresetChip('Weekdays', 'weekdays'),
-              const SizedBox(width: 8),
+              _buildPresetChip('Weekdays (Mon-Fri)', 'weekdays'),
+              const SizedBox(width: 6),
               _buildPresetChip('Everyday', 'daily'),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               _buildPresetChip('Weekends', 'weekends'),
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // 7-Day Circular Buttons
           Row(
@@ -727,8 +736,8 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                 onTap: () => _toggleDay(day.code),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFF1F5F9),
@@ -740,7 +749,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                   child: Text(
                     day.initial,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                       color: isSelected ? Colors.white : const Color(0xFF64748B),
                     ),
@@ -750,10 +759,10 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
             }).toList(),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             _getDaysSummaryText(),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -776,12 +785,12 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
 
     return InkWell(
       onTap: () => _setPresetDays(presetKey),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
           ),
@@ -789,7 +798,7 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF64748B),
           ),
@@ -802,42 +811,42 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: const BoxDecoration(
               color: Color(0xFFEFF6FF),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.notifications_active_rounded,
-              size: 20,
+              size: 18,
               color: Color(0xFF1D4ED8),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Daily Commute Alerts',
+                  'Send Departure Alerts',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.darkNavy,
                   ),
                 ),
-                SizedBox(height: 2),
+                SizedBox(height: 1),
                 Text(
-                  'Evaluates fog, rain & traffic before departure',
+                  'Checks rain, fog, and road conditions before you travel',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 11,
                     color: Color(0xFF64748B),
                   ),
                 ),
@@ -861,40 +870,40 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: 48,
           child: ElevatedButton(
             onPressed: _isSaving ? null : _saveSchedule,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1D4ED8),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
             child: _isSaving
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
                 : const Text(
-                    'Save Commute Schedule',
+                    'Save Travel Alert Settings',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           child: TextButton.icon(
             onPressed: () async {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Evaluating corridor alert for your route...'),
+                  content: Text('Checking road conditions for your route...'),
                   duration: Duration(seconds: 1),
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -916,11 +925,11 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
                 );
               }
             },
-            icon: const Icon(Icons.notifications_active_outlined, size: 16, color: Color(0xFF64748B)),
+            icon: const Icon(Icons.notifications_active_outlined, size: 15, color: Color(0xFF64748B)),
             label: const Text(
               'Send Test Alert Notification',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF64748B),
               ),

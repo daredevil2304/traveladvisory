@@ -248,7 +248,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           color: Color(0xFF0284C7),
                         ),
                         color: const Color(0xFF0284C7),
-                        title: '3. Daily Commute Alerts',
+                        title: '3. Daily Travel Alerts',
                         desc:
                             'Save your regular travel times to get automatic safety alerts before you leave.',
                       ),

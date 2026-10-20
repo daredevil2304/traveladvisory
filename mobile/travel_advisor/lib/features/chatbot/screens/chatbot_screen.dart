@@ -1047,9 +1047,9 @@ class _ChatbotScreenState
     _addBotMessage(
       'How does the traffic appear?',
       quickReplies: const [
-        'Free flow',
-        'Moderate',
-        'Heavy',
+        'Free flow / Normal',
+        'Moderate delay',
+        'Heavy congestion',
         'Analyze Route',
       ],
     );
@@ -1589,7 +1589,7 @@ final Map<String, dynamic> analysisData =
         _addBotMessage(
           'How is traffic moving along your section?',
           quickReplies: const [
-            'Free flow',
+            'Free flow / Normal',
             'Moderate delay',
             'Heavy congestion',
             'Standstill',
@@ -2678,13 +2678,16 @@ final Map<String, dynamic> analysisData =
         lower.contains('smooth') ||
         lower.contains('moving') ||
         lower.contains('fast') ||
+        lower.contains('normal') ||
+        lower.contains('regular') ||
+        lower.contains('fine') ||
+        lower.contains('ok') ||
         lower.contains('no traffic')) {
       return 'Free flow';
     }
     if (lower.contains('moderate') ||
         lower.contains('delay') ||
-        lower.contains('medium') ||
-        lower.contains('normal')) {
+        lower.contains('medium')) {
       return 'Moderate delay';
     }
     if (lower.contains('heavy') ||
@@ -3822,6 +3825,8 @@ List<String> _stringList(
         lower.contains('nothing unusual') ||
         lower.contains('free flow') ||
         lower.contains('free') ||
+        lower.contains('normal') ||
+        lower.contains('regular') ||
         lower.contains('yes') ||
         lower == 'same day' ||
         lower == 'tomorrow';

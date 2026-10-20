@@ -581,7 +581,7 @@ class _TripDetailsScreenState
                       Icons.notifications_outlined,
                       color: AppTheme.darkNavy,
                     ),
-                    tooltip: 'Commute Alerts',
+                    tooltip: 'Daily Travel Alerts',
                     onPressed: () {
                       Navigator.pushNamed(
                         context,

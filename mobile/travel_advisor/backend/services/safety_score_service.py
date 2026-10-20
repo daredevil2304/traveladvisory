@@ -504,7 +504,7 @@ class SafetyScoreService:
         # Traffic delay / bottleneck risk (suppressed if traveler confirmed free flow)
         user_traffic = traveler_result.get("traffic") if isinstance(traveler_result, dict) else None
         is_user_free_flow = isinstance(user_traffic, str) and any(
-            w in user_traffic.casefold() for w in ["free", "smooth", "clear", "fast", "no traffic"]
+            w in user_traffic.casefold() for w in ["free", "smooth", "clear", "fast", "no traffic", "normal", "regular", "fine", "ok"]
         )
 
         if not is_planner and isinstance(traffic_result, dict) and not is_user_free_flow:
@@ -512,7 +512,8 @@ class SafetyScoreService:
             congestion = str(traffic_result.get("congestion_level", "")).lower()
             status_lbl = traffic_result.get("status_label", "")
             speed_adv = traffic_result.get("speed_advice", "")
-            if delay >= 5 or congestion in ("moderate", "heavy", "standstill"):
+            # Normal or moderate traffic with minor delay (< 5m) is standard safe flow, never a caution hazard!
+            if delay >= 5 or congestion in ("heavy", "standstill"):
                 risk_factors.append(
                     f"Traffic bottleneck: {status_lbl} (~{delay}m delay, speed {speed_adv})."
                 )
@@ -948,6 +949,9 @@ class SafetyScoreService:
         "heavy": 60.0,
         "moderate": 75.0,
         "light": 90.0,
+        "normal": 98.0,
+        "normal_flow": 98.0,
+        "normal_traffic": 98.0,
         "free_flow": 98.0,
     }
 
@@ -1003,7 +1007,7 @@ class SafetyScoreService:
                     user_traffic_score = 75.0
                 elif "light" in clean_traffic:
                     user_traffic_score = 90.0
-                elif "free" in clean_traffic or "clear" in clean_traffic:
+                elif "normal" in clean_traffic or "free" in clean_traffic or "clear" in clean_traffic or "smooth" in clean_traffic:
                     user_traffic_score = 98.0
 
                 if user_traffic_score is not None:

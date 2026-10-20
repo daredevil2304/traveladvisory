@@ -639,6 +639,10 @@ class TripAnalysisService:
                         "optimal fluid",
                         "advance planning mode",
                         "no delays reported",
+                        "normal flow",
+                        "free flow",
+                        "fluid flow",
+                        "no delay",
                     ]
                 )
             ]

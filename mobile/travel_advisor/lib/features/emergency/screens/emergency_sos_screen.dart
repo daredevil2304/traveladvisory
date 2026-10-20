@@ -25,7 +25,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   bool _needsPermission = false;
   bool _needsServiceEnable = false;
 
-  // Expressway landmark chainage reference points (KM 0 = Kalamboli/Panvel)
+  // Expressway landmark chainage reference points (0km = Kalamboli/Panvel)
   static const List<_ExpresswayLandmark> _landmarks = [
     _ExpresswayLandmark('Kalamboli Junction (Start Point)', 19.0142, 73.1042, 0),
     _ExpresswayLandmark('Panvel Bypass Exit', 18.9888, 73.1101, 6),
@@ -277,7 +277,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     sb.writeln('🚨 MUMBAI-PUNE EXPRESSWAY EMERGENCY');
     sb.writeln('Corridor: Mumbai-Pune Expressway (NH-48)');
     if (_nearestLandmark != null) {
-      sb.writeln('📍 Current Location: Near $_nearestLandmark (~KM $_nearestChainageKm)');
+      sb.writeln('📍 Current Location: Near $_nearestLandmark (~${_nearestChainageKm}km)');
     }
     if (_currentPosition != null) {
       sb.writeln(
@@ -353,7 +353,12 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           const SizedBox(height: 16),
 
-          // 2. PRIMARY 24x7 EMERGENCY HOTLINES (COMPACT, HORIZONTAL NUMBERS)
+          // 2. QUICK GUIDE: WHICH NUMBER TO CALL WHEN
+          _buildWhenToCallGuide(),
+
+          const SizedBox(height: 14),
+
+          // 3. PRIMARY 24x7 EMERGENCY HOTLINES (COMPACT, HORIZONTAL NUMBERS)
           const _SectionHeader(
             title: 'PRIMARY 24x7 HIGHWAY HOTLINES',
             subtitle: 'Direct dispatch for ambulances, cranes, and police',
@@ -363,24 +368,27 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           _buildHotlineTile(
             title: 'IRB Expressway Control Room',
             subtitle: 'Ambulances, Cranes, Highway Rescue & Patrol',
+            whenToCall: 'Car breakdown, puncture, engine stop, towing crane, or accident rescue',
             phone: '9822498224',
             displayPhone: '98224 98224',
-            badge: 'PRIMARY',
+            badge: 'TOWING & RESCUE',
             badgeColor: const Color(0xFFDC2626),
             isPrimary: true,
           ),
           _buildHotlineTile(
             title: 'National Highway Helpline (NHAI)',
             subtitle: 'Toll-free 24x7 Highway Emergency & Towing',
+            whenToCall: 'Toll-free helpline (works even without mobile recharge balance)',
             phone: '1033',
             displayPhone: '1033 (Toll-Free)',
-            badge: 'ALL-INDIA',
+            badge: 'TOLL-FREE SOS',
             badgeColor: const Color(0xFF2563EB),
             isPrimary: true,
           ),
           _buildHotlineTile(
             title: 'State Highway Police HQ',
             subtitle: 'Maharashtra Police Highway Control Room',
+            whenToCall: 'Police help, roadblock clearance, accident reporting, or rash driving',
             phone: '02025651515',
             displayPhone: '020-25651515',
             badge: 'POLICE HQ',
@@ -390,21 +398,22 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           _buildHotlineTile(
             title: 'National Emergency Response',
             subtitle: 'Unified Single Helpline (Police / Fire / Medical)',
+            whenToCall: 'Life-threatening emergency, severe injury, or if other local lines are busy',
             phone: '112',
             displayPhone: '112',
-            badge: 'UNIFIED SOS',
+            badge: 'UNIFIED 112',
             badgeColor: const Color(0xFFD97706),
             isPrimary: false,
           ),
 
           const SizedBox(height: 18),
 
-          // 3. HIGHWAY BREAKDOWN SAFETY RULES
+          // 4. HIGHWAY BREAKDOWN SAFETY RULES
           _buildBreakdownProtocolCard(),
 
           const SizedBox(height: 18),
 
-          // 4. NEAREST TRAUMA CARE HOSPITALS
+          // 5. NEAREST TRAUMA CARE HOSPITALS
           const _SectionHeader(
             title: 'EMERGENCY TRAUMA HOSPITALS',
             subtitle: 'Stationed along key sectors of the expressway',
@@ -413,28 +422,28 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           _buildHospitalTile(
             name: 'MGM Hospital & Medical College',
-            sector: 'Kamothe / Panvel Sector (~KM 34)',
+            sector: 'Kamothe / Panvel Sector (~34km)',
             phone: '02227437900',
             displayPhone: '022-27437900',
             specialty: 'Level-1 Emergency Trauma & ICU',
           ),
           _buildHospitalTile(
             name: 'Jakhotia Nursing Home & Trauma',
-            sector: 'Khopoli Phata (~KM 70 • Ghat Base)',
+            sector: 'Khopoli Phata (~70km • Ghat Base)',
             phone: '02192263300',
             displayPhone: '02192-263300',
             specialty: 'Ghat Entry Critical Resuscitation',
           ),
           _buildHospitalTile(
             name: 'Sanjeevani Hospital & Critical Care',
-            sector: 'Lonavala Sector (~KM 88 • Ghat Top)',
+            sector: 'Lonavala Sector (~88km • Ghat Top)',
             phone: '02114273545',
             displayPhone: '02114-273545',
             specialty: 'Mountain Pass ICU & Cardiac Desk',
           ),
           _buildHospitalTile(
             name: 'Lokmanya Hospital for Trauma',
-            sector: 'Nigdi / Pune Entry (~KM 138)',
+            sector: 'Nigdi / Pune Entry (~138km)',
             phone: '02030717500',
             displayPhone: '020-30717500',
             specialty: 'Advanced Orthopedic Trauma Center',
@@ -442,7 +451,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           const SizedBox(height: 18),
 
-          // 5. AUTHORIZED SERVICE PLAZAS & TOWING HUBS
+          // 6. AUTHORIZED SERVICE PLAZAS & TOWING HUBS
           const _SectionHeader(
             title: 'SERVICE PLAZAS & TOWING HUBS',
             subtitle: 'Fuel pumps, mechanics, puncture repair, and food courts',
@@ -451,17 +460,17 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           _buildPlazaTile(
             name: 'Khalapur Food Mall (Pune-bound)',
-            chainage: 'KM 38 • Before Bhor Ghat',
+            chainage: '38km • Before Bhor Ghat',
             amenities: 'HPCL Fuel • EV Fast Chargers • Mechanics • Medical Aid • Food Courts',
           ),
           _buildPlazaTile(
             name: 'Ozarde Food Plaza (Mumbai-bound)',
-            chainage: 'KM 78 • After Lonavala',
+            chainage: '78km • After Lonavala',
             amenities: 'BPCL Fuel • Heavy Towing Cranes • Puncture Repair • 24x7 Food Court',
           ),
           _buildPlazaTile(
             name: 'Urse Toll Plaza Service Bay',
-            chainage: 'KM 118 • Near Pune Outer Ring',
+            chainage: '118km • Near Pune Outer Ring',
             amenities: 'Concessionaire Recovery Bay • Emergency Crane Station • Basic Repair',
           ),
         ],
@@ -472,6 +481,69 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   // ============================================================
   // COMPACT & INTUITIVE WIDGET BUILDERS
   // ============================================================
+
+  /// Clear, user-friendly guide showing which number to call for each emergency scenario
+  Widget _buildWhenToCallGuide() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.help_center_rounded, color: Color(0xFF16A34A), size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Quick Guide: Which number to call?',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF166534),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildGuideRow('🚗 Car Breakdown / Flat Tire / Crane', 'Call IRB Control (98224 98224)'),
+          _buildGuideRow('🆓 Free Call (No Mobile Balance)', 'Call Toll-Free (1033)'),
+          _buildGuideRow('🚓 Police Help / Roadblock / Crash', 'Call Highway Police (020-25651515)'),
+          _buildGuideRow('🚑 Severe Injury / Ambulance', 'Call 112 or Corridor Hospital below'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideRow(String scenario, String action) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 6,
+            child: Text(
+              scenario,
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 5,
+            child: Text(
+              action,
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF15803D)),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildLiveLocationCard() {
     return Container(
@@ -566,7 +638,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                       if (_currentPosition != null) ...[
                         Text(
                           _nearestLandmark != null
-                              ? '📍 Near $_nearestLandmark (~KM $_nearestChainageKm${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)} km away' : ''})'
+                              ? '📍 Near $_nearestLandmark (~${_nearestChainageKm}km${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)}km away' : ''})'
                               : '📍 Mumbai-Pune Expressway Corridor',
                           style: const TextStyle(
                             fontSize: 14,
@@ -665,10 +737,11 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  /// Compact, sleek hotline tile where the phone number is strictly horizontal on a single line!
+  /// Compact, sleek hotline tile with horizontal number and explicit "When to call" guidance
   Widget _buildHotlineTile({
     required String title,
     required String subtitle,
+    required String whenToCall,
     required String phone,
     required String displayPhone,
     required String badge,
@@ -696,8 +769,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
         onTap: () => _makeCall(title, phone, displayPhone),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Leading Icon
               Container(
@@ -714,7 +788,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 ),
               ),
               const SizedBox(width: 11),
-              // Center Column: Title, Subtitle, and PROMINENT HORIZONTAL PHONE NUMBER
+              // Center Column: Title, When to Call, and HORIZONTAL PHONE NUMBER
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,14 +827,17 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
+                    // Specific "When to call" instruction for normal users
                     Text(
-                      subtitle,
-                      maxLines: 1,
+                      'When to call: $whenToCall',
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                        height: 1.25,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -781,7 +858,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Compact, crisp "Call" action pill
+              // Compact "Call" action pill
               ElevatedButton.icon(
                 onPressed: () => _makeCall(title, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
@@ -835,7 +912,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           _buildCompactStep('1', 'Pull immediately to extreme left hard shoulder. Never stop in active traffic lanes.'),
           _buildCompactStep('2', 'Turn ON 4-way hazard lights immediately to warn approaching vehicles.'),
           _buildCompactStep('3', 'Step out and stand behind the metal crash barrier. Do not wait inside the car!'),
-          _buildCompactStep('4', 'Call IRB Control (98224 98224) or Highway Patrol (1033) for free safety escort.'),
+          _buildCompactStep('4', 'Note nearest yellow kilometer stone on the divider and call IRB (98224 98224) or 1033.'),
         ],
       ),
     );
