@@ -260,6 +260,7 @@ class _CommunityReportsScreenState
                     ),
                   )
                 : ListView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
                     children: [
                       _buildRiskyRegionsHeader(),

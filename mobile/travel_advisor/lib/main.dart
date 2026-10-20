@@ -7,6 +7,11 @@ import 'core/services/shorebird_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Optimize image caching and render pipeline for fluid 60/120fps scrolling
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024; // 100 MB
+  PaintingBinding.instance.imageCache.maximumSize = 1000;
+
   try {
     await Firebase.initializeApp();
   } catch (e) {

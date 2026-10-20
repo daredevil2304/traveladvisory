@@ -1030,6 +1030,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           onRefresh: _refreshLiveReports,
           color: const Color(0xFF1D4ED8),
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             padding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             children: [

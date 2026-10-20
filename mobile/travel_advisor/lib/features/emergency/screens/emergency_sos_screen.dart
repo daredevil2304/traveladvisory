@@ -497,6 +497,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
         ],
       ),
       body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
         children: [
           // 1. LIVE GPS & LOCATION SHARING CARD
