@@ -3263,110 +3263,200 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'YOUR TRAVEL ROUTE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF475569),
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
-              // Origin
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _corridorPoints.contains(_currentSource)
-                          ? _currentSource
-                          : _corridorPoints[1],
-                      isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                      items: _corridorPoints.map((pt) {
-                        return DropdownMenuItem(
-                          value: pt,
-                          child: Text(
-                            pt,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.darkNavy,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _currentSource = val);
-                      },
+              const Text(
+                'YOUR TRAVEL ROUTE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF475569),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$_currentSource ➔ $_currentDestination',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1D4ED8),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Origin / Source Column with Title
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.trip_origin_rounded, size: 12, color: Color(0xFF059669)),
+                        SizedBox(width: 4),
+                        Text(
+                          'SOURCE / FROM',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF065F46),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _corridorPoints.contains(_currentSource)
+                              ? _currentSource
+                              : _corridorPoints[1],
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                          items: _corridorPoints.map((pt) {
+                            return DropdownMenuItem(
+                              value: pt,
+                              child: Text(
+                                pt,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.darkNavy,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _currentSource = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-              // Swap Button
+              // Arrow and Swap Button in Middle
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: InkWell(
-                  onTap: _swapRoutePoints,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEFF6FF),
-                      shape: BoxShape.circle,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 18), // Align with dropdowns
+                    Tooltip(
+                      message: 'Swap Route Direction',
+                      child: InkWell(
+                        onTap: _swapRoutePoints,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Color(0xFF1D4ED8),
+                                size: 16,
+                              ),
+                              SizedBox(width: 3),
+                              Icon(
+                                Icons.swap_horiz_rounded,
+                                color: Color(0xFF1D4ED8),
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.swap_horiz_rounded,
-                      color: Color(0xFF1D4ED8),
-                      size: 20,
-                    ),
-                  ),
+                  ],
                 ),
               ),
 
-              // Destination
+              // Destination Column with Title
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _corridorPoints.contains(_currentDestination)
-                          ? _currentDestination
-                          : _corridorPoints.last,
-                      isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                      items: _corridorPoints.map((pt) {
-                        return DropdownMenuItem(
-                          value: pt,
-                          child: Text(
-                            pt,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.darkNavy,
-                            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.location_on_rounded, size: 12, color: Color(0xFFDC2626)),
+                        SizedBox(width: 4),
+                        Text(
+                          'DESTINATION / TO',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF991B1B),
+                            letterSpacing: 0.4,
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _currentDestination = val);
-                      },
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _corridorPoints.contains(_currentDestination)
+                              ? _currentDestination
+                              : _corridorPoints.last,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                          items: _corridorPoints.map((pt) {
+                            return DropdownMenuItem(
+                              value: pt,
+                              child: Text(
+                                pt,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.darkNavy,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _currentDestination = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
