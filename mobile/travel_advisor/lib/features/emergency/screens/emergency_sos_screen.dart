@@ -55,7 +55,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     });
 
     try {
-      // 1. Instantly check last known position (available in ~10ms if previously accessed)
+      // 1. Instantly check last known position (~10ms)
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null && mounted) {
         _applyPosition(lastKnown);
@@ -71,13 +71,13 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           setState(() {
             _isLoadingLocation = false;
             _needsServiceEnable = true;
-            _locationStatusMessage = 'Device GPS/Location is turned off.';
+            _locationStatusMessage = 'Device GPS is turned OFF.';
           });
         }
         return;
       }
 
-      // 3. Check and request location permission if needed
+      // 3. Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -86,7 +86,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
             setState(() {
               _isLoadingLocation = false;
               _needsPermission = true;
-              _locationStatusMessage = 'Location permission is required for milestone detection.';
+              _locationStatusMessage = 'Location permission is required.';
             });
           }
           return;
@@ -98,13 +98,13 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           setState(() {
             _isLoadingLocation = false;
             _needsPermission = true;
-            _locationStatusMessage = 'Location access is disabled in phone settings.';
+            _locationStatusMessage = 'Location permission is disabled in phone settings.';
           });
         }
         return;
       }
 
-      // 4. Fetch fresh location with generous timeout (15s) and medium accuracy for quick lock
+      // 4. Fetch fresh position
       final fresh = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
@@ -181,43 +181,51 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: const BoxDecoration(
                   color: Color(0xFFFEF2F2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFDC2626), size: 28),
+                child: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFDC2626), size: 26),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.darkNavy),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppTheme.darkNavy),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+              // Horizontal number container with FittedBox so it NEVER wraps vertically
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
-                child: Text(
-                  displayPhone,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    color: Color(0xFF1D4ED8),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      displayPhone,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF059669)),
+                  Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF059669)),
                   SizedBox(width: 6),
                   Text(
                     'Phone number copied to clipboard!',
@@ -225,13 +233,13 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
-                'Open your Phone app and paste the number to place the call immediately.',
+                'Open your phone app and paste the number to place the call immediately.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.3),
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -240,7 +248,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Copied $displayPhone to dialer clipboard!'),
+                        content: Text('Copied $displayPhone to clipboard!'),
                         backgroundColor: const Color(0xFF1D4ED8),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -249,11 +257,12 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D4ED8),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
                   ),
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  label: const Text('Copy Number Again', style: TextStyle(fontWeight: FontWeight.w800)),
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy Number Again', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
               ),
             ],
@@ -263,19 +272,19 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  void _copyLocationToClipboard() {
+  void _copyLocationToShare() {
     final StringBuffer sb = StringBuffer();
-    sb.writeln('🚨 EXPRESSWAY EMERGENCY SOS');
+    sb.writeln('🚨 MUMBAI-PUNE EXPRESSWAY EMERGENCY');
     sb.writeln('Corridor: Mumbai-Pune Expressway (NH-48)');
     if (_nearestLandmark != null) {
-      sb.writeln('Estimated Location: Near $_nearestLandmark (~KM $_nearestChainageKm)');
+      sb.writeln('📍 Current Location: Near $_nearestLandmark (~KM $_nearestChainageKm)');
     }
     if (_currentPosition != null) {
       sb.writeln(
-        'GPS Coordinates: ${_currentPosition!.latitude.toStringAsFixed(5)}, ${_currentPosition!.longitude.toStringAsFixed(5)}',
+        '🗺️ GPS Coordinates: ${_currentPosition!.latitude.toStringAsFixed(5)}, ${_currentPosition!.longitude.toStringAsFixed(5)}',
       );
       sb.writeln(
-        'Google Maps: https://maps.google.com/?q=${_currentPosition!.latitude},${_currentPosition!.longitude}',
+        '📌 Google Maps: https://maps.google.com/?q=${_currentPosition!.latitude},${_currentPosition!.longitude}',
       );
     }
     sb.writeln('Please dispatch emergency roadside assistance.');
@@ -283,7 +292,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     Clipboard.setData(ClipboardData(text: sb.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Copied your emergency location & GPS coordinates to clipboard!'),
+        content: Text('✅ Emergency location copied! Paste in WhatsApp or SMS to send.'),
         backgroundColor: Color(0xFFDC2626),
         behavior: SnackBarBehavior.floating,
       ),
@@ -304,22 +313,23 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
         title: const Text(
           'Emergency SOS Directory',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: FontWeight.w800,
             color: Colors.white,
           ),
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: const EdgeInsets.only(right: 14),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield_rounded, size: 14, color: Colors.white),
+                Icon(Icons.shield_rounded, size: 13, color: Colors.white),
                 SizedBox(width: 4),
                 Text(
                   '24x7 LIVE',
@@ -336,144 +346,123 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
         children: [
-          // 1. LIVE GPS & LOCATION DISPATCH CARD
+          // 1. LIVE GPS & LOCATION SHARING CARD
           _buildLiveLocationCard(),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          // 2. PRIMARY 24x7 DISPATCH HOTLINES
+          // 2. PRIMARY 24x7 EMERGENCY HOTLINES (COMPACT, HORIZONTAL NUMBERS)
           const _SectionHeader(
-            title: 'PRIMARY DISPATCH HOTLINES (24x7)',
-            subtitle: 'Immediate rescue, ambulances, towing cranes, and highway police',
+            title: 'PRIMARY 24x7 HIGHWAY HOTLINES',
+            subtitle: 'Direct dispatch for ambulances, cranes, and police',
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          _buildHotlineCard(
-            title: 'IRB Expressway Central Control Room',
-            subtitle: 'Ambulance, Heavy Towing Crane, Hydraulic Rescue & Patrol',
+          _buildHotlineTile(
+            title: 'IRB Expressway Control Room',
+            subtitle: 'Ambulances, Cranes, Highway Rescue & Patrol',
             phone: '9822498224',
             displayPhone: '98224 98224',
-            badge: 'PRIMARY EXPRESSWAY DISPATCH',
+            badge: 'PRIMARY',
             badgeColor: const Color(0xFFDC2626),
             isPrimary: true,
           ),
-          const SizedBox(height: 10),
-
-          _buildHotlineCard(
-            title: 'National Highway Helpline (NHAI / MSRDC)',
-            subtitle: 'Toll-free 24x7 Emergency, Accident Dispatch & Route Evacuation',
+          _buildHotlineTile(
+            title: 'National Highway Helpline (NHAI)',
+            subtitle: 'Toll-free 24x7 Highway Emergency & Towing',
             phone: '1033',
             displayPhone: '1033 (Toll-Free)',
-            badge: 'ALL-INDIA HIGHWAY SOS',
+            badge: 'ALL-INDIA',
             badgeColor: const Color(0xFF2563EB),
             isPrimary: true,
           ),
-          const SizedBox(height: 10),
-
-          _buildHotlineCard(
-            title: 'Maharashtra Highway Police Control HQ',
-            subtitle: 'State Police Control Room, Accident Reporting & Highway Clearance',
+          _buildHotlineTile(
+            title: 'State Highway Police HQ',
+            subtitle: 'Maharashtra Police Highway Control Room',
             phone: '02025651515',
             displayPhone: '020-25651515',
-            badge: 'TRAFFIC POLICE HQ',
+            badge: 'POLICE HQ',
             badgeColor: const Color(0xFF059669),
             isPrimary: false,
           ),
-          const SizedBox(height: 10),
-
-          _buildHotlineCard(
-            title: 'National Emergency Response (ERSS)',
-            subtitle: 'Unified Single Emergency Number for Police, Fire & Medical',
+          _buildHotlineTile(
+            title: 'National Emergency Response',
+            subtitle: 'Unified Single Helpline (Police / Fire / Medical)',
             phone: '112',
             displayPhone: '112',
-            badge: 'UNIFIED EMERGENCY',
+            badge: 'UNIFIED SOS',
             badgeColor: const Color(0xFFD97706),
             isPrimary: false,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
-          // 3. VEHICLE BREAKDOWN & CRASH SURVIVAL RULES
-          const _SectionHeader(
-            title: 'EXPRESSWAY BREAKDOWN PROTOCOL',
-            subtitle: 'Crucial life-saving steps if your vehicle stops on the highway',
-          ),
-          const SizedBox(height: 10),
+          // 3. HIGHWAY BREAKDOWN SAFETY RULES
           _buildBreakdownProtocolCard(),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
           // 4. NEAREST TRAUMA CARE HOSPITALS
           const _SectionHeader(
-            title: 'STRATEGIC TRAUMA HOSPITALS ALONG CORRIDOR',
-            subtitle: 'Direct hospital emergency desks stationed across key sectors',
+            title: 'EMERGENCY TRAUMA HOSPITALS',
+            subtitle: 'Stationed along key sectors of the expressway',
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          _buildHospitalCard(
+          _buildHospitalTile(
             name: 'MGM Hospital & Medical College',
             sector: 'Kamothe / Panvel Sector (~KM 34)',
             phone: '02227437900',
             displayPhone: '022-27437900',
-            specialty: 'Level-1 24x7 Emergency Trauma & Neurosurgery',
+            specialty: 'Level-1 Emergency Trauma & ICU',
           ),
-          const SizedBox(height: 10),
-
-          _buildHospitalCard(
-            name: 'Jakhotia Nursing Home & Trauma Center',
-            sector: 'Khopoli Phata (~KM 70 • Base of Bhor Ghat)',
+          _buildHospitalTile(
+            name: 'Jakhotia Nursing Home & Trauma',
+            sector: 'Khopoli Phata (~KM 70 • Ghat Base)',
             phone: '02192263300',
             displayPhone: '02192-263300',
-            specialty: 'Immediate Ghat Entry Critical Resuscitation',
+            specialty: 'Ghat Entry Critical Resuscitation',
           ),
-          const SizedBox(height: 10),
-
-          _buildHospitalCard(
+          _buildHospitalTile(
             name: 'Sanjeevani Hospital & Critical Care',
-            sector: 'Lonavala Sector (~KM 88 • Summit of Ghat)',
+            sector: 'Lonavala Sector (~KM 88 • Ghat Top)',
             phone: '02114273545',
             displayPhone: '02114-273545',
-            specialty: 'Mountain Pass Emergency ICU & Cardiac Support',
+            specialty: 'Mountain Pass ICU & Cardiac Desk',
           ),
-          const SizedBox(height: 10),
-
-          _buildHospitalCard(
+          _buildHospitalTile(
             name: 'Lokmanya Hospital for Trauma',
             sector: 'Nigdi / Pune Entry (~KM 138)',
             phone: '02030717500',
             displayPhone: '020-30717500',
-            specialty: 'Advanced Orthopedic Trauma & ICU Center',
+            specialty: 'Advanced Orthopedic Trauma Center',
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
           // 5. AUTHORIZED SERVICE PLAZAS & TOWING HUBS
           const _SectionHeader(
-            title: 'AUTHORIZED SERVICE PLAZAS & WORKSHOPS',
-            subtitle: 'Fuel pumps, EV fast charging, puncture repair, and food courts',
+            title: 'SERVICE PLAZAS & TOWING HUBS',
+            subtitle: 'Fuel pumps, mechanics, puncture repair, and food courts',
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          _buildPlazaCard(
+          _buildPlazaTile(
             name: 'Khalapur Food Mall (Pune-bound)',
             chainage: 'KM 38 • Before Bhor Ghat',
-            amenities: 'HPCL Fuel Station • Tata Power EV DC Chargers • Mechanics & Puncture • Medical First Aid • Food Courts',
+            amenities: 'HPCL Fuel • EV Fast Chargers • Mechanics • Medical Aid • Food Courts',
           ),
-          const SizedBox(height: 10),
-
-          _buildPlazaCard(
+          _buildPlazaTile(
             name: 'Ozarde Food Plaza (Mumbai-bound)',
             chainage: 'KM 78 • After Lonavala',
-            amenities: 'BPCL Fuel Station • Heavy Towing Cranes • Tire Alignment • Restrooms • 24x7 Food Court',
+            amenities: 'BPCL Fuel • Heavy Towing Cranes • Puncture Repair • 24x7 Food Court',
           ),
-          const SizedBox(height: 10),
-
-          _buildPlazaCard(
+          _buildPlazaTile(
             name: 'Urse Toll Plaza Service Bay',
             chainage: 'KM 118 • Near Pune Outer Ring',
-            amenities: 'Expressway Concessionaire Recovery Bay • Emergency Crane Station • Basic Repair',
+            amenities: 'Concessionaire Recovery Bay • Emergency Crane Station • Basic Repair',
           ),
         ],
       ),
@@ -481,31 +470,31 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   }
 
   // ============================================================
-  // WIDGET BUILDERS
+  // COMPACT & INTUITIVE WIDGET BUILDERS
   // ============================================================
 
   Widget _buildLiveLocationCard() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFECACA), width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1ADC2626),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: Color(0x0C000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: const BoxDecoration(
                   color: Color(0xFFFEF2F2),
                   shape: BoxShape.circle,
@@ -513,7 +502,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 child: const Icon(
                   Icons.my_location_rounded,
                   color: Color(0xFFDC2626),
-                  size: 20,
+                  size: 18,
                 ),
               ),
               const SizedBox(width: 10),
@@ -522,18 +511,18 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'YOUR CURRENT HIGHWAY MILESTONE',
+                      'YOUR LIVE HIGHWAY LOCATION',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFFDC2626),
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.6,
                       ),
                     ),
                     Text(
-                      'State this location when calling dispatchers',
+                      'Share this when calling for patrol or towing',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         color: Color(0xFF64748B),
                       ),
                     ),
@@ -547,27 +536,27 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: _isLoadingLocation
                 ? const Row(
                     children: [
                       SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFDC2626)),
                       ),
-                      SizedBox(width: 12),
+                      SizedBox(width: 10),
                       Text(
-                        'Acquiring GPS satellite position...',
-                        style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                        'Finding nearest expressway milestone...',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
                   )
@@ -580,16 +569,16 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                               ? '📍 Near $_nearestLandmark (~KM $_nearestChainageKm${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)} km away' : ''})'
                               : '📍 Mumbai-Pune Expressway Corridor',
                           style: const TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: AppTheme.darkNavy,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
-                          'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}° N, ${_currentPosition!.longitude.toStringAsFixed(4)}° E (±${_currentPosition!.accuracy.toStringAsFixed(0)}m accuracy)',
+                          'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}° N, ${_currentPosition!.longitude.toStringAsFixed(4)}° E',
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF059669),
                           ),
@@ -597,13 +586,13 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                       ] else ...[
                         Row(
                           children: [
-                            const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                            const Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFFDC2626)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 _locationStatusMessage,
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFFDC2626),
                                 ),
@@ -612,7 +601,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                           ],
                         ),
                         if (_needsPermission) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           ElevatedButton.icon(
                             onPressed: () async {
                               await Geolocator.requestPermission();
@@ -621,15 +610,15 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1D4ED8),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               elevation: 0,
                             ),
-                            icon: const Icon(Icons.lock_open_rounded, size: 15),
-                            label: const Text('Grant Location Permission', style: TextStyle(fontSize: 12)),
+                            icon: const Icon(Icons.lock_open_rounded, size: 14),
+                            label: const Text('Grant Location Access', style: TextStyle(fontSize: 11.5)),
                           ),
                         ],
                         if (_needsServiceEnable) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           ElevatedButton.icon(
                             onPressed: () async {
                               await Geolocator.openLocationSettings();
@@ -638,34 +627,35 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1D4ED8),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               elevation: 0,
                             ),
-                            icon: const Icon(Icons.settings_rounded, size: 15),
-                            label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 12)),
+                            icon: const Icon(Icons.settings_rounded, size: 14),
+                            label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 11.5)),
                           ),
                         ],
                       ],
                     ],
                   ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          // User-friendly copy button (WhatsApp / SMS)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _copyLocationToClipboard,
+              onPressed: _copyLocationToShare,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFDC2626),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 11),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 elevation: 0,
               ),
-              icon: const Icon(Icons.copy_rounded, size: 18),
+              icon: const Icon(Icons.copy_rounded, size: 16),
               label: const Text(
-                'Copy Location Text for Dispatcher',
+                'Copy Location to Share (WhatsApp / SMS)',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
               ),
             ),
@@ -675,7 +665,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  Widget _buildHotlineCard({
+  /// Compact, sleek hotline tile where the phone number is strictly horizontal on a single line!
+  Widget _buildHotlineTile({
     required String title,
     required String subtitle,
     required String phone,
@@ -685,218 +676,198 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     required bool isPrimary,
   }) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isPrimary ? const Color(0xFFFFFBFB) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isPrimary ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0),
-          width: isPrimary ? 1.5 : 1.0,
+          width: isPrimary ? 1.2 : 1.0,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            color: Color(0x06000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: () => _makeCall(title, phone, displayPhone),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
             children: [
+              // Leading Icon
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
+                  color: isPrimary ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+                  shape: BoxShape.circle,
                 ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: badgeColor,
-                    letterSpacing: 0.5,
-                  ),
+                child: Icon(
+                  Icons.phone_in_talk_rounded,
+                  color: isPrimary ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+                  size: 19,
                 ),
               ),
-              const Spacer(),
-              InkWell(
-                onTap: () => _makeCall(title, phone, displayPhone),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFEF2F2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.phone_in_talk_rounded, size: 16, color: Color(0xFFDC2626)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.darkNavy,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              // Tap-to-call Phone container
+              const SizedBox(width: 11),
+              // Center Column: Title, Subtitle, and PROMINENT HORIZONTAL PHONE NUMBER
               Expanded(
-                child: InkWell(
-                  onTap: () => _makeCall(title, phone, displayPhone),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
                       children: [
-                        const Icon(Icons.call_rounded, size: 18, color: Color(0xFFDC2626)),
-                        const SizedBox(width: 8),
-                        Expanded(
+                        Flexible(
                           child: Text(
-                            displayPhone,
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
                               color: AppTheme.darkNavy,
-                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w900,
+                              color: badgeColor,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    // Strictly horizontal single-line number (NEVER WRAPS!)
+                    Text(
+                      displayPhone,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                        color: isPrimary ? const Color(0xFFDC2626) : const Color(0xFF1D4ED8),
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              // Dedicated Call Button
+              const SizedBox(width: 8),
+              // Compact, crisp "Call" action pill
               ElevatedButton.icon(
                 onPressed: () => _makeCall(title, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDC2626),
+                  backgroundColor: isPrimary ? const Color(0xFFDC2626) : const Color(0xFF1D4ED8),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.call_rounded, size: 16),
+                icon: const Icon(Icons.call_rounded, size: 13),
                 label: const Text(
-                  'Call Now',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  'Call',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
+  /// Compact breakdown safety card
   Widget _buildBreakdownProtocolCard() {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFFDE68A)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 22),
-              SizedBox(width: 8),
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+              SizedBox(width: 7),
               Text(
-                'Safety Steps for Highway Breakdown',
+                'Expressway Breakdown Safety Rules',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF92400E),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildProtocolStep(
-            step: '1',
-            text: 'Pull immediately to the extreme left hard shoulder. Never stop in active traffic lanes or inside tunnels.',
-          ),
-          _buildProtocolStep(
-            step: '2',
-            text: 'Turn ON 4-way hazard lights immediately to warn approaching high-speed highway traffic.',
-          ),
-          _buildProtocolStep(
-            step: '3',
-            text: 'CRITICAL: DO NOT remain seated inside a stationary car! Step out from the left door and stand behind the metal crash barrier.',
-          ),
-          _buildProtocolStep(
-            step: '4',
-            text: 'Look for the nearest yellow KM stone on the divider and note your direction (towards Pune or towards Mumbai).',
-          ),
-          _buildProtocolStep(
-            step: '5',
-            text: 'Call IRB Control Room (98224 98224) or Highway Patrol (1033) for free safety escort and towing assistance.',
-          ),
+          const SizedBox(height: 8),
+          _buildCompactStep('1', 'Pull immediately to extreme left hard shoulder. Never stop in active traffic lanes.'),
+          _buildCompactStep('2', 'Turn ON 4-way hazard lights immediately to warn approaching vehicles.'),
+          _buildCompactStep('3', 'Step out and stand behind the metal crash barrier. Do not wait inside the car!'),
+          _buildCompactStep('4', 'Call IRB Control (98224 98224) or Highway Patrol (1033) for free safety escort.'),
         ],
       ),
     );
   }
 
-  Widget _buildProtocolStep({required String step, required String text}) {
+  Widget _buildCompactStep(String num, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 22,
-            height: 22,
+            width: 17,
+            height: 17,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
               color: Color(0xFFD97706),
               shape: BoxShape.circle,
             ),
             child: Text(
-              step,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
+              num,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 11.5,
                 color: Color(0xFF78350F),
-                height: 1.35,
+                height: 1.25,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -906,7 +877,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  Widget _buildHospitalCard({
+  /// Compact trauma hospital tile with horizontal single-line phone number
+  Widget _buildHospitalTile({
     required String name,
     required String sector,
     required String phone,
@@ -914,120 +886,138 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     required String specialty,
   }) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: () => _makeCall(name, phone, displayPhone),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
             children: [
-              const Icon(Icons.local_hospital_rounded, color: Color(0xFFDC2626), size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkNavy,
-                  ),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF2F2),
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.local_hospital_rounded, color: Color(0xFFDC2626), size: 17),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            sector,
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            specialty,
-            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
+              const SizedBox(width: 10),
               Expanded(
-                child: InkWell(
-                  onTap: () => _makeCall(name, phone, displayPhone),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      displayPhone,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.darkNavy,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 1),
+                    Text(
+                      '$sector • $specialty',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 2),
+                    // Horizontal phone number
+                    Text(
+                      displayPhone,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _makeCall(name, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDC2626),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: const Size(0, 30),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.call_rounded, size: 14),
-                label: const Text('Call', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                icon: const Icon(Icons.call_rounded, size: 12),
+                label: const Text('Call', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildPlazaCard({
+  /// Compact service plaza tile
+  Widget _buildPlazaTile({
     required String name,
     required String chainage,
     required String amenities,
   }) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.local_gas_station_rounded, color: Color(0xFF2563EB), size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkNavy,
-                  ),
+          const Icon(Icons.local_gas_station_rounded, color: Color(0xFF2563EB), size: 17),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.darkNavy,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      chainage,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            chainage,
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            amenities,
-            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
+                const SizedBox(height: 1),
+                Text(
+                  amenities,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1049,17 +1039,17 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w900,
             color: Color(0xFF475569),
             letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 1),
         Text(
           subtitle,
           style: const TextStyle(
-            fontSize: 11.5,
+            fontSize: 11,
             color: Color(0xFF64748B),
           ),
         ),
