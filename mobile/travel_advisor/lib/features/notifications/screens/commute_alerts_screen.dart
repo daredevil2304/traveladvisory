@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/routes.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/commute_habit_service.dart';
 
+/// Clean, modern, and uncluttered Daily Commute Setup & Proactive Alerts screen.
 class CommuteAlertsScreen extends StatefulWidget {
   const CommuteAlertsScreen({super.key});
 
@@ -14,6 +14,36 @@ class CommuteAlertsScreen extends StatefulWidget {
 class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   final CommuteHabitService _habitService = CommuteHabitService();
   bool _isLoading = false;
+  bool _isSaving = false;
+
+  // Form State
+  String _source = 'Panvel';
+  String _destination = 'Pune';
+  TimeOfDay _depTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _alertTime = const TimeOfDay(hour: 7, minute: 45);
+  Set<String> _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+  bool _isEnabled = true;
+
+  static const List<String> _corridorPoints = [
+    'Mumbai',
+    'Panvel',
+    'Khalapur',
+    'Khopoli',
+    'Khandala',
+    'Lonavala',
+    'Kamshet',
+    'Pune',
+  ];
+
+  static const List<_DayItem> _daysList = [
+    _DayItem('Mon', 'M', 'Monday'),
+    _DayItem('Tue', 'T', 'Tuesday'),
+    _DayItem('Wed', 'W', 'Wednesday'),
+    _DayItem('Thu', 'T', 'Thursday'),
+    _DayItem('Fri', 'F', 'Friday'),
+    _DayItem('Sat', 'S', 'Saturday'),
+    _DayItem('Sun', 'S', 'Sunday'),
+  ];
 
   @override
   void initState() {
@@ -24,578 +54,193 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     await _habitService.loadHabit();
-    if (_habitService.activeAlertNotifier.value == null) {
-      await _habitService.fetchAlert();
+
+    final habit = _habitService.commuteHabitNotifier.value;
+    if (habit != null) {
+      _applyHabitToState(habit);
     }
+
+    if (_habitService.activeAlertNotifier.value == null) {
+      await _habitService.fetchAlert(source: _source, destination: _destination);
+    }
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
   }
 
-  Color _getScoreColor(int score) {
-    if (score < 40) return AppTheme.crimsonRed;
-    if (score < 60) return AppTheme.alertAmber;
-    if (score < 75) return const Color(0xFFF59E0B);
-    return AppTheme.forestGreen;
-  }
+  void _applyHabitToState(Map<String, dynamic> habit) {
+    final src = habit['source']?.toString() ?? 'Panvel';
+    final dst = habit['destination']?.toString() ?? 'Pune';
+    final dep = habit['departure_time']?.toString() ?? '08:00 AM';
+    final alert = habit['alert_time']?.toString() ?? '07:45 AM';
+    final rawDays = habit['travel_days']?.toString() ?? 'Mon-Fri';
+    final enabled = habit['is_enabled'] != false;
 
-  IconData _getWarningIcon(String text) {
-    final lower = text.toLowerCase();
-    if (lower.contains('visib') || lower.contains('fog')) {
-      return Icons.cloud;
-    }
-    if (lower.contains('rain') || lower.contains('downpour')) {
-      return Icons.water_drop;
-    }
-    if (lower.contains('road') || lower.contains('wet') || lower.contains('slippery')) {
-      return Icons.warning_amber_rounded;
-    }
-    if (lower.contains('traffic') || lower.contains('congest')) {
-      return Icons.traffic;
-    }
-    return Icons.report_problem;
-  }
+    _source = _corridorPoints.contains(src) ? src : 'Panvel';
+    _destination = _corridorPoints.contains(dst) ? dst : 'Pune';
+    _depTime = CommuteHabitService.parseTime(dep);
+    _alertTime = CommuteHabitService.parseTime(alert);
+    _isEnabled = enabled;
 
-  void _showEditHabitDialog(Map<String, dynamic> habit) {
-    String source = habit['source'] ?? 'Panvel';
-    String destination = habit['destination'] ?? 'Pune';
-    String departureTime = habit['departure_time'] ?? '08:00';
-    String alertTime = habit['alert_time'] ?? '07:45';
-    final String rawDays =
-        (habit['travel_days']?.toString() ?? 'Daily').trim();
-    String travelDaysMode = 'Daily';
-    Set<String> customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
-    String travelDays = 'Daily';
-
-    if (rawDays == 'Daily') {
-      travelDaysMode = 'Daily';
-      customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'};
-      travelDays = 'Daily';
+    if (rawDays == 'Daily' || rawDays == 'Everyday') {
+      _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'};
     } else if (rawDays == 'Sat-Sun' || rawDays == 'Weekends') {
-      travelDaysMode = 'Weekends';
-      customDaysSet = {'Sat', 'Sun'};
-      travelDays = 'Sat-Sun';
+      _selectedDays = {'Sat', 'Sun'};
+    } else if (rawDays == 'Mon-Fri' || rawDays == 'Weekdays') {
+      _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
     } else {
-      travelDaysMode = 'Custom';
       final clean = rawDays.replaceFirst('Custom:', '');
-      final parts = clean
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      if (parts.isEmpty || rawDays == 'Mon-Fri') {
-        customDaysSet = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
-      } else {
-        customDaysSet = parts.toSet();
+      final parts = clean.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
+      _selectedDays = parts.isNotEmpty ? parts.toSet() : {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+    }
+  }
+
+  Future<void> _saveSchedule() async {
+    setState(() => _isSaving = true);
+
+    final String formattedDep = CommuteHabitService.formatTime12h(_depTime);
+    final String formattedAlert = CommuteHabitService.formatTime12h(_alertTime);
+
+    String travelDaysStr;
+    if (_selectedDays.length == 7) {
+      travelDaysStr = 'Daily';
+    } else if (_selectedDays.length == 2 &&
+        _selectedDays.contains('Sat') &&
+        _selectedDays.contains('Sun')) {
+      travelDaysStr = 'Sat-Sun';
+    } else if (_selectedDays.length == 5 &&
+        !_selectedDays.contains('Sat') &&
+        !_selectedDays.contains('Sun')) {
+      travelDaysStr = 'Mon-Fri';
+    } else {
+      const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final sorted = order.where((d) => _selectedDays.contains(d)).toList();
+      travelDaysStr = sorted.join(',');
+    }
+
+    await _habitService.saveHabit(
+      source: _source,
+      destination: _destination,
+      departureTime: formattedDep,
+      alertTime: formattedAlert,
+      travelDays: travelDaysStr,
+      isEnabled: _isEnabled,
+    );
+
+    await _habitService.fetchAlert(source: _source, destination: _destination);
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Commute schedule saved! Alerts will arrive 15 mins prior.'),
+          backgroundColor: Color(0xFF1D4ED8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _swapDirection() {
+    setState(() {
+      final temp = _source;
+      _source = _destination;
+      _destination = temp;
+    });
+  }
+
+  void _setPresetDays(String preset) {
+    setState(() {
+      if (preset == 'weekdays') {
+        _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
+      } else if (preset == 'daily') {
+        _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'};
+      } else if (preset == 'weekends') {
+        _selectedDays = {'Sat', 'Sun'};
       }
-      const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final sorted = dayOrder.where((d) => customDaysSet.contains(d)).toList();
-      travelDays = sorted.join(',');
-    }
-    bool isEnabled = habit['is_enabled'] == true;
+    });
+  }
 
-    const corridorPoints = [
-      'Mumbai',
-      'Panvel',
-      'Khalapur',
-      'Khopoli',
-      'Khandala',
-      'Lonavala',
-      'Kamshet',
-      'Pune',
-    ];
+  void _toggleDay(String dayCode) {
+    setState(() {
+      if (_selectedDays.contains(dayCode)) {
+        if (_selectedDays.length > 1) {
+          _selectedDays.remove(dayCode);
+        }
+      } else {
+        _selectedDays.add(dayCode);
+      }
+    });
+  }
 
-    if (!corridorPoints.contains(source)) {
-      source = 'Panvel';
-    }
-    if (!corridorPoints.contains(destination)) {
-      destination = 'Pune';
-    }
-
-    final sourceCtrl = TextEditingController(text: source);
-    final destCtrl = TextEditingController(text: destination);
-    TimeOfDay modalDepTime = CommuteHabitService.parseTime(departureTime);
-    TimeOfDay modalAlertTime = CommuteHabitService.parseTime(alertTime);
-
-    showModalBottomSheet(
+  Future<void> _pickDepartureTime() async {
+    final picked = await showTimePicker(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (modalContext, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Configure Daily Commute Schedule',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkNavy,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: source,
-                      decoration: const InputDecoration(
-                        labelText: 'Starting Point',
-                        prefixIcon: Icon(Icons.trip_origin, color: AppTheme.forestGreen),
-                        border: OutlineInputBorder(),
-                      ),
-                      isExpanded: true,
-                      items: corridorPoints.map((p) {
-                        return DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(p),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            source = val;
-                            sourceCtrl.text = val;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: destination,
-                      decoration: const InputDecoration(
-                        labelText: 'Destination',
-                        prefixIcon: Icon(Icons.location_on, color: AppTheme.crimsonRed),
-                        border: OutlineInputBorder(),
-                      ),
-                      isExpanded: true,
-                      items: corridorPoints.map((p) {
-                        return DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(p),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            destination = val;
-                            destCtrl.text = val;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Active Commute Days',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.darkNavy,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Daily'),
-                          selected: travelDaysMode == 'Daily',
-                          selectedColor: AppTheme.mint,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setModalState(() {
-                                travelDaysMode = 'Daily';
-                                customDaysSet = {
-                                  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-                                };
-                                travelDays = 'Daily';
-                              });
-                            }
-                          },
-                        ),
-                        ChoiceChip(
-                          label: const Text('Weekends'),
-                          selected: travelDaysMode == 'Weekends',
-                          selectedColor: AppTheme.mint,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setModalState(() {
-                                travelDaysMode = 'Weekends';
-                                customDaysSet = {'Sat', 'Sun'};
-                                travelDays = 'Sat-Sun';
-                              });
-                            }
-                          },
-                        ),
-                        ChoiceChip(
-                          label: const Text('Custom Days'),
-                          selected: travelDaysMode == 'Custom',
-                          selectedColor: AppTheme.mint,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setModalState(() {
-                                travelDaysMode = 'Custom';
-                                if (customDaysSet.isEmpty) {
-                                  customDaysSet = {
-                                    'Mon', 'Tue', 'Wed', 'Thu', 'Fri'
-                                  };
-                                }
-                                const dayOrder = [
-                                  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-                                ];
-                                final sorted = dayOrder
-                                    .where((d) => customDaysSet.contains(d))
-                                    .toList();
-                                travelDays = sorted.join(',');
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    if (travelDaysMode == 'Custom') ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Select Active Days (Monday to Sunday):',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.darkNavy,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                for (final day in [
-                                  {'code': 'Mon', 'label': 'Monday'},
-                                  {'code': 'Tue', 'label': 'Tuesday'},
-                                  {'code': 'Wed', 'label': 'Wednesday'},
-                                  {'code': 'Thu', 'label': 'Thursday'},
-                                  {'code': 'Fri', 'label': 'Friday'},
-                                  {'code': 'Sat', 'label': 'Saturday'},
-                                  {'code': 'Sun', 'label': 'Sunday'},
-                                ])
-                                  FilterChip(
-                                    label: Text(
-                                      day['code']!,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight:
-                                            customDaysSet.contains(day['code'])
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                        color:
-                                            customDaysSet.contains(day['code'])
-                                                ? const Color(0xFF065F46)
-                                                : AppTheme.darkNavy,
-                                      ),
-                                    ),
-                                    tooltip: day['label'],
-                                    selected:
-                                        customDaysSet.contains(day['code']),
-                                    selectedColor: AppTheme.mint,
-                                    backgroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      side: BorderSide(
-                                        color:
-                                            customDaysSet.contains(day['code'])
-                                                ? AppTheme.forestGreen
-                                                : Colors.grey.shade300,
-                                      ),
-                                    ),
-                                    onSelected: (selected) {
-                                      setModalState(() {
-                                        travelDaysMode = 'Custom';
-                                        if (selected) {
-                                          customDaysSet.add(day['code']!);
-                                        } else {
-                                          if (customDaysSet.length > 1) {
-                                            customDaysSet.remove(day['code']!);
-                                          }
-                                        }
-                                        const dayOrder = [
-                                          'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-                                        ];
-                                        final sorted = dayOrder
-                                            .where((d) =>
-                                                customDaysSet.contains(d))
-                                            .toList();
-                                        travelDays = sorted.join(',');
-                                      });
-                                    },
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    // 12-HOUR AM/PM TIME SELECTORS (IST)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: modalDepTime,
-                                initialEntryMode: TimePickerEntryMode.dialOnly,
-                                builder: (pickerContext, child) {
-                                  return MediaQuery(
-                                    data: MediaQuery.of(pickerContext).copyWith(
-                                      alwaysUse24HourFormat: false,
-                                    ),
-                                    child: child ?? const SizedBox.shrink(),
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setModalState(() {
-                                  modalDepTime = picked;
-                                  int depMin = picked.hour * 60 + picked.minute;
-                                  int alertMin = depMin - 15;
-                                  if (alertMin < 0) alertMin += 1440;
-                                  modalAlertTime = TimeOfDay(
-                                    hour: alertMin ~/ 60,
-                                    minute: alertMin % 60,
-                                  );
-                                });
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.schedule,
-                                          size: 14, color: AppTheme.forestGreen),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Departure',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.darkNavy,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    CommuteHabitService.formatTime12h(modalDepTime),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.darkNavy,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'Tap to change',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppTheme.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: modalAlertTime,
-                                initialEntryMode: TimePickerEntryMode.dialOnly,
-                                builder: (pickerContext, child) {
-                                  return MediaQuery(
-                                    data: MediaQuery.of(pickerContext).copyWith(
-                                      alwaysUse24HourFormat: false,
-                                    ),
-                                    child: child ?? const SizedBox.shrink(),
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setModalState(() {
-                                  modalAlertTime = picked;
-                                });
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.notifications_active,
-                                          size: 14, color: AppTheme.forestGreen),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Alert Notice',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.darkNavy,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    CommuteHabitService.formatTime12h(
-                                        modalAlertTime),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.darkNavy,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'Tap to change',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppTheme.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'Enable Daily Proactive Alerts',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text(
-                        'Automatically evaluates corridor safety prior to departure',
-                      ),
-                      value: isEnabled,
-                      activeThumbColor: AppTheme.forestGreen,
-                      onChanged: (val) {
-                        setModalState(() => isEnabled = val);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.forestGreen,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          setState(() => _isLoading = true);
-                          final formattedDep =
-                              CommuteHabitService.formatTime12h(modalDepTime);
-                          final formattedAlert =
-                              CommuteHabitService.formatTime12h(modalAlertTime);
-                          await _habitService.saveHabit(
-                            source: sourceCtrl.text.trim(),
-                            destination: destCtrl.text.trim(),
-                            departureTime: formattedDep,
-                            alertTime: formattedAlert,
-                            travelDays: travelDays,
-                            isEnabled: isEnabled,
-                          );
-                          await _habitService.fetchAlert(
-                            source: sourceCtrl.text.trim(),
-                            destination: destCtrl.text.trim(),
-                          );
-                          if (mounted) {
-                            setState(() => _isLoading = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Commute alert schedule updated!'),
-                                backgroundColor: AppTheme.forestGreen,
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text(
-                          'Save Commute Schedule',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+      initialTime: _depTime,
+      builder: (ctx, child) {
+        return MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );
+
+    if (picked != null) {
+      setState(() {
+        _depTime = picked;
+        int depMin = picked.hour * 60 + picked.minute;
+        int alertMin = depMin - 15;
+        if (alertMin < 0) alertMin += 1440;
+        _alertTime = TimeOfDay(hour: alertMin ~/ 60, minute: alertMin % 60);
+      });
+    }
+  }
+
+  Future<void> _pickAlertTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _alertTime,
+      builder: (ctx, child) {
+        return MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _alertTime = picked;
+      });
+    }
+  }
+
+  String _getDaysSummaryText() {
+    if (_selectedDays.length == 7) {
+      return 'Everyday (Monday to Sunday)';
+    }
+    if (_selectedDays.length == 5 &&
+        !_selectedDays.contains('Sat') &&
+        !_selectedDays.contains('Sun')) {
+      return 'Weekdays (Monday to Friday)';
+    }
+    if (_selectedDays.length == 2 &&
+        _selectedDays.contains('Sat') &&
+        _selectedDays.contains('Sun')) {
+      return 'Weekends (Saturday & Sunday)';
+    }
+    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final sorted = order.where((d) => _selectedDays.contains(d)).toList();
+    return sorted.join(', ');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.surfaceCanvas,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: AppTheme.surfaceCanvas,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkNavy),
@@ -605,19 +250,19 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Commute Alerts & Habits',
+              'Daily Commute Setup',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.darkNavy,
               ),
             ),
             Text(
-              'Habit-based Corridor Intelligence',
+              'Proactive corridor departure alerts',
               style: TextStyle(
                 fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -625,76 +270,89 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.darkNavy),
-            tooltip: 'Refresh Alert Assessment',
+            tooltip: 'Refresh Status',
             onPressed: _loadData,
           ),
         ],
       ),
       body: _isLoading
           ? const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: AppTheme.forestGreen),
-                  SizedBox(height: 12),
-                  Text(
-                    'Evaluating corridor safety & habits...',
-                    style: TextStyle(color: AppTheme.subtleGrey),
-                  ),
-                ],
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF1D4ED8)),
             )
-          : RefreshIndicator(
-              color: AppTheme.forestGreen,
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildActiveAlertSection(),
-                  const SizedBox(height: 20),
-                  _buildHabitScheduleSection(),
-                  const SizedBox(height: 20),
-                  _buildSimulationSection(),
-                ],
-              ),
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                // 1. LIVE ROUTE ASSESSMENT / STATUS
+                _buildLiveStatusCard(),
+
+                const SizedBox(height: 18),
+
+                // 2. ROUTE CORRIDOR SELECTION
+                _buildRouteSection(),
+
+                const SizedBox(height: 16),
+
+                // 3. DEPARTURE & ALERT TIME
+                _buildTimeSection(),
+
+                const SizedBox(height: 16),
+
+                // 4. ACTIVE COMMUTE DAYS
+                _buildDaysSection(),
+
+                const SizedBox(height: 16),
+
+                // 5. PROACTIVE NOTIFICATIONS TOGGLE
+                _buildNotificationToggleCard(),
+
+                const SizedBox(height: 24),
+
+                // 6. SAVE & VERIFY ACTIONS
+                _buildActionButtons(),
+              ],
             ),
     );
   }
 
-  Widget _buildActiveAlertSection() {
+  // ============================================================
+  // CLEAN SECTIONS
+  // ============================================================
+
+  Widget _buildLiveStatusCard() {
     return ValueListenableBuilder<Map<String, dynamic>?>(
       valueListenable: _habitService.activeAlertNotifier,
       builder: (context, alert, child) {
         if (alert == null) {
           return Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle_outline, color: AppTheme.forestGreen, size: 36),
-                const SizedBox(width: 14),
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 22),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Corridor Normal',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
                       Text(
-                        'No active hazard alerts along your usual route.',
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        'Corridor Safe • $_source ➔ $_destination',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'No severe hazards reported on the expressway.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF047857)),
                       ),
                     ],
                   ),
-                ),
-                TextButton(
-                  onPressed: () => _habitService.triggerTestAlert(),
-                  child: const Text('Check Now'),
                 ),
               ],
             ),
@@ -702,552 +360,582 @@ class _CommuteAlertsScreenState extends State<CommuteAlertsScreen> {
         }
 
         final int score = (alert['safety_score'] as num?)?.toInt() ?? 70;
-        final String riskLevel = alert['risk_level'] ?? 'Moderate';
-        final Color scoreColor = _getScoreColor(score);
+        final String risk = alert['risk_level'] ?? 'Normal';
         final List warnings = (alert['warnings'] as List?) ?? [];
-        final String title = alert['alert_title'] ?? 'Commute Alert';
-        final String body = alert['alert_body'] ?? '';
-        final String advice = alert['advice'] ?? '';
-        final String src = alert['source'] ?? 'Panvel';
-        final String dst = alert['destination'] ?? 'Pune';
+        final Color accentColor = score < 60
+            ? const Color(0xFFDC2626)
+            : (score < 80 ? const Color(0xFFD97706) : const Color(0xFF059669));
 
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
+            boxShadow: const [
               BoxShadow(
-                color: scoreColor.withValues(alpha: 0.12),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
+                color: Color(0x08000000),
+                blurRadius: 10,
+                offset: Offset(0, 2),
               ),
             ],
-            border: Border.all(color: scoreColor.withValues(alpha: 0.4), width: 1.5),
           ),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Banner
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: scoreColor.withValues(alpha: 0.1),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: scoreColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.notifications_active, color: Colors.white, size: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$src ➔ $dst',
+                    child: Text(
+                      'SAFETY SCORE: $score/100 • $risk',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$_source ➔ $_destination',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+              if (warnings.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                for (final w in warnings.take(2))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 15, color: accentColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            w.toString(),
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: AppTheme.darkNavy,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRouteSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'TRAVEL CORRIDOR',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF64748B),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // Origin
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _source,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                      items: _corridorPoints.map((pt) {
+                        return DropdownMenuItem(
+                          value: pt,
+                          child: Text(
+                            pt,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                               color: AppTheme.darkNavy,
                             ),
                           ),
-                          Text(
-                            'Daily Pre-trip Assessment',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _source = val);
+                      },
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: scoreColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        riskLevel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
+              // Swap Button
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Score Gauge Row
-                    Row(
-                      children: [
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: scoreColor, width: 4),
-                            color: scoreColor.withValues(alpha: 0.08),
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '$score',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: scoreColor,
-                                    height: 1.0,
-                                  ),
-                                ),
-                                Text(
-                                  '/100',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: scoreColor.withValues(alpha: 0.8),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkNavy,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                body,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: InkWell(
+                  onTap: _swapDirection,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEFF6FF),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: Color(0xFF1D4ED8),
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
 
-                    if (warnings.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Specific Regional Warnings:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkNavy,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...warnings.map((w) {
-                        final icon = _getWarningIcon(w.toString());
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(icon, size: 18, color: scoreColor),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  w.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppTheme.darkNavy,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
+              // Destination
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _destination,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                      items: _corridorPoints.map((pt) {
+                        return DropdownMenuItem(
+                          value: pt,
+                          child: Text(
+                            pt,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.darkNavy,
+                            ),
                           ),
                         );
-                      }),
-                    ],
-
-                    if (advice.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline, size: 18, color: AppTheme.darkNavy),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                advice,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade800,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.darkNavy,
-                              side: BorderSide(color: Colors.grey.shade300),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            icon: const Icon(Icons.timeline, size: 18),
-                            label: const Text('Live Updates'),
-                            onPressed: () {
-                              Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.forestGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            icon: const Icon(Icons.analytics_outlined, size: 18),
-                            label: const Text('Start Analysis'),
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.tripDetails,
-                                arguments: {
-                                  'role': 'planner',
-                                  'source': src,
-                                  'destination': dst,
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _destination = val);
+                      },
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  String _formatTravelDays(String? days) {
-    if (days == null || days.isEmpty || days == 'Daily') {
-      return 'Daily (All 7 Days)';
-    }
-    if (days == 'Sat-Sun' || days == 'Weekends') {
-      return 'Weekends (Sat & Sun)';
-    }
-    final clean = days.replaceFirst('Custom:', '');
-    final parts = clean
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.isEmpty || days == 'Mon-Fri') {
-      return 'Custom (Mon, Tue, Wed, Thu, Fri)';
-    }
-    if (parts.length == 7) {
-      return 'Daily (All 7 Days)';
-    }
-    return 'Custom (${parts.join(', ')})';
-  }
-
-  Widget _buildHabitScheduleSection() {
-    return ValueListenableBuilder<Map<String, dynamic>?>(
-      valueListenable: _habitService.commuteHabitNotifier,
-      builder: (context, habit, child) {
-        final habitData = habit ?? {
-          'source': 'Panvel',
-          'destination': 'Pune',
-          'departure_time': '08:00',
-          'observed_check_time': '07:50',
-          'alert_time': '07:45',
-          'travel_days': 'Daily',
-          'is_enabled': true,
-        };
-
-        final String src = habitData['source'] ?? 'Panvel';
-        final String dst = habitData['destination'] ?? 'Pune';
-        final String depTime = habitData['departure_time'] ?? '08:00';
-        final String alertTime = habitData['alert_time'] ?? '07:45';
-        final String travelDays = habitData['travel_days'] ?? 'Daily';
-        final bool isEnabled = habitData['is_enabled'] == true;
-
-        return Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildTimeSection() {
+    return Row(
+      children: [
+        // Departure Time Card
+        Expanded(
+          child: InkWell(
+            onTap: _pickDepartureTime,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.directions_car_filled, color: AppTheme.forestGreen, size: 24),
-                      SizedBox(width: 8),
+                      Icon(Icons.access_time_filled_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                      SizedBox(width: 6),
                       Text(
-                        'Daily Commute Schedule',
+                        'DEPARTURE TIME',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkNavy,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
                   ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.forestGreen,
-                      visualDensity: VisualDensity.compact,
+                  const SizedBox(height: 8),
+                  Text(
+                    CommuteHabitService.formatTime12h(_depTime),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkNavy,
                     ),
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Configure'),
-                    onPressed: () => _showEditHabitDialog(habitData),
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Specify your daily route corridor, active commute days, departure time, and proactive alert schedule.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.3),
-              ),
-              const SizedBox(height: 16),
-
-              // Habit summary metrics
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppTheme.forestGreen.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _buildHabitRow(
-                      icon: Icons.directions_car,
-                      label: 'Commute Corridor',
-                      value: '$src ➔ $dst',
-                    ),
-                    const Divider(height: 16),
-                    _buildHabitRow(
-                      icon: Icons.calendar_month_rounded,
-                      label: 'Active Days',
-                      value: _formatTravelDays(travelDays),
-                    ),
-                    const Divider(height: 16),
-                    _buildHabitRow(
-                      icon: Icons.departure_board,
-                      label: 'Departure Time',
-                      value: depTime,
-                    ),
-                    const Divider(height: 16),
-                    _buildHabitRow(
-                      icon: Icons.alarm,
-                      label: 'Proactive Alert Time',
-                      value: '$alertTime (15 min prior)',
-                      highlight: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                  const SizedBox(height: 2),
                   const Text(
-                    'Daily Commute Notifications',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  Switch(
-                    value: isEnabled,
-                    activeThumbColor: AppTheme.forestGreen,
-                    onChanged: (val) async {
-                      await _habitService.saveHabit(
-                        source: src,
-                        destination: dst,
-                        departureTime: depTime,
-                        alertTime: alertTime,
-                        travelDays: travelDays,
-                        isEnabled: val,
-                      );
-                      setState(() {});
-                    },
+                    'Tap to adjust',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                   ),
                 ],
               ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHabitRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    bool highlight = false,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: highlight ? AppTheme.forestGreen : Colors.grey.shade700),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade700,
-            fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: highlight ? AppTheme.forestGreen : AppTheme.darkNavy,
+
+        const SizedBox(width: 12),
+
+        // Alert Notice Time Card
+        Expanded(
+          child: InkWell(
+            onTap: _pickAlertTime,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, size: 14, color: Color(0xFF059669)),
+                      SizedBox(width: 6),
+                      Text(
+                        'ALERT NOTICE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    CommuteHabitService.formatTime12h(_alertTime),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkNavy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    '15 min prior notice',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSimulationSection() {
+  Widget _buildDaysSection() {
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.verified_user_outlined, color: AppTheme.forestGreen, size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Verify Notification Assessment',
+              const Text(
+                'ACTIVE COMMUTE DAYS',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkNavy,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_selectedDays.length} days active',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1D4ED8),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Simulate and verify the proactive commute alert generated by our prediction model, live weather, and human community reports along your route.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          const SizedBox(height: 12),
+
+          // Preset Chips Row
+          Row(
+            children: [
+              _buildPresetChip('Weekdays', 'weekdays'),
+              const SizedBox(width: 8),
+              _buildPresetChip('Everyday', 'daily'),
+              const SizedBox(width: 8),
+              _buildPresetChip('Weekends', 'weekends'),
+            ],
           ),
+
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.forestGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.notifications_active_outlined),
-              label: const Text(
-                'Verify Notification Alert',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onPressed: () async {
-                setState(() => _isLoading = true);
-                final habit = _habitService.commuteHabitNotifier.value;
-                final src = habit?['source'] ?? 'Panvel';
-                final dst = habit?['destination'] ?? 'Pune';
-                final alert = await _habitService.triggerTestAlert(
-                  source: src,
-                  destination: dst,
-                );
-                setState(() => _isLoading = false);
 
-                if (mounted && alert != null) {
-                  final score = alert['safety_score'] is int
-                      ? alert['safety_score'] as int
-                      : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
-
-                  // triggerTestAlert already dispatches the real system notification!
-
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Notification evaluated: Score $score/100 • ${alert['risk_level']}',
-                        ),
-                        backgroundColor: _getScoreColor(score),
-                      ),
-                    );
-                  }
-                } else if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to evaluate commute alert. Please check connectivity.'),
-                      backgroundColor: AppTheme.crimsonRed,
+          // 7-Day Circular Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: _daysList.map((day) {
+              final isSelected = _selectedDays.contains(day.code);
+              return InkWell(
+                onTap: () => _toggleDay(day.code),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFE2E8F0),
                     ),
-                  );
-                }
-              },
-            ),
+                  ),
+                  child: Text(
+                    day.initial,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 12),
+          Text(
+            _getDaysSummaryText(),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildPresetChip(String label, String presetKey) {
+    bool isSelected = false;
+    if (presetKey == 'weekdays') {
+      isSelected = _selectedDays.length == 5 &&
+          !_selectedDays.contains('Sat') &&
+          !_selectedDays.contains('Sun');
+    } else if (presetKey == 'daily') {
+      isSelected = _selectedDays.length == 7;
+    } else if (presetKey == 'weekends') {
+      isSelected = _selectedDays.length == 2 &&
+          _selectedDays.contains('Sat') &&
+          _selectedDays.contains('Sun');
+    }
+
+    return InkWell(
+      onTap: () => _setPresetDays(presetKey),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF64748B),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationToggleCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              size: 20,
+              color: Color(0xFF1D4ED8),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daily Commute Alerts',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.darkNavy,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Evaluates fog, rain & traffic before departure',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _isEnabled,
+            activeThumbColor: const Color(0xFF1D4ED8),
+            onChanged: (val) {
+              setState(() => _isEnabled = val);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _saveSchedule,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1D4ED8),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'Save Commute Schedule',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Evaluating corridor alert for your route...'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              final alert = await _habitService.triggerTestAlert(
+                source: _source,
+                destination: _destination,
+              );
+              if (mounted && alert != null) {
+                final score = alert['safety_score'] ?? 80;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Test Notification Sent: Score $score/100 (${alert['risk_level'] ?? 'Normal'})',
+                    ),
+                    backgroundColor: const Color(0xFF1D4ED8),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.notifications_active_outlined, size: 16, color: Color(0xFF64748B)),
+            label: const Text(
+              'Send Test Alert Notification',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayItem {
+  final String code;
+  final String initial;
+  final String fullName;
+
+  const _DayItem(this.code, this.initial, this.fullName);
 }
