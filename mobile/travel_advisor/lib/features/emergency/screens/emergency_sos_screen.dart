@@ -15,7 +15,7 @@ class EmergencySosScreen extends StatefulWidget {
   State<EmergencySosScreen> createState() => _EmergencySosScreenState();
 }
 
-class _EmergencySosScreenState extends State<EmergencySosScreen> {
+class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBindingObserver {
   bool _isLoadingLocation = true;
   Position? _currentPosition;
   String? _nearestLandmark;
@@ -24,6 +24,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   String _locationStatusMessage = 'Detecting current expressway position...';
   bool _needsPermission = false;
   bool _needsServiceEnable = false;
+  bool _hasPromptedPermissionModal = false;
 
   // Expressway landmark chainage reference points (0km = Kalamboli/Panvel)
   static const List<_ExpresswayLandmark> _landmarks = [
@@ -43,10 +44,29 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   @override
   void initState() {
     super.initState();
-    _detectLocation();
+    WidgetsBinding.instance.addObserver(this);
+    // Request permission immediately on screen launch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _detectLocation(mandatoryPrompt: true);
+    });
   }
 
-  Future<void> _detectLocation() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Re-check automatically when user returns from phone settings or permission prompt
+      _detectLocation(mandatoryPrompt: false);
+    }
+  }
+
+  Future<void> _detectLocation({bool mandatoryPrompt = false}) async {
+    if (!mounted) return;
     setState(() {
       _isLoadingLocation = true;
       _needsPermission = false;
@@ -55,39 +75,37 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     });
 
     try {
-      // 1. Instantly check last known position (~10ms)
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null && mounted) {
-        _applyPosition(lastKnown);
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
-
-      // 2. Check if device location services (GPS) are turned on
+      // 1. Check if device location services (GPS) are turned on
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
           setState(() {
             _isLoadingLocation = false;
             _needsServiceEnable = true;
-            _locationStatusMessage = 'Device GPS is turned OFF.';
+            _locationStatusMessage = 'Device GPS is turned OFF. Turn ON for emergency rescue.';
           });
+          if (mandatoryPrompt && !_hasPromptedPermissionModal) {
+            _showMandatoryLocationModal(isServiceDisabled: true);
+          }
         }
         return;
       }
 
-      // 3. Check location permissions
+      // 2. Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
+        // Automatically trigger system permission dialog immediately
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
             setState(() {
               _isLoadingLocation = false;
               _needsPermission = true;
-              _locationStatusMessage = 'Location permission is required.';
+              _locationStatusMessage = 'Location access is required for highway emergency dispatch.';
             });
+            if (!_hasPromptedPermissionModal) {
+              _showMandatoryLocationModal(isPermissionDenied: true);
+            }
           }
           return;
         }
@@ -98,16 +116,28 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           setState(() {
             _isLoadingLocation = false;
             _needsPermission = true;
-            _locationStatusMessage = 'Location permission is disabled in phone settings.';
+            _locationStatusMessage = 'Location access is disabled in phone settings.';
           });
+          if (!_hasPromptedPermissionModal) {
+            _showMandatoryLocationModal(isDeniedForever: true);
+          }
         }
         return;
       }
 
-      // 4. Fetch fresh position
+      // 3. Permission granted! Check last known position for instant readout (~10ms)
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null && mounted) {
+        _applyPosition(lastKnown);
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+
+      // 4. Fetch fresh high-precision GPS position
       final fresh = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
+          accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 15),
         ),
       );
@@ -126,6 +156,121 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
         });
       }
     }
+  }
+
+  void _showMandatoryLocationModal({
+    bool isServiceDisabled = false,
+    bool isPermissionDenied = false,
+    bool isDeniedForever = false,
+  }) {
+    if (!mounted) return;
+    _hasPromptedPermissionModal = true;
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return PopScope(
+          canPop: true,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEF2F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Color(0xFFDC2626),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'GPS Location Access Required',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.darkNavy,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isServiceDisabled
+                      ? 'In a highway breakdown or medical emergency, your device GPS is required to detect your exact expressway kilometer stone (~km) so towing cranes and ambulances reach you immediately.'
+                      : (isDeniedForever
+                          ? 'Location permission is disabled for this app in your phone settings. Enable location access so highway patrol can pinpoint your vehicle on the expressway.'
+                          : 'Emergency highway services require your live location to calculate the nearest milestone and dispatch roadside assistance.'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      if (isServiceDisabled) {
+                        await Geolocator.openLocationSettings();
+                      } else if (isDeniedForever) {
+                        await Geolocator.openAppSettings();
+                      } else {
+                        await Geolocator.requestPermission();
+                      }
+                      _detectLocation(mandatoryPrompt: false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    icon: Icon(
+                      isServiceDisabled ? Icons.gps_fixed_rounded : Icons.lock_open_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      isServiceDisabled
+                          ? 'Turn ON Device GPS'
+                          : (isDeniedForever ? 'Open Phone Settings' : 'Allow Location Access'),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'I will locate mile marker manually',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _applyPosition(Position pos) {
@@ -717,37 +862,40 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                           ],
                         ),
                         if (_needsPermission) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           ElevatedButton.icon(
                             onPressed: () async {
-                              await Geolocator.requestPermission();
-                              _detectLocation();
+                              final p = await Geolocator.requestPermission();
+                              if (p == LocationPermission.deniedForever) {
+                                await Geolocator.openAppSettings();
+                              }
+                              _detectLocation(mandatoryPrompt: false);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1D4ED8),
+                              backgroundColor: const Color(0xFFDC2626),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               elevation: 0,
                             ),
                             icon: const Icon(Icons.lock_open_rounded, size: 14),
-                            label: const Text('Grant Location Access', style: TextStyle(fontSize: 11.5)),
+                            label: const Text('Allow GPS Location Access', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                           ),
                         ],
                         if (_needsServiceEnable) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           ElevatedButton.icon(
                             onPressed: () async {
                               await Geolocator.openLocationSettings();
-                              _detectLocation();
+                              _detectLocation(mandatoryPrompt: false);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1D4ED8),
+                              backgroundColor: const Color(0xFFDC2626),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               elevation: 0,
                             ),
-                            icon: const Icon(Icons.settings_rounded, size: 14),
-                            label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 11.5)),
+                            icon: const Icon(Icons.gps_fixed_rounded, size: 14),
+                            label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                           ),
                         ],
                       ],

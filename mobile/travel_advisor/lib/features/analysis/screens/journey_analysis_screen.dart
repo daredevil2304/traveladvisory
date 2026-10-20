@@ -845,43 +845,263 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     }
   }
 
-  String _getSectorAdvisory(String code, {bool isRain = false, bool isNight = false}) {
-    String base;
+  /// Generates a fully dynamic, context-aware driving advisory combining
+  /// sector topography, live weather reports, and TomTom traffic congestion.
+  String _buildDynamicAreaAdvisory({
+    required String code,
+    required String title,
+    required bool isRain,
+    required double? rainMm,
+    required String precipitationStr,
+    required bool isNight,
+    required double? visKm,
+    required double? windKmh,
+    required int delayMinutes,
+    required String speedText,
+    required int recommendedSpeed,
+  }) {
+    final StringBuffer sb = StringBuffer();
+
+    // 1. Sector Topographical Base
     switch (code) {
       case 'R1':
-        base = 'High-density urban commuter flow with frequent flyovers. Maintain safe following buffer and anticipate sudden lane merges near Vashi and CBD Belapur.';
+        sb.write('Urban expressway corridor with frequent flyovers and commuter merges. Maintain safe vehicle buffer.');
         break;
       case 'R2':
-        base = 'Open 6-lane high-speed expressway plain. Optimal fluid cruising area; maintain designated fast-lane discipline and avoid sudden overtaking.';
+        sb.write('Open 6-lane high-speed expressway plain between Kalamboli and Khalapur. Optimal multi-lane cruising zone.');
         break;
       case 'R3':
-        base = 'Ghat foothill approach. Heavy commercial trucks decelerate into lower gears; watch for slow-moving freight in the left lanes.';
+        sb.write('Foothill approach and Khalapur toll zone where heavy freight trucks decelerate into lower climbing gears.');
         break;
       case 'R4':
-        base = 'Steep Bhor Ghat mountain incline & hairpins. Maintain low-gear engine braking on downslopes, leave 40m+ clearance behind heavy trucks, and never overtake on blind curves.';
+        sb.write('Steep Bhor Ghat mountain incline with sharp hairpin curves, Adoshi tunnel, and heavy descending grade.');
         break;
       case 'R5':
-        base = 'High-altitude mountain crest transition. Watch for viaduct crosswinds, tunnel speed shifts, and toll queue merges near Lonavala.';
+        sb.write('High-altitude Khandala-Lonavala mountain crest with elevated viaduct bridges, tunnels, and tourist exit ramps.');
         break;
       case 'R6':
-        base = 'Smooth descending plateau corridor. Optimal cruising visibility; be cautious of occasional slow utility vehicles near rural expressway exits.';
+        sb.write('Descending Sahyadri plateau corridor towards Kamshet and Talegaon with broad sweeping curves.');
         break;
       case 'R7':
-        base = 'Approaching Pune metropolitan expressway end. Traffic density increases near Somatne and Ravet; prepare for speed moderation and toll plazas.';
+        sb.write('Pune metropolitan approach corridor nearing Talegaon and Urse toll plazas with dense commuter flow.');
         break;
       case 'R8':
-        base = 'Pune metropolitan arterial highway. Moderate urban speeds and expect multiple vehicle merges at city junctions.';
+        sb.write('Pune metropolitan arterial bypass highway with multiple local junction merges and speed moderation.');
         break;
       default:
-        base = 'Standard expressway route area. Maintain designated lane discipline and recommended cruising speed.';
+        sb.write('Expressway corridor sector ($title). Maintain designated lane discipline.');
     }
 
-    if (isRain) {
-      base += ' [WET SURFACE ADVISORY: Reduced road grip. Reduce cruising speed by 15-20 km/h and double braking distance.]';
-    } else if (isNight) {
-      base += ' [NIGHT TRAVEL ADVISORY: Reduced ambient lighting. Keep headlights on high-beam on unlit stretches and maintain safe following gap.]';
+    // 2. Weather-Driven Dynamic Directives
+    if (code == 'R4' || code == 'R5') {
+      // Mountain-specific weather directives
+      if (isRain) {
+        final rainNotice = (rainMm != null && rainMm > 5.0) ? 'heavy downpour ($precipitationStr)' : 'wet road surface';
+        sb.write(' [Ghat Wet Road Advisory]: Mountain curves are slick due to $rainNotice. Downshift to 2nd or 3rd gear for engine braking on downward slopes; avoid riding the brakes to prevent brake fade. Leave 40m+ gap behind freight trucks and never overtake on blind curves.');
+      } else if (visKm != null && visKm < 3.0) {
+        sb.write(' [Ghat Mist Advisory]: Dense mountain fog cuts sightlines to ${visKm.toStringAsFixed(1)} km. Turn on low-beam headlights/fog lamps and track road cat\'s-eye lane reflectors.');
+      } else if (windKmh != null && windKmh > 30.0) {
+        sb.write(' [Crest Viaduct Crosswinds]: Elevated bridge crosswinds of ${windKmh.toStringAsFixed(0)} km/h. Keep firm two-handed grip on steering when emerging from tunnels.');
+      } else {
+        sb.write(' [Mountain Incline Protocol]: Maintain steady 40-50 km/h grade speed. Keep left to allow uphill passing lanes to remain clear.');
+      }
+    } else if (code == 'R2' || code == 'R6') {
+      // Plains-specific weather directives
+      if (isRain) {
+        sb.write(' [High-Speed Aquaplaning Advisory]: High-speed cruising on wet asphalt ($precipitationStr) creates severe hydroplaning risk. Cap speed to $recommendedSpeed km/h, avoid standing water pools near shoulders, and double following distance.');
+      } else if (windKmh != null && windKmh > 35.0) {
+        sb.write(' [Plains Crosswind Warning]: Open plain exposure with ${windKmh.toStringAsFixed(0)} km/h crosswinds. Anticipate wind buffeting when passing high-sided container trucks.');
+      } else {
+        sb.write(' [Optimal Cruising]: Pavement is dry and clear. Maintain center lane cruising at 80-100 km/h; keep the extreme right lane strictly reserved for passing.');
+      }
+    } else {
+      // Urban / Approach directives
+      if (isRain) {
+        sb.write(' [Wet Urban Surface]: Flyover expansion joints and metal toll strips become slippery during rain ($precipitationStr). Decelerate smoothly before toll gates.');
+      }
     }
-    return base;
+
+    // 3. Traffic Telemetry Directives
+    if (delayMinutes >= 10) {
+      sb.write(' [Traffic Bottleneck Warning]: Active queue with +${delayMinutes}m delay, moving at $speedText. Avoid aggressive lane switching; align into toll or exit lanes early.');
+    } else if (delayMinutes > 0) {
+      sb.write(' [Traffic Advisory]: Minor slow-moving traffic (+${delayMinutes}m delay) moving at $speedText. Keep steady braking buffer.');
+    } else {
+      sb.write(' [Traffic Status]: Flow is fluid and unrestricted ($speedText) with 0m delay reported.');
+    }
+
+    // 4. Night Driving Modifier
+    if (isNight) {
+      sb.write(' • [Night Protocol]: Ambient lighting is minimal on unlit stretches. Dip high-beams when trailing vehicles to avoid blinding drivers ahead.');
+    }
+
+    return sb.toString();
+  }
+
+  /// Builds a comprehensive, human-readable safety assessment and outlook
+  /// that quotes real weather metrics, traffic speeds, and predictive horizons.
+  String _buildDynamicSafetyAssessment({
+    required int sVal,
+    required String title,
+    required bool isRain,
+    required double? rainMm,
+    required String precipitationStr,
+    required bool isNight,
+    required double? visKm,
+    required double? windKmh,
+    required double? tempC,
+    required int delayMinutes,
+    required String speedText,
+    required bool isPlanner,
+    required String? travelDate,
+    required String? travelTime,
+  }) {
+    final StringBuffer sb = StringBuffer();
+
+    // 1. Overall Safety Classification
+    if (sVal >= 85) {
+      sb.write('Optimal Travel Safety ($sVal/100). ');
+    } else if (sVal >= 75) {
+      sb.write('Good Travel Conditions ($sVal/100). ');
+    } else if (sVal >= 60) {
+      sb.write('Moderate Caution Advised ($sVal/100). ');
+    } else {
+      sb.write('Elevated Hazard Warning ($sVal/100). ');
+    }
+
+    // 2. Weather Diagnostic
+    if (isRain) {
+      if (rainMm != null && rainMm >= 7.5) {
+        sb.write('Heavy downpour of ${rainMm.toStringAsFixed(1)} mm/h over $title. High aquaplaning hazard on asphalt with significantly reduced braking grip. ');
+      } else {
+        sb.write('Active precipitation ($precipitationStr) with wet road surfaces. Road friction coefficient is moderately reduced. ');
+      }
+    } else {
+      final tempStr = tempC != null ? '${tempC.toStringAsFixed(0)}°C, ' : '';
+      sb.write('Road surface is completely dry ($tempStr). ');
+    }
+
+    // 3. Visibility & Wind Diagnostic
+    if (visKm != null && visKm < 3.5) {
+      sb.write('Atmospheric sightlines restricted to ${visKm.toStringAsFixed(1)} km due to mist/fog. ');
+    } else if (windKmh != null && windKmh > 30.0) {
+      sb.write('Elevated wind speed of ${windKmh.toStringAsFixed(0)} km/h across highway spans. ');
+    } else if (!isRain) {
+      sb.write('Atmospheric visibility is optimal at 10+ km. ');
+    }
+
+    // 4. Traffic Flow Telemetry
+    if (delayMinutes >= 10) {
+      sb.write('TomTom live telemetry detects an active bottleneck causing a +${delayMinutes}m delay, with traffic crawling at $speedText. ');
+    } else if (delayMinutes > 0) {
+      sb.write('Moderate vehicle build-up (+${delayMinutes}m delay), vehicles averaging $speedText. ');
+    } else {
+      sb.write('Expressway traffic is moving with fluid speed ($speedText) and zero congestion delay. ');
+    }
+
+    // 5. Predictive Outlook
+    if (isPlanner && (travelDate != null || travelTime != null)) {
+      final dt = '${travelDate ?? ''} ${travelTime ?? ''}'.trim();
+      sb.write('Projected Outlook for $dt: Expect ${isRain ? 'sustained rain showers requiring conservative speeds' : (isNight ? 'unlit night travel with reduced contrast' : 'clear daylight cruising conditions')}.');
+    } else {
+      sb.write('Live Outlook: ${sVal >= 75 ? 'Corridor remains stable for safe travel.' : 'Defensive driving and enhanced vehicle spacing strongly advised.'}');
+    }
+
+    return sb.toString();
+  }
+
+  /// Dynamically computes statutory and recommended speeds based on sector
+  /// topography, government limits, live rainfall, visibility, and TomTom traffic speed.
+  Map<String, dynamic> _computeDynamicSafeSpeed({
+    required String regCode,
+    required dynamic safeSpeedAdv,
+    required bool isRain,
+    required double? rainMm,
+    required String precipitationStr,
+    required bool isNight,
+    required double? visKm,
+    required double? windKmh,
+    required int delayMinutes,
+    required String speedText,
+  }) {
+    // 1. Statutory Speed Limit by Expressway Sector
+    int statutorySpeed = 80;
+    if (regCode == 'R4' || regCode == 'R5') {
+      statutorySpeed = 50; // Strict mountain pass statutory limit
+    } else if (regCode == 'R2' || regCode == 'R6') {
+      statutorySpeed = 100; // Open 6-lane plain expressway limit
+    } else if (regCode == 'R8') {
+      statutorySpeed = 60; // Urban arterial limit
+    } else {
+      statutorySpeed = 80; // Approach / transition zones
+    }
+
+    // If backend provided an explicit statutory speed, respect it
+    if (safeSpeedAdv is Map && safeSpeedAdv['statutory_speed_kmh'] is num) {
+      final s = (safeSpeedAdv['statutory_speed_kmh'] as num).toInt();
+      if (s > 0) statutorySpeed = s;
+    }
+
+    int recommendedSpeed = statutorySpeed;
+    final List<String> reasons = [];
+
+    // 2. Weather Deductions
+    if (isRain) {
+      if (rainMm != null && rainMm >= 7.5) {
+        recommendedSpeed -= 25;
+        reasons.add('Heavy downpour (${rainMm.toStringAsFixed(1)} mm/h) - high hydroplaning risk & wet braking distance');
+      } else {
+        recommendedSpeed -= 15;
+        reasons.add('Wet asphalt ($precipitationStr) - tire traction reduced by 30%');
+      }
+    }
+
+    if (visKm != null && visKm < 2.5) {
+      recommendedSpeed -= 20;
+      reasons.add('Dense fog/mist cutting visibility to ${visKm.toStringAsFixed(1)} km');
+    } else if (visKm != null && visKm < 5.0) {
+      recommendedSpeed -= 10;
+      reasons.add('Haze/mist reducing forward sightlines to ${visKm.toStringAsFixed(1)} km');
+    }
+
+    if (windKmh != null && windKmh > 35.0) {
+      recommendedSpeed -= 10;
+      reasons.add('Viaduct crosswinds of ${windKmh.toStringAsFixed(0)} km/h');
+    }
+
+    // 3. Traffic Deductions
+    if (delayMinutes >= 15) {
+      recommendedSpeed = (recommendedSpeed > 40) ? 35 : recommendedSpeed;
+      reasons.add('Live TomTom congestion (+${delayMinutes}m delay) - traffic crawling at $speedText');
+    } else if (delayMinutes >= 5) {
+      recommendedSpeed -= 15;
+      reasons.add('Moderate traffic queue (+${delayMinutes}m delay) near toll/choke point');
+    }
+
+    // 4. Night in Mountain Section
+    if (isNight && (regCode == 'R4' || regCode == 'R5')) {
+      recommendedSpeed -= 10;
+      reasons.add('Night darkness on unlit mountain hairpin bends');
+    }
+
+    // 5. Clamping & Optimal Case
+    if (recommendedSpeed < 30) recommendedSpeed = 30; // Minimum safe transit speed
+    if (recommendedSpeed > statutorySpeed) recommendedSpeed = statutorySpeed;
+
+    if (reasons.isEmpty) {
+      if (statutorySpeed == 50) {
+        reasons.add('Dry pavement & clear sightlines - maintain statutory 50 km/h mountain pass speed');
+      } else {
+        reasons.add('Optimal dry road conditions - maintain designated $statutorySpeed km/h cruising speed');
+      }
+    }
+
+    return {
+      'statutory_speed': statutorySpeed,
+      'recommended_speed': recommendedSpeed,
+      'is_reduced': recommendedSpeed < statutorySpeed,
+      'reasons': reasons,
+    };
   }
 
   Widget _buildProblematicRegionCard(dynamic segment) {
@@ -1052,6 +1272,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     String visibilityDesc = 'Optimal Sightlines';
     String precipitationStr = 'No Rain Forecast';
     String roadGripStr = 'Dry Pavement';
+    double? tempC;
     double? visKm;
     double? rainMm;
     double? windKmh;
@@ -1061,6 +1282,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     if (weather is Map) {
       cond = weather['weather_condition']?.toString() ?? 'Clear';
       final temp = weather['temperature_c'];
+      if (temp != null) {
+        tempC = (temp is num) ? temp.toDouble() : double.tryParse(temp.toString());
+      }
       if (temp != null) {
         tempStr = '${temp is num ? temp.round() : temp}°C';
       }
@@ -1168,50 +1392,64 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         })
         .toList();
 
-    // Human-readable condition & safety assessment ("Why is the score this?")
-    String conditionAssessment;
+    // Parse TomTom live traffic delay
+    int delayMinutes = 0;
+    if (liveTraffic is Map && liveTraffic['delay_minutes'] is num) {
+      delayMinutes = (liveTraffic['delay_minutes'] as num).toInt();
+    }
+
     final int sVal = score ?? 90;
-    if (sVal >= 80) {
-      if (isNight) {
-        conditionAssessment = 'Route is safe for night travel ($sVal/100). Clear roads and fluid traffic flow. Maintain standard night driving vigilance.';
-      } else {
-        conditionAssessment = 'Route is clear and safe to travel ($sVal/100). Smooth road conditions, good visibility, and fluid traffic flow.';
-      }
-    } else if (sVal >= 65) {
-      if (isRain) {
-        conditionAssessment = 'Moderate conditions ($sVal/100). Rain reported ($precipitationStr). Maintain safe following distance on damp roads.';
-      } else if (isNight) {
-        conditionAssessment = 'Night driving ($sVal/100). Low lighting and darkness on unlit stretches. Use high beam with care.';
-      } else if (visKm != null && visKm < 5.0) {
-        conditionAssessment = 'Moderate conditions ($sVal/100). Reduced atmospheric visibility ($visibilityStr). Use low-beam headlamps.';
-      } else {
-        conditionAssessment = 'Moderate conditions ($sVal/100). Standard highway movement with normal precautions.';
-      }
-    } else {
-      if (isRain) {
-        conditionAssessment = 'Caution advised ($sVal/100). Heavy rainfall and wet road surface. Reduce cruising speed.';
-      } else if (isNight) {
-        conditionAssessment = 'Caution advised ($sVal/100). Low visibility and darkness on unlit stretches. Drive slowly.';
-      } else {
-        conditionAssessment = 'Caution advised ($sVal/100). Notable traffic delays or road hazards reported.';
-      }
-    }
 
-    final sectorAdvisory = _getSectorAdvisory(regCode, isRain: isRain, isNight: isNight);
+    // Dynamically compute safe speed based on sector statutory limit + rain + visibility + traffic crawl
+    final dynamicSpeedData = _computeDynamicSafeSpeed(
+      regCode: regCode,
+      safeSpeedAdv: segment['safe_speed_advisory'],
+      isRain: isRain,
+      rainMm: rainMm,
+      precipitationStr: precipitationStr,
+      isNight: isNight,
+      visKm: visKm,
+      windKmh: windKmh,
+      delayMinutes: delayMinutes,
+      speedText: speedText,
+    );
+    final int statutorySpeed = dynamicSpeedData['statutory_speed'] as int;
+    final int recommendedSpeed = dynamicSpeedData['recommended_speed'] as int;
+    final bool isSpeedReduced = dynamicSpeedData['is_reduced'] as bool;
+    final List<String> speedReasons = (dynamicSpeedData['reasons'] as List).map((e) => e.toString()).toList();
 
-    // Safe Speed Advisory
-    final safeSpeedAdv = segment['safe_speed_advisory'];
-    int statutorySpeed = 80;
-    int recommendedSpeed = 80;
-    List<String> speedReasons = [];
-    if (safeSpeedAdv is Map) {
-      statutorySpeed = (safeSpeedAdv['statutory_speed_kmh'] as num?)?.toInt() ?? 80;
-      recommendedSpeed = (safeSpeedAdv['recommended_safe_speed_kmh'] as num?)?.toInt() ?? statutorySpeed;
-      if (safeSpeedAdv['advisory_reasons'] is List) {
-        speedReasons = (safeSpeedAdv['advisory_reasons'] as List).map((e) => e.toString()).toList();
-      }
-    }
-    final bool isSpeedReduced = recommendedSpeed < statutorySpeed;
+    // Dynamically generate safety assessment quoting exact weather & traffic telemetry
+    final String conditionAssessment = _buildDynamicSafetyAssessment(
+      sVal: sVal,
+      title: title,
+      isRain: isRain,
+      rainMm: rainMm,
+      precipitationStr: precipitationStr,
+      isNight: isNight,
+      visKm: visKm,
+      windKmh: windKmh,
+      tempC: tempC,
+      delayMinutes: delayMinutes,
+      speedText: speedText,
+      isPlanner: isPlanner,
+      travelDate: travelDate,
+      travelTime: travelTime,
+    );
+
+    // Dynamically generate area driving advisory tailored to sector terrain + weather + traffic
+    final String sectorAdvisory = _buildDynamicAreaAdvisory(
+      code: regCode,
+      title: title,
+      isRain: isRain,
+      rainMm: rainMm,
+      precipitationStr: precipitationStr,
+      isNight: isNight,
+      visKm: visKm,
+      windKmh: windKmh,
+      delayMinutes: delayMinutes,
+      speedText: speedText,
+      recommendedSpeed: recommendedSpeed,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -1647,45 +1885,55 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
                       const SizedBox(height: 10),
 
-                      // Safety Assessment Card ("Why is the score this?")
+                      // Dynamic Safety Assessment & Outlook Card (styled by score & risk)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
+                          color: sVal >= 75
+                              ? const Color(0xFFF0FDF4)
+                              : (sVal >= 60 ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2)),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: const Color(0xFFBBF7D0),
+                            color: sVal >= 75
+                                ? const Color(0xFFBBF7D0)
+                                : (sVal >= 60 ? const Color(0xFFFDE68A) : const Color(0xFFFECACA)),
                           ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              children: const [
+                              children: [
                                 Icon(
-                                  Icons.shield_outlined,
+                                  sVal >= 75
+                                      ? Icons.shield_rounded
+                                      : (sVal >= 60 ? Icons.info_outline_rounded : Icons.warning_amber_rounded),
                                   size: 14,
-                                  color: Color(0xFF16A34A),
+                                  color: sVal >= 75
+                                      ? const Color(0xFF16A34A)
+                                      : (sVal >= 60 ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
                                 ),
-                                SizedBox(width: 5),
+                                const SizedBox(width: 5),
                                 Text(
-                                  'Safety Assessment & Outlook',
+                                  'Safety Assessment & Outlook • ${sVal >= 85 ? 'Optimal' : (sVal >= 75 ? 'Good' : (sVal >= 60 ? 'Caution Advised' : 'Active Hazard'))}',
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF15803D),
+                                    color: sVal >= 75
+                                        ? const Color(0xFF15803D)
+                                        : (sVal >= 60 ? const Color(0xFF92400E) : const Color(0xFF991B1B)),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 5),
                             Text(
                               conditionAssessment,
                               style: TextStyle(
                                 fontSize: 12,
-                                height: 1.35,
-                                color: AppTheme.darkNavy.withValues(alpha: 0.85),
+                                height: 1.4,
+                                color: AppTheme.darkNavy.withValues(alpha: 0.9),
                               ),
                             ),
                           ],
