@@ -12,6 +12,7 @@ import '../features/auth/screens/verify_account_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/community/screens/community_reports_screen.dart';
 import '../features/dashboard/screens/corridor_dashboard_screen.dart';
+import '../features/emergency/screens/emergency_sos_screen.dart';
 import '../features/location/screens/location_permission_screen.dart';
 import '../features/notifications/screens/commute_alerts_screen.dart';
 import '../features/onboarding/screens/role_selection_screen.dart';
@@ -61,6 +62,9 @@ class AppRoutes {
 
   static const String commuteAlerts =
       '/commute-alerts';
+
+  static const String emergencySos =
+      '/emergency-sos';
 
 
   static Map<String, WidgetBuilder> get routes => {
@@ -114,5 +118,8 @@ class AppRoutes {
 
         commuteAlerts: (context) =>
             const CommuteAlertsScreen(),
+
+        emergencySos: (context) =>
+            const EmergencySosScreen(),
       };
 }

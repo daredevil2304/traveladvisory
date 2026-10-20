@@ -198,7 +198,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
             icon: const Icon(Icons.emergency_outlined, color: Color(0xFFDC2626)),
             tooltip: 'Expressway Emergency SOS',
             onPressed: () {
-              _showEmergencySheet(context, analysis['emergency_directory']);
+              Navigator.pushNamed(context, AppRoutes.emergencySos);
             },
           ),
           if (!isSavedReport)

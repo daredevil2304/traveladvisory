@@ -4048,6 +4048,19 @@ Widget build(
         actions: [
           IconButton(
             icon: const Icon(
+              Icons.emergency_outlined,
+              color: Color(0xFFDC2626),
+            ),
+            tooltip: 'Expressway Emergency SOS',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.emergencySos,
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(
               Icons.bookmark_outline_rounded,
               color: AppTheme.darkNavy,
             ),
