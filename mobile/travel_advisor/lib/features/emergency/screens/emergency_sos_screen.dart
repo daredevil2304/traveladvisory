@@ -21,6 +21,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   String? _nearestLandmark;
   int? _nearestChainageKm;
   double? _distanceToLandmarkKm;
+  String _locationStatusMessage = 'Detecting current expressway position...';
+  bool _needsPermission = false;
+  bool _needsServiceEnable = false;
 
   // Expressway landmark chainage reference points (KM 0 = Kalamboli/Panvel)
   static const List<_ExpresswayLandmark> _landmarks = [
@@ -46,19 +49,35 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   Future<void> _detectLocation() async {
     setState(() {
       _isLoadingLocation = true;
+      _needsPermission = false;
+      _needsServiceEnable = false;
+      _locationStatusMessage = 'Detecting current expressway position...';
     });
 
     try {
+      // 1. Instantly check last known position (available in ~10ms if previously accessed)
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null && mounted) {
+        _applyPosition(lastKnown);
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+
+      // 2. Check if device location services (GPS) are turned on
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
           setState(() {
             _isLoadingLocation = false;
+            _needsServiceEnable = true;
+            _locationStatusMessage = 'Device GPS/Location is turned off.';
           });
         }
         return;
       }
 
+      // 3. Check and request location permission if needed
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -66,6 +85,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           if (mounted) {
             setState(() {
               _isLoadingLocation = false;
+              _needsPermission = true;
+              _locationStatusMessage = 'Location permission is required for milestone detection.';
             });
           }
           return;
@@ -76,33 +97,40 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
         if (mounted) {
           setState(() {
             _isLoadingLocation = false;
+            _needsPermission = true;
+            _locationStatusMessage = 'Location access is disabled in phone settings.';
           });
         }
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition(
+      // 4. Fetch fresh location with generous timeout (15s) and medium accuracy for quick lock
+      final fresh = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
         ),
       );
 
-      _findNearestLandmark(position.latitude, position.longitude);
-
       if (mounted) {
+        _applyPosition(fresh);
         setState(() {
-          _currentPosition = position;
           _isLoadingLocation = false;
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && _currentPosition == null) {
         setState(() {
           _isLoadingLocation = false;
+          _locationStatusMessage = 'GPS signal weak (check if indoors or near tunnel).';
         });
       }
     }
+  }
+
+  void _applyPosition(Position pos) {
+    _currentPosition = pos;
+    _findNearestLandmark(pos.latitude, pos.longitude);
   }
 
   void _findNearestLandmark(double lat, double lon) {
@@ -132,6 +160,109 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     return 12742 * math.asin(math.sqrt(a));
   }
 
+  void _makeCall(String title, String phone, String displayPhone) {
+    HapticFeedback.heavyImpact();
+    Clipboard.setData(ClipboardData(text: phone));
+
+    _showDialerModal(title, phone, displayPhone);
+  }
+
+  void _showDialerModal(String title, String phone, String displayPhone) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF2F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFDC2626), size: 28),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.darkNavy),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Text(
+                  displayPhone,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: Color(0xFF1D4ED8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF059669)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Phone number copied to clipboard!',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Open your Phone app and paste the number to place the call immediately.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.3),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: phone));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Copied $displayPhone to dialer clipboard!'),
+                        backgroundColor: const Color(0xFF1D4ED8),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1D4ED8),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  label: const Text('Copy Number Again', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _copyLocationToClipboard() {
     final StringBuffer sb = StringBuffer();
     sb.writeln('🚨 EXPRESSWAY EMERGENCY SOS');
@@ -154,17 +285,6 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
       const SnackBar(
         content: Text('Copied your emergency location & GPS coordinates to clipboard!'),
         backgroundColor: Color(0xFFDC2626),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _copyNumber(String label, String phone) {
-    Clipboard.setData(ClipboardData(text: phone));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Copied $label ($phone) to clipboard! Paste in phone dialer.'),
-        backgroundColor: const Color(0xFF1E293B),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -402,7 +522,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'YOUR CURRENT LOCATION',
+                      'YOUR CURRENT HIGHWAY MILESTONE',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
@@ -411,7 +531,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                       ),
                     ),
                     Text(
-                      'Give this location when calling dispatchers',
+                      'State this location when calling dispatchers',
                       style: TextStyle(
                         fontSize: 12,
                         color: Color(0xFF64748B),
@@ -446,7 +566,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                       ),
                       SizedBox(width: 12),
                       Text(
-                        'Detecting nearest expressway landmark...',
+                        'Acquiring GPS satellite position...',
                         style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -454,26 +574,78 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _nearestLandmark != null
-                            ? '📍 Near $_nearestLandmark (~KM $_nearestChainageKm${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)} km away' : ''})'
-                            : '📍 Mumbai-Pune Expressway Corridor',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.darkNavy,
+                      if (_currentPosition != null) ...[
+                        Text(
+                          _nearestLandmark != null
+                              ? '📍 Near $_nearestLandmark (~KM $_nearestChainageKm${_distanceToLandmarkKm != null ? ', ${_distanceToLandmarkKm!.toStringAsFixed(1)} km away' : ''})'
+                              : '📍 Mumbai-Pune Expressway Corridor',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.darkNavy,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _currentPosition != null
-                            ? 'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}° N, ${_currentPosition!.longitude.toStringAsFixed(4)}° E (±${_currentPosition!.accuracy.toStringAsFixed(0)}m accuracy)'
-                            : 'Enable GPS location access for real-time highway chainage',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
+                        const SizedBox(height: 4),
+                        Text(
+                          'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}° N, ${_currentPosition!.longitude.toStringAsFixed(4)}° E (±${_currentPosition!.accuracy.toStringAsFixed(0)}m accuracy)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF059669),
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _locationStatusMessage,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_needsPermission) ...[
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await Geolocator.requestPermission();
+                              _detectLocation();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1D4ED8),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.lock_open_rounded, size: 15),
+                            label: const Text('Grant Location Permission', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                        if (_needsServiceEnable) ...[
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await Geolocator.openLocationSettings();
+                              _detectLocation();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1D4ED8),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.settings_rounded, size: 15),
+                            label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
           ),
@@ -551,13 +723,17 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 ),
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  shape: BoxShape.circle,
+              InkWell(
+                onTap: () => _makeCall(title, phone, displayPhone),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEF2F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.phone_in_talk_rounded, size: 16, color: Color(0xFFDC2626)),
                 ),
-                child: const Icon(Icons.phone_in_talk_rounded, size: 14, color: AppTheme.darkNavy),
               ),
             ],
           ),
@@ -581,46 +757,54 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
+              // Tap-to-call Phone container
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.call_rounded, size: 18, color: Color(0xFFDC2626)),
-                      const SizedBox(width: 8),
-                      Text(
-                        displayPhone,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.darkNavy,
-                          letterSpacing: 0.5,
+                child: InkWell(
+                  onTap: () => _makeCall(title, phone, displayPhone),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.call_rounded, size: 18, color: Color(0xFFDC2626)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            displayPhone,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.darkNavy,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
+              // Dedicated Call Button
               ElevatedButton.icon(
-                onPressed: () => _copyNumber(title, phone),
+                onPressed: () => _makeCall(title, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isPrimary ? const Color(0xFFDC2626) : AppTheme.darkNavy,
+                  backgroundColor: const Color(0xFFDC2626),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.copy_rounded, size: 16),
+                icon: const Icon(Icons.call_rounded, size: 16),
                 label: const Text(
-                  'Copy',
+                  'Call Now',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
                 ),
               ),
@@ -769,25 +953,33 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  displayPhone,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkNavy,
+                child: InkWell(
+                  onTap: () => _makeCall(name, phone, displayPhone),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      displayPhone,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.darkNavy,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: () => _copyNumber(name, phone),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.darkNavy,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+              ElevatedButton.icon(
+                onPressed: () => _makeCall(name, phone, displayPhone),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
                 ),
-                icon: const Icon(Icons.copy_rounded, size: 14),
-                label: const Text('Copy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                icon: const Icon(Icons.call_rounded, size: 14),
+                label: const Text('Call', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
