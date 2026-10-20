@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../app/theme.dart';
 
-/// Comprehensive 24x7 Emergency & Highway SOS Directory Screen
+/// Comprehensive Emergency & Highway SOS Directory Screen
 /// for the Mumbai-Pune Expressway (NH-48 / Yashwantrao Chavan Expressway).
 class EmergencySosScreen extends StatefulWidget {
   const EmergencySosScreen({super.key});
@@ -242,7 +242,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                       elevation: 0,
                     ),
                     icon: Icon(
-                      isServiceDisabled ? Icons.gps_fixed_rounded : Icons.lock_open_rounded,
+                      isServiceDisabled ? Icons.my_location_rounded : Icons.lock_outline_rounded,
                       size: 18,
                     ),
                     label: Text(
@@ -474,10 +474,10 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield_rounded, size: 13, color: Colors.white),
+                Icon(Icons.security_rounded, size: 13, color: Colors.white),
                 SizedBox(width: 4),
                 Text(
-                  '24x7 LIVE',
+                  'EMERGENCY SOS',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
@@ -503,9 +503,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
 
           const SizedBox(height: 14),
 
-          // 3. PRIMARY 24x7 EMERGENCY HOTLINES (WITH WHEN TO CALL, COPY & CALL NOW)
+          // 3. PRIMARY HIGHWAY EMERGENCY HOTLINES (WITH WHEN TO CALL, COPY & CALL NOW)
           const _SectionHeader(
-            title: 'PRIMARY 24x7 HIGHWAY HOTLINES',
+            title: 'PRIMARY HIGHWAY HOTLINES',
             subtitle: 'Direct dispatch for ambulances, cranes, and police',
           ),
           const SizedBox(height: 8),
@@ -522,7 +522,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
           ),
           _buildHotlineTile(
             title: 'National Highway Helpline (NHAI / MSRDC)',
-            subtitle: 'Toll-free 24x7 Highway Emergency & Evacuation',
+            subtitle: 'Toll-free Highway Emergency & Evacuation',
             whenToCall: 'Toll-free helpline (works even without mobile recharge balance)',
             phone: '1033',
             displayPhone: '1033 (Toll-Free)',
@@ -611,7 +611,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
           _buildPlazaTile(
             name: 'Ozarde Food Plaza (Mumbai-bound)',
             chainage: '78km • After Lonavala',
-            amenities: 'BPCL Fuel • Heavy Towing Cranes • Puncture Repair • 24x7 Food Court',
+            amenities: 'BPCL Fuel • Heavy Towing Cranes • Puncture Repair • Food Court',
           ),
           _buildPlazaTile(
             name: 'Urse Toll Plaza Service Bay',
@@ -641,7 +641,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
         children: [
           const Row(
             children: [
-              Icon(Icons.help_center_rounded, color: Color(0xFF16A34A), size: 18),
+              Icon(Icons.help_outline_rounded, color: Color(0xFF16A34A), size: 18),
               SizedBox(width: 8),
               Text(
                 'Quick Guide: Which number to call?',
@@ -655,21 +655,21 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
           ),
           const SizedBox(height: 8),
           _buildInteractiveGuideRow(
-            icon: Icons.car_crash_rounded,
+            icon: Icons.directions_car_rounded,
             scenario: 'Breakdown / Flat Tire / Crane',
             authority: 'IRB Control (98224 98224)',
             phone: '9822498224',
             displayPhone: '98224 98224',
           ),
           _buildInteractiveGuideRow(
-            icon: Icons.money_off_rounded,
+            icon: Icons.check_circle_rounded,
             scenario: 'Free Call (No Mobile Balance)',
             authority: 'Toll-Free (1033)',
             phone: '1033',
             displayPhone: '1033',
           ),
           _buildInteractiveGuideRow(
-            icon: Icons.local_police_rounded,
+            icon: Icons.security_rounded,
             scenario: 'Police Help / Roadblock / Crash',
             authority: 'Highway Police (020-25651515)',
             phone: '02025651515',
@@ -724,7 +724,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.call_rounded, size: 11, color: Color(0xFF166534)),
+                  const Icon(Icons.phone_in_talk_rounded, size: 11, color: Color(0xFF166534)),
                 ],
               ),
             ),
@@ -877,7 +877,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               elevation: 0,
                             ),
-                            icon: const Icon(Icons.lock_open_rounded, size: 14),
+                            icon: const Icon(Icons.lock_outline_rounded, size: 14),
                             label: const Text('Allow GPS Location Access', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                           ),
                         ],
@@ -894,7 +894,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               elevation: 0,
                             ),
-                            icon: const Icon(Icons.gps_fixed_rounded, size: 14),
+                            icon: const Icon(Icons.my_location_rounded, size: 14),
                             label: const Text('Turn ON Device GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                           ),
                         ],
@@ -1091,11 +1091,11 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.call_rounded, size: 13),
+                    Icon(Icons.phone_in_talk_rounded, size: 12, color: Colors.white),
                     SizedBox(width: 4),
                     Text(
                       'Call',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                   ],
                 ),
@@ -1209,7 +1209,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                   color: Color(0xFFFEF2F2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.local_hospital_rounded, color: Color(0xFFDC2626), size: 17),
+                child: const Icon(Icons.emergency_rounded, color: Color(0xFFDC2626), size: 17),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1283,9 +1283,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with WidgetsBin
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.call_rounded, size: 12),
+                    Icon(Icons.phone_in_talk_rounded, size: 12, color: Colors.white),
                     SizedBox(width: 4),
-                    Text('Call', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                    Text('Call', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
                   ],
                 ),
               ),

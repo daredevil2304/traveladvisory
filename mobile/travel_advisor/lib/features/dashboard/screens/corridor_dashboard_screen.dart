@@ -848,7 +848,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
-                        icon: Icons.sync_alt_rounded,
+                        icon: Icons.alt_route_rounded,
                         color: const Color(0xFF1E40AF),
                         title: '4. Morning & Return Alerts',
                         desc:
@@ -3309,7 +3309,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.trip_origin_rounded, size: 12, color: Color(0xFF059669)),
+                        Icon(Icons.trip_origin, size: 12, color: Color(0xFF059669)),
                         SizedBox(width: 4),
                         Text(
                           'SOURCE / FROM',
@@ -3336,7 +3336,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                               ? _currentSource
                               : _corridorPoints[1],
                           isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                          icon: const Icon(Icons.arrow_drop_down_rounded, size: 18),
                           items: _corridorPoints.map((pt) {
                             return DropdownMenuItem(
                               value: pt,
@@ -3389,7 +3389,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                               ),
                               SizedBox(width: 3),
                               Icon(
-                                Icons.swap_horiz_rounded,
+                                Icons.alt_route_rounded,
                                 color: Color(0xFF1D4ED8),
                                 size: 14,
                               ),
@@ -3436,7 +3436,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                               ? _currentDestination
                               : _corridorPoints.last,
                           isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                          icon: const Icon(Icons.arrow_drop_down_rounded, size: 18),
                           items: _corridorPoints.map((pt) {
                             return DropdownMenuItem(
                               value: pt,
