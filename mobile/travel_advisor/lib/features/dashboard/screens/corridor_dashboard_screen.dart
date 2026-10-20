@@ -530,7 +530,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     }
   }
 
-  void _setPeriod({required bool isDeparture, required bool isAm}) {
+  void setPeriod({required bool isDeparture, required bool isAm}) {
     setState(() {
       if (isDeparture) {
         int currentHour = _currentDepartureTime.hour;
@@ -578,7 +578,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
     final bool success;
     final String slotName;
     if (_selectedScheduleSlot == 0) {
-      slotName = 'Morning Commute Schedule';
+      slotName = 'Morning Alert Settings';
       success = await _habitService.saveOutboundHabit(
         source: src,
         destination: dst,
@@ -599,13 +599,17 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       );
     }
 
+    if (success) {
+      await _habitService.fetchAlert(source: src, destination: dst);
+    }
+
     setState(() => _isSavingSchedule = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
-                ? '$slotName saved! ($formattedDep / Alert $formattedAlert)'
+                ? 'Daily travel alerts saved! You will receive updates 15 mins before leaving.'
                 : 'Failed to save $slotName.',
           ),
           backgroundColor:
@@ -836,22 +840,19 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
-                        customIcon: const CorridorHubIcon(
-                          size: 20,
-                          color: Color(0xFF0284C7),
-                        ),
+                        icon: Icons.notifications_active_rounded,
                         color: const Color(0xFF0284C7),
-                        title: '3. Corridor Hub & Commute Alerts',
+                        title: '3. Daily Travel Alerts',
                         desc:
-                            'Configure your regular commute route, departure time, and proactive notification alert. Test real notifications directly.',
+                            'Configure your daily travel route, departure time, and automatic road & weather alerts before you leave. Test alerts directly.',
                       ),
                       const SizedBox(height: 14),
                       _buildGuideFeatureItem(
-                        icon: Icons.notifications_active_rounded,
+                        icon: Icons.sync_alt_rounded,
                         color: const Color(0xFF1E40AF),
-                        title: '4. Dual Commute Schedules',
+                        title: '4. Morning & Return Alerts',
                         desc:
-                            'Configure both Morning Commute (primary departure) and Evening Return commute alert schedules with independent times and custom active days.',
+                            'Set independent departure alert times and travel days for your forward and return journeys.',
                       ),
                     ],
                   ),
@@ -1385,7 +1386,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   Widget _buildTabSelector() {
     final tabs = [
       {'title': 'Road Radar', 'icon': Icons.radar_rounded},
-      {'title': 'Commute Setup', 'icon': Icons.schedule_rounded},
+      {'title': 'Daily Alerts', 'icon': Icons.notifications_active_rounded},
       {'title': 'Saved Reports', 'icon': Icons.bookmark_rounded},
     ];
 
@@ -1459,234 +1460,114 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   }
 
   // ============================================================
-  // 12-HOUR AM/PM TIME SELECTOR CARD
+  // TRAVEL TIMINGS CARD (CLEAN & SIMPLE 15-MIN PRIOR ALERT)
   // ============================================================
 
-  Widget _buildTimeSelectorCard({
-    required String label,
-    required TimeOfDay time,
-    required bool isDeparture,
-  }) {
-    final hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final hourStr = hour12.toString().padLeft(2, '0');
-    final minuteStr = time.minute.toString().padLeft(2, '0');
-    final isAm = time.period == DayPeriod.am;
-
-    final presets = isDeparture
-        ? (_selectedScheduleSlot == 0
-            ? const [
-                TimeOfDay(hour: 7, minute: 30),
-                TimeOfDay(hour: 8, minute: 0),
-                TimeOfDay(hour: 8, minute: 30),
-              ]
-            : const [
-                TimeOfDay(hour: 17, minute: 30),
-                TimeOfDay(hour: 18, minute: 0),
-                TimeOfDay(hour: 18, minute: 30),
-              ])
-        : (_selectedScheduleSlot == 0
-            ? const [
-                TimeOfDay(hour: 7, minute: 15),
-                TimeOfDay(hour: 7, minute: 45),
-                TimeOfDay(hour: 8, minute: 15),
-              ]
-            : const [
-                TimeOfDay(hour: 17, minute: 15),
-                TimeOfDay(hour: 17, minute: 45),
-                TimeOfDay(hour: 18, minute: 15),
-              ]);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1D4ED8).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  isDeparture ? Icons.schedule_rounded : Icons.alarm_rounded,
-                  size: 13,
-                  color: const Color(0xFF1D4ED8),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
-                    letterSpacing: 0.2,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () => _pickTime(isDeparture: isDeparture),
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildHubTimingsCard() {
+    return Row(
+      children: [
+        // Departure Time Card
+        Expanded(
+          child: InkWell(
+            onTap: () => _pickTime(isDeparture: true),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$hourStr:$minuteStr',
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  Row(
+                  const Row(
                     children: [
-                      GestureDetector(
-                        onTap: () =>
-                            _setPeriod(isDeparture: isDeparture, isAm: true),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3.5),
-                          decoration: BoxDecoration(
-                            gradient: isAm
-                                ? const LinearGradient(
-                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: isAm ? null : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'AM',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: isAm
-                                  ? Colors.white
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () =>
-                            _setPeriod(isDeparture: isDeparture, isAm: false),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3.5),
-                          decoration: BoxDecoration(
-                            gradient: !isAm
-                                ? const LinearGradient(
-                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: !isAm ? null : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'PM',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: !isAm
-                                  ? Colors.white
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
+                      Icon(Icons.access_time_filled_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                      SizedBox(width: 5),
+                      Text(
+                        'DEPARTURE TIME',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    CommuteHabitService.formatTime12h(_currentDepartureTime),
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkNavy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Tap to set departure',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          // Quick presets
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: presets.map((p) {
-              final h = p.hourOfPeriod == 0 ? 12 : p.hourOfPeriod;
-              final m = p.minute.toString().padLeft(2, '0');
-              final isMatch = time.hour == p.hour && time.minute == p.minute;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isDeparture) {
-                      _currentDepartureTime = p;
-                      int depMin = p.hour * 60 + p.minute;
-                      int alertMin = depMin - 15;
-                      if (alertMin < 0) alertMin += 1440;
-                      _currentAlertTime =
-                          TimeOfDay(hour: alertMin ~/ 60, minute: alertMin % 60);
-                    } else {
-                      _currentAlertTime = p;
-                    }
-                  });
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: isMatch
-                        ? const Color(0xFFDBEAFE)
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: isMatch
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFFE2E8F0),
+        ),
+
+        const SizedBox(width: 10),
+
+        // Alert Notice Time Card
+        Expanded(
+          child: InkWell(
+            onTap: () => _pickTime(isDeparture: false),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, size: 14, color: Color(0xFF059669)),
+                      SizedBox(width: 5),
+                      Text(
+                        'ALERT NOTICE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    CommuteHabitService.formatTime12h(_currentAlertTime),
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkNavy,
                     ),
                   ),
-                  child: Text(
-                    '$h:$m',
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: isMatch ? FontWeight.w800 : FontWeight.w600,
-                      color: isMatch
-                          ? const Color(0xFF1D4ED8)
-                          : const Color(0xFF64748B),
-                    ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    '15 min prior notice',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600),
                   ),
-                ),
-              );
-            }).toList(),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -2930,845 +2811,833 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   }
 
   // ============================================================
-  // COMMUTE SETUP & DUAL NOTIFICATION SCHEDULER
+  // DAILY TRAVEL ALERTS (STREAMLINED 5-STEP SECTION)
   // ============================================================
 
+  static const List<_HubDayItem> _hubDaysList = [
+    _HubDayItem('Mon', 'M', 'Monday'),
+    _HubDayItem('Tue', 'T', 'Tuesday'),
+    _HubDayItem('Wed', 'W', 'Wednesday'),
+    _HubDayItem('Thu', 'T', 'Thursday'),
+    _HubDayItem('Fri', 'F', 'Friday'),
+    _HubDayItem('Sat', 'S', 'Saturday'),
+    _HubDayItem('Sun', 'S', 'Sunday'),
+  ];
+
+  void _setHubPresetDays(String preset) {
+    setState(() {
+      if (preset == 'weekdays') {
+        _currentDayMode = 'Weekdays';
+        _currentCustomDays.clear();
+        _currentCustomDays.addAll({'Mon', 'Tue', 'Wed', 'Thu', 'Fri'});
+        _currentTravelDays = 'Mon-Fri';
+      } else if (preset == 'daily') {
+        _currentDayMode = 'Daily';
+        _currentCustomDays.clear();
+        _currentCustomDays.addAll({'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'});
+        _currentTravelDays = 'Daily';
+      } else if (preset == 'weekends') {
+        _currentDayMode = 'Weekends';
+        _currentCustomDays.clear();
+        _currentCustomDays.addAll({'Sat', 'Sun'});
+        _currentTravelDays = 'Sat-Sun';
+      }
+    });
+  }
+
+  void _toggleHubDay(String code) {
+    setState(() {
+      if (_currentCustomDays.contains(code)) {
+        if (_currentCustomDays.length > 1) {
+          _currentCustomDays.remove(code);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select at least one active day.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        _currentCustomDays.add(code);
+      }
+      const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final sorted = dayOrder.where((d) => _currentCustomDays.contains(d)).toList();
+      if (sorted.length == 7) {
+        _currentTravelDays = 'Daily';
+        _currentDayMode = 'Daily';
+      } else if (sorted.length == 2 && sorted.contains('Sat') && sorted.contains('Sun')) {
+        _currentTravelDays = 'Sat-Sun';
+        _currentDayMode = 'Weekends';
+      } else if (sorted.length == 5 && !sorted.contains('Sat') && !sorted.contains('Sun')) {
+        _currentTravelDays = 'Mon-Fri';
+        _currentDayMode = 'Weekdays';
+      } else {
+        _currentTravelDays = sorted.join(',');
+        _currentDayMode = 'Custom';
+      }
+    });
+  }
+
+  String _getHubDaysSummaryText() {
+    if (_currentCustomDays.length == 7) return 'Alerts will arrive everyday before departure';
+    if (_currentCustomDays.length == 5 &&
+        !_currentCustomDays.contains('Sat') &&
+        !_currentCustomDays.contains('Sun')) {
+      return 'Alerts will arrive on weekdays (Monday to Friday)';
+    }
+    if (_currentCustomDays.length == 2 &&
+        _currentCustomDays.contains('Sat') &&
+        _currentCustomDays.contains('Sun')) {
+      return 'Alerts will arrive on weekends (Saturday & Sunday)';
+    }
+    return 'Alerts active on ${_currentCustomDays.length} selected days';
+  }
+
   Widget _buildCorridorHubSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFBAE6FD), width: 1.2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C1E3A8A),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // SECTION HEADER
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x252563EB),
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: CommuteClockIcon(
-                    size: 22,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'COMMUTE INTELLIGENCE SETUP',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1D4ED8),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Text(
-                      'Multi-Schedule Commute Alerts',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.darkNavy,
-                      ),
-                    ),
-                  ],
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // SECTION HEADER CARD
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Configure multiple notification schedules for your daily travels. Set independent alert times for your morning commute and your evening return journey.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: AppTheme.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // DIRECTION SCHEDULE TOGGLE (Morning vs Return)
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedScheduleSlot = 0),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: _selectedScheduleSlot == 0
-                            ? const LinearGradient(
-                                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              )
-                            : null,
-                        color: _selectedScheduleSlot == 0
-                            ? null
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: _selectedScheduleSlot == 0
-                            ? const [
-                                BoxShadow(
-                                  color: Color(0x281E3A8A),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.wb_sunny_rounded,
-                            size: 15,
-                            color: _selectedScheduleSlot == 0
-                                ? const Color(0xFFFDE68A)
-                                : const Color(0xFF475569),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Morning (Mumbai → Pune)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: _selectedScheduleSlot == 0
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: _selectedScheduleSlot == 0
-                                  ? Colors.white
-                                  : const Color(0xFF475569),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedScheduleSlot = 1),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: _selectedScheduleSlot == 1
-                            ? const LinearGradient(
-                                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              )
-                            : null,
-                        color: _selectedScheduleSlot == 1
-                            ? null
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: _selectedScheduleSlot == 1
-                            ? const [
-                                BoxShadow(
-                                  color: Color(0x280F172A),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.nights_stay_rounded,
-                            size: 15,
-                            color: _selectedScheduleSlot == 1
-                                ? const Color(0xFF93C5FD)
-                                : const Color(0xFF475569),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Return (Pune → Mumbai)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: _selectedScheduleSlot == 1
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: _selectedScheduleSlot == 1
-                                  ? Colors.white
-                                  : const Color(0xFF475569),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ROUTE CONTROLS WITH REVERSE ROUTE BUTTON
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey('source_$_selectedScheduleSlot'),
-                  initialValue: _corridorPoints.contains(_currentSource)
-                      ? _currentSource
-                      : _corridorPoints[1],
-                  decoration: InputDecoration(
-                    labelText: _selectedScheduleSlot == 0
-                        ? 'Start Point (Morning)'
-                        : 'Start Point (Return)',
-                    labelStyle: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                    prefixIcon: const Icon(Icons.trip_origin,
-                        size: 16, color: Color(0xFF1D4ED8)),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                  ),
-                  icon: const Icon(Icons.arrow_drop_down_rounded,
-                      color: Color(0xFF1E3A8A)),
-                  isExpanded: true,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                  items: _corridorPoints.map((point) {
-                    return DropdownMenuItem<String>(
-                      value: point,
-                      child: Text(point, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _currentSource = val;
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: _swapRoutePoints,
-                child: Tooltip(
-                  message: 'Swap Start Point and Destination',
-                  child: Container(
-                    width: 44,
-                    height: 44,
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x301E3A8A),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Center(
-                      child: RouteSwapArrowIcon(
+                      child: Icon(
+                        Icons.notifications_active_rounded,
                         size: 20,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey('dest_$_selectedScheduleSlot'),
-                  initialValue: _corridorPoints.contains(_currentDestination)
-                      ? _currentDestination
-                      : _corridorPoints.last,
-                  decoration: InputDecoration(
-                    labelText: _selectedScheduleSlot == 0
-                        ? 'Destination (Work)'
-                        : 'Destination (Home)',
-                    labelStyle: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Daily Travel Alerts',
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.darkNavy,
+                          ),
+                        ),
+                        Text(
+                          'Automatic road & weather alerts before you leave',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    prefixIcon: const Icon(Icons.location_on,
-                        size: 16, color: Color(0xFFEF4444)),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                  ),
-                  icon: const Icon(Icons.arrow_drop_down_rounded,
-                      color: Color(0xFF1E3A8A)),
-                  isExpanded: true,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                  items: _corridorPoints.map((point) {
-                    return DropdownMenuItem<String>(
-                      value: point,
-                      child: Text(point, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _currentDestination = val;
-                      });
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // COMMUTE DAYS SELECTION
-          Text(
-            'Active Days for ${_selectedScheduleSlot == 0 ? "Morning" : "Return"} Commute:',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.darkNavy,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              ChoiceChip(
-                label: const Text('Daily', style: TextStyle(fontSize: 11.5)),
-                selected: _currentDayMode == 'Daily',
-                selectedColor: const Color(0xFFBFDBFE),
-                onSelected: (val) {
-                  if (val) {
-                    setState(() {
-                      _currentDayMode = 'Daily';
-                      _currentCustomDays.clear();
-                      _currentCustomDays.addAll(
-                          {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'});
-                      _currentTravelDays = 'Daily';
-                    });
-                  }
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Weekends', style: TextStyle(fontSize: 11.5)),
-                selected: _currentDayMode == 'Weekends',
-                selectedColor: const Color(0xFFBFDBFE),
-                onSelected: (val) {
-                  if (val) {
-                    setState(() {
-                      _currentDayMode = 'Weekends';
-                      _currentCustomDays.clear();
-                      _currentCustomDays.addAll({'Sat', 'Sun'});
-                      _currentTravelDays = 'Sat-Sun';
-                    });
-                  }
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Custom Days', style: TextStyle(fontSize: 11.5)),
-                selected: _currentDayMode == 'Custom',
-                selectedColor: const Color(0xFFBFDBFE),
-                onSelected: (val) {
-                  if (val) {
-                    setState(() {
-                      _currentDayMode = 'Custom';
-                      if (_currentCustomDays.isEmpty) {
-                        _currentCustomDays
-                            .addAll({'Mon', 'Tue', 'Wed', 'Thu', 'Fri'});
-                      }
-                      const dayOrder = [
-                        'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-                      ];
-                      final sorted = dayOrder
-                          .where((d) => _currentCustomDays.contains(d))
-                          .toList();
-                      _currentTravelDays = sorted.join(',');
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-          if (_currentDayMode == 'Custom') ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Active Days (Tap to toggle Monday to Sunday):',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.darkNavy,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildCorridorDayFilterChip('Mon', 'Monday'),
-                      _buildCorridorDayFilterChip('Tue', 'Tuesday'),
-                      _buildCorridorDayFilterChip('Wed', 'Wednesday'),
-                      _buildCorridorDayFilterChip('Thu', 'Thursday'),
-                      _buildCorridorDayFilterChip('Fri', 'Friday'),
-                      _buildCorridorDayFilterChip('Sat', 'Saturday'),
-                      _buildCorridorDayFilterChip('Sun', 'Sunday'),
-                    ],
                   ),
                 ],
               ),
-            ),
-          ],
-          const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-          // SCHEDULE TIMES (12-HOUR AM/PM SELECTION)
-          Row(
-            children: [
-              Expanded(
-                child: _buildTimeSelectorCard(
-                  label: _selectedScheduleSlot == 0
-                      ? 'Morning Departure'
-                      : 'Evening Departure',
-                  time: _currentDepartureTime,
-                  isDeparture: true,
+              // CLEAN DIRECTION TOGGLE (Morning Trip vs Return Trip)
+              Container(
+                padding: const EdgeInsets.all(3.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildTimeSelectorCard(
-                  label: 'Alert Notice Time',
-                  time: _currentAlertTime,
-                  isDeparture: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedScheduleSlot = 0),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: _selectedScheduleSlot == 0
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  )
+                                : null,
+                            color: _selectedScheduleSlot == 0 ? null : Colors.transparent,
+                            borderRadius: BorderRadius.circular(9),
+                            boxShadow: _selectedScheduleSlot == 0
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x281E3A8A),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.wb_sunny_rounded,
+                                size: 14,
+                                color: _selectedScheduleSlot == 0
+                                    ? const Color(0xFFFDE68A)
+                                    : const Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Morning Trip',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: _selectedScheduleSlot == 0
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  color: _selectedScheduleSlot == 0
+                                      ? Colors.white
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedScheduleSlot = 1),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: _selectedScheduleSlot == 1
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  )
+                                : null,
+                            color: _selectedScheduleSlot == 1 ? null : Colors.transparent,
+                            borderRadius: BorderRadius.circular(9),
+                            boxShadow: _selectedScheduleSlot == 1
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x280F172A),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.nights_stay_rounded,
+                                size: 14,
+                                color: _selectedScheduleSlot == 1
+                                    ? const Color(0xFF93C5FD)
+                                    : const Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Return Trip',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: _selectedScheduleSlot == 1
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  color: _selectedScheduleSlot == 1
+                                      ? Colors.white
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+        ),
 
-          // NOTIFICATIONS SWITCH FOR CURRENT SLOT
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        const SizedBox(height: 14),
+
+        // STEP 1: TODAY'S ROAD STATUS (CLEAN REASSURING GREEN CARD)
+        _buildHubRoadStatusCard(),
+
+        const SizedBox(height: 14),
+
+        // STEP 2: YOUR TRAVEL ROUTE (ORIGIN -> DESTINATION WITH SWAP)
+        _buildHubRouteCard(),
+
+        const SizedBox(height: 14),
+
+        // STEP 3: TRAVEL TIMINGS (DEPARTURE & 15-MIN PRIOR ALERT)
+        _buildHubTimingsCard(),
+
+        const SizedBox(height: 14),
+
+        // STEP 4: DAYS YOU TRAVEL (PRESETS + CIRCULAR DAY CHIPS)
+        _buildHubDaysCard(),
+
+        const SizedBox(height: 14),
+
+        // STEP 5: AUTOMATIC NOTIFICATIONS TOGGLE
+        _buildHubNotificationToggleCard(),
+
+        const SizedBox(height: 20),
+
+        // STEP 6: SAVE & TEST ACTIONS
+        _buildHubActionButtons(),
+      ],
+    );
+  }
+
+  // ============================================================
+  // STREAMLINED DAILY TRAVEL ALERTS WIDGETS
+  // ============================================================
+
+  Widget _buildHubRoadStatusCard() {
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _habitService.activeAlertNotifier,
+      builder: (context, alert, child) {
+        if (alert == null || (alert['warnings'] as List? ?? []).isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFCBD5E1)),
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 22),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_selectedScheduleSlot == 0 ? "Morning" : "Return"} Device Push Alerts',
+                        'Expressway is Clear • $_currentSource ➔ $_currentDestination',
                         style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkNavy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF065F46),
                         ),
                       ),
-                      Text(
-                        'Scheduled normal notification • Slot #${_selectedScheduleSlot == 0 ? "1001" : "1002"}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textSecondary,
-                        ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'No road closures, bad weather, or heavy delays reported.',
+                        style: TextStyle(fontSize: 11.5, color: Color(0xFF047857)),
                       ),
                     ],
                   ),
                 ),
-                Switch(
-                  value: _currentNotificationsEnabled,
-                  activeThumbColor: const Color(0xFF1D4ED8),
-                  onChanged: (val) async {
-                    setState(() => _currentNotificationsEnabled = val);
-                    if (val) {
-                      await NotificationService().requestPermission();
-                    }
-                  },
-                ),
               ],
             ),
-          ),
-          const SizedBox(height: 14),
+          );
+        }
 
-          // SUMMARY CARD: BOTH COMMUTE SCHEDULES
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFCBD5E1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.dashboard_customize_rounded,
-                        size: 14, color: Color(0xFF1D4ED8)),
-                    SizedBox(width: 6),
-                    Text(
-                      'CONFIGURED COMMUTE SCHEDULES',
+        final int score = (alert['safety_score'] as num?)?.toInt() ?? 80;
+        final String risk = alert['risk_level'] ?? 'Normal';
+        final List warnings = (alert['warnings'] as List?) ?? (alert['regional_warnings'] as List?) ?? [];
+        final Color accentColor = score < 60
+            ? const Color(0xFFDC2626)
+            : (score < 80 ? const Color(0xFFD97706) : const Color(0xFF059669));
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'SAFETY SCORE: $score/100 • $risk',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF1D4ED8),
-                        letterSpacing: 0.5,
+                        color: accentColor,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$_currentSource ➔ $_currentDestination',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+              if (warnings.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _buildScheduleSummaryRow(
-                  slotTitle: '🌅 Morning Commute (Forward: Mumbai → Pune)',
-                  route: '$_outboundSource → $_outboundDestination',
-                  times:
-                      '${CommuteHabitService.formatTime12h(_outboundDepartureTime)} (Alert: ${CommuteHabitService.formatTime12h(_outboundAlertTime)})',
-                  isEnabled: _outboundNotificationsEnabled,
-                  days: _outboundTravelDays,
-                  isCurrent: _selectedScheduleSlot == 0,
-                  onEdit: () => setState(() => _selectedScheduleSlot = 0),
-                ),
-                const SizedBox(height: 8),
-                _buildScheduleSummaryRow(
-                  slotTitle: '🌇 Return Commute (Reverse: Pune → Mumbai)',
-                  route: '$_returnSource → $_returnDestination',
-                  times:
-                      '${CommuteHabitService.formatTime12h(_returnDepartureTime)} (Alert: ${CommuteHabitService.formatTime12h(_returnAlertTime)})',
-                  isEnabled: _returnNotificationsEnabled,
-                  days: _returnTravelDays,
-                  isCurrent: _selectedScheduleSlot == 1,
-                  onEdit: () => setState(() => _selectedScheduleSlot = 1),
-                ),
+                for (final w in warnings.take(2))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 14, color: accentColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            w.toString(),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppTheme.darkNavy,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHubRouteCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'YOUR TRAVEL ROUTE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF475569),
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 16),
-
-          // ACTIONS: SAVE CURRENT / SAVE BOTH / TEST ALERT
+          const SizedBox(height: 10),
           Row(
             children: [
+              // Origin
               Expanded(
                 child: Container(
-                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(13),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x302563EB),
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                    ),
-                    onPressed: _isSavingSchedule ? null : _saveCommuteSchedule,
-                    child: _isSavingSchedule
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _corridorPoints.contains(_currentSource)
+                          ? _currentSource
+                          : _corridorPoints[1],
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                      items: _corridorPoints.map((pt) {
+                        return DropdownMenuItem(
+                          value: pt,
+                          child: Text(
+                            pt,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.darkNavy,
                             ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_rounded, size: 16, color: Colors.white),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Save ${_selectedScheduleSlot == 0 ? "Morning" : "Return"}',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
                           ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _currentSource = val);
+                      },
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0F172A),
-                      side: const BorderSide(color: Color(0xFF93C5FD), width: 1.5),
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+
+              // Swap Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: InkWell(
+                  onTap: _swapRoutePoints,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEFF6FF),
+                      shape: BoxShape.circle,
                     ),
-                    onPressed: _isTestingAlert ? null : _triggerNotificationTest,
-                    child: _isTestingAlert
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.notifications_active_outlined,
-                                  size: 16, color: Color(0xFF1D4ED8)),
-                              SizedBox(width: 6),
-                              Text(
-                                'Test Real Alert',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
+                    child: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: Color(0xFF1D4ED8),
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Destination
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _corridorPoints.contains(_currentDestination)
+                          ? _currentDestination
+                          : _corridorPoints.last,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                      items: _corridorPoints.map((pt) {
+                        return DropdownMenuItem(
+                          value: pt,
+                          child: Text(
+                            pt,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.darkNavy,
+                            ),
                           ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _currentDestination = val);
+                      },
+                    ),
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFCBD5E1)),
-            ),
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF0F172A),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _isSavingSchedule ? null : _saveAllCommuteSchedules,
-              icon: const Icon(Icons.done_all_rounded, size: 16, color: Color(0xFF1D4ED8)),
-              label: const Text(
-                'Save Both Morning & Return Schedules',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScheduleSummaryRow({
-    required String slotTitle,
-    required String route,
-    required String times,
-    required bool isEnabled,
-    required String days,
-    required bool isCurrent,
-    required VoidCallback onEdit,
-  }) {
+  Widget _buildHubDaysCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'DAYS YOU TRAVEL',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF475569),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_currentCustomDays.length} days active',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1D4ED8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Preset Chips Row: Mon-Fri (Weekdays), Everyday, Weekends
+          Row(
+            children: [
+              _buildHubPresetChip('Mon-Fri (Weekdays)', 'weekdays'),
+              const SizedBox(width: 6),
+              _buildHubPresetChip('Everyday', 'daily'),
+              const SizedBox(width: 6),
+              _buildHubPresetChip('Weekends', 'weekends'),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // 7-Day Circular Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: _hubDaysList.map((day) {
+              final isSelected = _currentCustomDays.contains(day.code);
+              return InkWell(
+                onTap: () => _toggleHubDay(day.code),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Text(
+                    day.initial,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 10),
+          Text(
+            _getHubDaysSummaryText(),
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHubPresetChip(String label, String presetKey) {
+    bool isSelected = false;
+    if (presetKey == 'weekdays') {
+      isSelected = _currentDayMode == 'Weekdays' || (_currentCustomDays.length == 5 &&
+          !_currentCustomDays.contains('Sat') &&
+          !_currentCustomDays.contains('Sun'));
+    } else if (presetKey == 'daily') {
+      isSelected = _currentDayMode == 'Daily' || _currentCustomDays.length == 7;
+    } else if (presetKey == 'weekends') {
+      isSelected = _currentDayMode == 'Weekends' || (_currentCustomDays.length == 2 &&
+          _currentCustomDays.contains('Sat') &&
+          _currentCustomDays.contains('Sun'));
+    }
+
     return InkWell(
-      onTap: onEdit,
-      borderRadius: BorderRadius.circular(10),
+      onTap: () => _setHubPresetDays(presetKey),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
+          color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-                isCurrent ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
-            width: isCurrent ? 1.5 : 1,
+            color: isSelected ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: isCurrent
-                    ? const Color(0xFF1E3A8A)
-                    : const Color(0xFF64748B).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                (slotTitle.contains('Morning') || slotTitle.contains('Outbound'))
-                    ? Icons.wb_sunny_rounded
-                    : Icons.nights_stay_rounded,
-                size: 14,
-                color: isCurrent ? Colors.white : const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        slotTitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: isCurrent
-                              ? const Color(0xFF1E3A8A)
-                              : AppTheme.darkNavy,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isEnabled
-                              ? const Color(0xFFDCFCE7)
-                              : const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          isEnabled ? 'ACTIVE' : 'MUTED',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: isEnabled
-                                ? const Color(0xFF15803D)
-                                : const Color(0xFFB91C1C),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    route,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.darkNavy,
-                    ),
-                  ),
-                  Text(
-                    '$times • $days',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              isCurrent ? Icons.check_circle_rounded : Icons.edit_rounded,
-              size: 16,
-              color: isCurrent
-                  ? const Color(0xFF1D4ED8)
-                  : const Color(0xFF94A3B8),
-            ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF64748B),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHubNotificationToggleCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              size: 18,
+              color: Color(0xFF1D4ED8),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Send Departure Alerts',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.darkNavy,
+                  ),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Checks rain, fog, and road conditions before you leave',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _currentNotificationsEnabled,
+            activeThumbColor: const Color(0xFF1D4ED8),
+            onChanged: (val) async {
+              setState(() => _currentNotificationsEnabled = val);
+              if (val) {
+                await NotificationService().requestPermission();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHubActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _isSavingSchedule ? null : _saveCommuteSchedule,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1D4ED8),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: _isSavingSchedule
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'Save Travel Alert Settings',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: _isSavingSchedule ? null : _saveAllCommuteSchedules,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF0F172A),
+              side: const BorderSide(color: Color(0xFFCBD5E1)),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.done_all_rounded, size: 16, color: Color(0xFF1D4ED8)),
+            label: const Text(
+              'Save Both Morning & Return Alerts',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: _isTestingAlert ? null : _triggerNotificationTest,
+            icon: const Icon(Icons.notifications_active_outlined, size: 15, color: Color(0xFF64748B)),
+            label: const Text(
+              'Send Test Alert Notification',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3808,7 +3677,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         SnackBar(
           content: Text(
             bothOk
-                ? 'All commute schedules saved! (Morning: $outDep / Return: $retDep)'
+                ? 'Daily travel alerts saved! (Morning: $outDep / Return: $retDep)'
                 : 'Failed to save all schedules.',
           ),
           backgroundColor:
@@ -3816,75 +3685,6 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         ),
       );
     }
-  }
-
-  Widget _buildCorridorDayFilterChip(String code, String label) {
-    final isSelected = _currentCustomDays.contains(code);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentDayMode = 'Custom';
-          if (!isSelected) {
-            _currentCustomDays.add(code);
-          } else {
-            if (_currentCustomDays.length > 1) {
-              _currentCustomDays.remove(code);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please select at least one active day.'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          }
-          const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-          final sorted = dayOrder
-              .where((d) => _currentCustomDays.contains(d))
-              .toList();
-          _currentTravelDays = sorted.join(',');
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isSelected ? null : const Color(0xFFF1F5F9),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: isSelected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x252563EB),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            code.substring(0, 1),
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              color: isSelected ? Colors.white : const Color(0xFF475569),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   // ============================================================
@@ -3903,7 +3703,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
         ? alert['safety_score'] as int
         : int.tryParse(alert['safety_score']?.toString() ?? '70') ?? 70;
     final Color scoreColor = _getScoreColor(score);
-    final String title = alert['title']?.toString() ?? 'Commute Alert';
+    final String title = alert['title']?.toString() ?? 'Travel Alert';
     final String body = alert['body']?.toString() ?? 'Corridor evaluated';
     final List warnings = (alert['regional_warnings'] as List?) ?? [];
     final String advice = alert['departure_advice']?.toString() ?? '';
@@ -4147,4 +3947,11 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       },
     );
   }
+}
+
+class _HubDayItem {
+  final String code;
+  final String initial;
+  final String fullName;
+  const _HubDayItem(this.code, this.initial, this.fullName);
 }

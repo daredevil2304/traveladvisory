@@ -353,12 +353,12 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           const SizedBox(height: 16),
 
-          // 2. QUICK GUIDE: WHICH NUMBER TO CALL WHEN
+          // 2. QUICK GUIDE: WHICH NUMBER TO CALL WHEN (INTERACTIVE 1-TAP CARDS)
           _buildWhenToCallGuide(),
 
           const SizedBox(height: 14),
 
-          // 3. PRIMARY 24x7 EMERGENCY HOTLINES (COMPACT, HORIZONTAL NUMBERS)
+          // 3. PRIMARY 24x7 EMERGENCY HOTLINES (WITH WHEN TO CALL, COPY & CALL NOW)
           const _SectionHeader(
             title: 'PRIMARY 24x7 HIGHWAY HOTLINES',
             subtitle: 'Direct dispatch for ambulances, cranes, and police',
@@ -367,7 +367,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           _buildHotlineTile(
             title: 'IRB Expressway Control Room',
-            subtitle: 'Ambulances, Cranes, Highway Rescue & Patrol',
+            subtitle: 'Ambulances, Heavy Towing Cranes & Expressway Patrol SOS',
             whenToCall: 'Car breakdown, puncture, engine stop, towing crane, or accident rescue',
             phone: '9822498224',
             displayPhone: '98224 98224',
@@ -376,8 +376,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
             isPrimary: true,
           ),
           _buildHotlineTile(
-            title: 'National Highway Helpline (NHAI)',
-            subtitle: 'Toll-free 24x7 Highway Emergency & Towing',
+            title: 'National Highway Helpline (NHAI / MSRDC)',
+            subtitle: 'Toll-free 24x7 Highway Emergency & Evacuation',
             whenToCall: 'Toll-free helpline (works even without mobile recharge balance)',
             phone: '1033',
             displayPhone: '1033 (Toll-Free)',
@@ -387,7 +387,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           ),
           _buildHotlineTile(
             title: 'State Highway Police HQ',
-            subtitle: 'Maharashtra Police Highway Control Room',
+            subtitle: 'Maharashtra Police Highway Control Room & Highway Clearance',
             whenToCall: 'Police help, roadblock clearance, accident reporting, or rash driving',
             phone: '02025651515',
             displayPhone: '020-25651515',
@@ -396,8 +396,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
             isPrimary: false,
           ),
           _buildHotlineTile(
-            title: 'National Emergency Response',
-            subtitle: 'Unified Single Helpline (Police / Fire / Medical)',
+            title: 'National Emergency Response (ERSS)',
+            subtitle: 'Unified Single Emergency Number for Police, Medical & Fire',
             whenToCall: 'Life-threatening emergency, severe injury, or if other local lines are busy',
             phone: '112',
             displayPhone: '112',
@@ -408,7 +408,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
 
           const SizedBox(height: 18),
 
-          // 4. HIGHWAY BREAKDOWN SAFETY RULES
+          // 4. HIGHWAY BREAKDOWN SAFETY RULES (ALL 5 LIFE-SAVING STEPS)
           _buildBreakdownProtocolCard(),
 
           const SizedBox(height: 18),
@@ -482,7 +482,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
   // COMPACT & INTUITIVE WIDGET BUILDERS
   // ============================================================
 
-  /// Clear, user-friendly guide showing which number to call for each emergency scenario
+  /// Interactive 1-tap guide showing which number to call for each emergency scenario
   Widget _buildWhenToCallGuide() {
     return Container(
       decoration: BoxDecoration(
@@ -509,38 +509,82 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          _buildGuideRow('🚗 Car Breakdown / Flat Tire / Crane', 'Call IRB Control (98224 98224)'),
-          _buildGuideRow('🆓 Free Call (No Mobile Balance)', 'Call Toll-Free (1033)'),
-          _buildGuideRow('🚓 Police Help / Roadblock / Crash', 'Call Highway Police (020-25651515)'),
-          _buildGuideRow('🚑 Severe Injury / Ambulance', 'Call 112 or Corridor Hospital below'),
+          _buildInteractiveGuideRow(
+            icon: Icons.car_crash_rounded,
+            scenario: 'Breakdown / Flat Tire / Crane',
+            authority: 'IRB Control (98224 98224)',
+            phone: '9822498224',
+            displayPhone: '98224 98224',
+          ),
+          _buildInteractiveGuideRow(
+            icon: Icons.money_off_rounded,
+            scenario: 'Free Call (No Mobile Balance)',
+            authority: 'Toll-Free (1033)',
+            phone: '1033',
+            displayPhone: '1033',
+          ),
+          _buildInteractiveGuideRow(
+            icon: Icons.local_police_rounded,
+            scenario: 'Police Help / Roadblock / Crash',
+            authority: 'Highway Police (020-25651515)',
+            phone: '02025651515',
+            displayPhone: '020-25651515',
+          ),
+          _buildInteractiveGuideRow(
+            icon: Icons.emergency_rounded,
+            scenario: 'Severe Injury / Ambulance',
+            authority: 'Dial 112 (Unified)',
+            phone: '112',
+            displayPhone: '112',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildGuideRow(String scenario, String action) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 6,
-            child: Text(
-              scenario,
-              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF14532D)),
+  Widget _buildInteractiveGuideRow({
+    required IconData icon,
+    required String scenario,
+    required String authority,
+    required String phone,
+    required String displayPhone,
+  }) {
+    return InkWell(
+      onTap: () => _makeCall(scenario, phone, displayPhone),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF15803D)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                scenario,
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF14532D)),
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            flex: 5,
-            child: Text(
-              action,
-              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF15803D)),
-              textAlign: TextAlign.right,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    authority,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.call_rounded, size: 11, color: Color(0xFF166534)),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -737,7 +781,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  /// Compact, sleek hotline tile with horizontal number and explicit "When to call" guidance
+  /// Compact hotline tile with title, subtitle, when-to-call, horizontal phone number, Copy button, and Call Now button
   Widget _buildHotlineTile({
     required String title,
     required String subtitle,
@@ -788,7 +832,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                 ),
               ),
               const SizedBox(width: 11),
-              // Center Column: Title, When to Call, and HORIZONTAL PHONE NUMBER
+              // Center Column: Title, Subtitle, When to Call, and HORIZONTAL PHONE NUMBER
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,8 +871,15 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
                     const SizedBox(height: 2),
-                    // Specific "When to call" instruction for normal users
+                    // Specific "When to call" instruction
                     Text(
                       'When to call: $whenToCall',
                       maxLines: 2,
@@ -836,7 +887,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF475569),
+                        color: Color(0xFF92400E),
                         height: 1.25,
                       ),
                     ),
@@ -857,22 +908,42 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Compact "Call" action pill
+              const SizedBox(width: 6),
+              // Copy Button
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF64748B)),
+                tooltip: 'Copy Number',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Clipboard.setData(ClipboardData(text: phone));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Copied $displayPhone to clipboard!'),
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              // Compact "Call Now" action pill
               ElevatedButton.icon(
                 onPressed: () => _makeCall(title, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPrimary ? const Color(0xFFDC2626) : const Color(0xFF1D4ED8),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   minimumSize: const Size(0, 32),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.call_rounded, size: 13),
+                icon: const Icon(Icons.call_rounded, size: 12),
                 label: const Text(
-                  'Call',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  'Call Now',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
@@ -882,7 +953,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  /// Compact breakdown safety card
+  /// Compact breakdown safety card with all 5 safety steps
   Widget _buildBreakdownProtocolCard() {
     return Container(
       decoration: BoxDecoration(
@@ -912,7 +983,8 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
           _buildCompactStep('1', 'Pull immediately to extreme left hard shoulder. Never stop in active traffic lanes.'),
           _buildCompactStep('2', 'Turn ON 4-way hazard lights immediately to warn approaching vehicles.'),
           _buildCompactStep('3', 'Step out and stand behind the metal crash barrier. Do not wait inside the car!'),
-          _buildCompactStep('4', 'Note nearest yellow kilometer stone on the divider and call IRB (98224 98224) or 1033.'),
+          _buildCompactStep('4', 'Note nearest yellow kilometer stone on the divider to give exact location.'),
+          _buildCompactStep('5', 'Call IRB Control (98224 98224) or Highway Patrol (1033) for free safety escort & towing.'),
         ],
       ),
     );
@@ -954,7 +1026,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
     );
   }
 
-  /// Compact trauma hospital tile with horizontal single-line phone number
+  /// Compact trauma hospital tile with both Copy and Call buttons
   Widget _buildHospitalTile({
     required String name,
     required String sector,
@@ -1023,7 +1095,27 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              // Copy Button
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 17, color: Color(0xFF64748B)),
+                tooltip: 'Copy Hospital Number',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Clipboard.setData(ClipboardData(text: phone));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Copied $name number ($displayPhone) to clipboard!'),
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
               ElevatedButton.icon(
                 onPressed: () => _makeCall(name, phone, displayPhone),
                 style: ElevatedButton.styleFrom(
