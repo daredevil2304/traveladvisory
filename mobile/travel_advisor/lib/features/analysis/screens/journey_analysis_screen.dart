@@ -848,8 +848,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     }
   }
 
-  /// Generates a fully dynamic, context-aware driving advisory combining
-  /// sector topography, live weather reports, and TomTom traffic congestion.
+  /// Generates a fully dynamic, context-aware driving advisory in point-wise format
+  /// combining sector topography, elevation, live weather reports, and TomTom traffic congestion.
+  /// (Strictly no bracketed tags; formatted as clean point-wise bullet items).
   String _buildDynamicAreaAdvisory({
     required String code,
     required String title,
@@ -859,91 +860,140 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     required bool isNight,
     required double? visKm,
     required double? windKmh,
+    required double? tempC,
     required int delayMinutes,
     required String speedText,
     required int recommendedSpeed,
   }) {
-    final StringBuffer sb = StringBuffer();
+    final List<String> points = [];
 
-    // 1. Sector Topographical Base
+    // 1. Sector Topography & Elevation Profile
     switch (code) {
       case 'R1':
-        sb.write('Urban expressway corridor with frequent flyovers and commuter merges. Maintain safe vehicle buffer.');
+        points.add(
+          'Topography & Elevation: Low-lying coastal plain at ~12m elevation with multi-tier flyovers and dense urban interchange merges.',
+        );
         break;
       case 'R2':
-        sb.write('Open 6-lane high-speed expressway plain between Kalamboli and Khalapur. Optimal multi-lane cruising zone.');
+        points.add(
+          'Topography & Elevation: Open Konkan lowland plain at ~35m elevation featuring wide 6-lane straightaways and expansive unsheltered crosswind corridors.',
+        );
         break;
       case 'R3':
-        sb.write('Foothill approach and Khalapur toll zone where heavy freight trucks decelerate into lower climbing gears.');
+        points.add(
+          'Topography & Elevation: Sahyadri foothills approach at ~75m elevation leading to Khalapur Toll Plaza and mountain base transition.',
+        );
         break;
       case 'R4':
-        sb.write('Steep Bhor Ghat mountain incline with sharp hairpin curves, Adoshi tunnel, and heavy descending grade.');
+        points.add(
+          'Topography & Elevation: High-risk mountain pass climbing steeply from 90m to 550m elevation (460m vertical gain in 10 km) with sharp hairpin curves, Adoshi tunnel, and heavy 1:20 incline gradients.',
+        );
         break;
       case 'R5':
-        sb.write('High-altitude Khandala-Lonavala mountain crest with elevated viaduct bridges, tunnels, and tourist exit ramps.');
+        points.add(
+          'Topography & Elevation: Highest mountain crest of the expressway at 620m elevation with elevated viaduct bridges, Amrutanjan curve, and deep gorge crosswinds.',
+        );
         break;
       case 'R6':
-        sb.write('Descending Sahyadri plateau corridor towards Kamshet and Talegaon with broad sweeping curves.');
+        points.add(
+          'Topography & Elevation: High Deccan volcanic plateau at ~590m elevation featuring twin Kamshet tunnels, rolling terrain, and sweeping high-speed curves.',
+        );
         break;
       case 'R7':
-        sb.write('Pune metropolitan approach corridor nearing Talegaon and Urse toll plazas with dense commuter flow.');
+        points.add(
+          'Topography & Elevation: Plateau descent corridor at ~575m elevation approaching Urse Toll Plaza with heavy commercial transport merges.',
+        );
         break;
       case 'R8':
-        sb.write('Pune metropolitan arterial bypass highway with multiple local junction merges and speed moderation.');
+        points.add(
+          'Topography & Elevation: Pune metropolitan terminus at ~560m elevation transitioning from 100 km/h expressway cruising into Dehu Road urban bypass.',
+        );
         break;
       default:
-        sb.write('Expressway corridor sector ($title). Maintain designated lane discipline.');
+        points.add(
+          'Topography & Elevation: Expressway corridor sector ($title) at intermediate elevation with regulated grade gradients.',
+        );
     }
 
-    // 2. Weather-Driven Dynamic Directives
-    if (code == 'R4' || code == 'R5') {
-      // Mountain-specific weather directives
-      if (isRain) {
-        final rainNotice = (rainMm != null && rainMm > 5.0) ? 'heavy downpour ($precipitationStr)' : 'wet road surface';
-        sb.write(' [Ghat Wet Road Advisory]: Mountain curves are slick due to $rainNotice. Downshift to 2nd or 3rd gear for engine braking on downward slopes; avoid riding the brakes to prevent brake fade. Leave 40m+ gap behind freight trucks and never overtake on blind curves.');
-      } else if (visKm != null && visKm < 3.0) {
-        sb.write(' [Ghat Mist Advisory]: Dense mountain fog cuts sightlines to ${visKm.toStringAsFixed(1)} km. Turn on low-beam headlights/fog lamps and track road cat\'s-eye lane reflectors.');
-      } else if (windKmh != null && windKmh > 30.0) {
-        sb.write(' [Crest Viaduct Crosswinds]: Elevated bridge crosswinds of ${windKmh.toStringAsFixed(0)} km/h. Keep firm two-handed grip on steering when emerging from tunnels.');
-      } else {
-        sb.write(' [Mountain Incline Protocol]: Maintain steady 40-50 km/h grade speed. Keep left to allow uphill passing lanes to remain clear.');
-      }
+    // 2. Mountain & Incline Driving Protocol
+    if (code == 'R4') {
+      points.add(
+        'Incline & Gear Protocol: Engage 2nd or 3rd gear for progressive engine braking on downward slopes; avoid riding foot brakes continuously to eliminate dangerous brake fade.',
+      );
+      points.add(
+        'Ghat Climbing Safety: Overloaded multi-axle trucks crawl at 15-25 km/h in left crawler lanes; maintain 40m+ vehicle buffer and avoid overtaking on blind reverse curves.',
+      );
+    } else if (code == 'R5') {
+      points.add(
+        'Mountain Crest Protocol: Moderate entry speeds across high-altitude viaduct bridge decks; anticipate sudden wind buffeting and tourist vehicle slowdowns near Lonavala exits.',
+      );
     } else if (code == 'R2' || code == 'R6') {
-      // Plains-specific weather directives
-      if (isRain) {
-        sb.write(' [High-Speed Aquaplaning Advisory]: High-speed cruising on wet asphalt ($precipitationStr) creates severe hydroplaning risk. Cap speed to $recommendedSpeed km/h, avoid standing water pools near shoulders, and double following distance.');
-      } else if (windKmh != null && windKmh > 35.0) {
-        sb.write(' [Plains Crosswind Warning]: Open plain exposure with ${windKmh.toStringAsFixed(0)} km/h crosswinds. Anticipate wind buffeting when passing high-sided container trucks.');
+      points.add(
+        'High-Speed Cruising Protocol: Maintain center lane discipline between 80-100 km/h; reserve extreme right lane strictly for passing.',
+      );
+    } else {
+      points.add(
+        'Lane & Merging Protocol: Watch for sudden deceleration near toll plaza approaches and interchange splits; signal lane shifts at least 100m early.',
+      );
+    }
+
+    // 3. Dynamic Weather Telemetry & Road Surface Directive
+    if (isRain) {
+      if (code == 'R4' || code == 'R5') {
+        final rainAmt = (rainMm != null && rainMm > 5.0) ? 'heavy rainfall of ${rainMm.toStringAsFixed(1)} mm/h' : 'active rainfall ($precipitationStr)';
+        points.add(
+          'Wet Surface Precaution: Mountain asphalt is slick due to $rainAmt; friction coefficient is reduced. Never apply abrupt steering jerks or hard emergency braking on wet hairpin bends.',
+        );
       } else {
-        sb.write(' [Optimal Cruising]: Pavement is dry and clear. Maintain center lane cruising at 80-100 km/h; keep the extreme right lane strictly reserved for passing.');
+        points.add(
+          'Aquaplaning Precaution: Wet road surface ($precipitationStr) creates hydroplaning risk above $recommendedSpeed km/h; avoid standing water near road shoulders and double your following gap.',
+        );
       }
+    } else if (visKm != null && visKm < 3.0) {
+      points.add(
+        'Visibility Precaution: Mountain mist restricts forward sightlines to ${visKm.toStringAsFixed(1)} km; operate low-beam headlights and track road cat\'s-eye lane reflectors.',
+      );
+    } else if (windKmh != null && windKmh > 30.0) {
+      points.add(
+        'Crosswind Precaution: Elevated crosswinds of ${windKmh.toStringAsFixed(0)} km/h across open spans; keep a firm two-handed grip on the steering wheel when emerging from rock cuttings and tunnels.',
+      );
     } else {
-      // Urban / Approach directives
-      if (isRain) {
-        sb.write(' [Wet Urban Surface]: Flyover expansion joints and metal toll strips become slippery during rain ($precipitationStr). Decelerate smoothly before toll gates.');
-      }
+      final tempText = tempC != null ? ' at ${tempC.toStringAsFixed(0)}°C' : '';
+      points.add(
+        'Pavement Condition: Road surface is dry and clear$tempText with optimal tire traction and stable braking characteristics.',
+      );
     }
 
-    // 3. Traffic Telemetry Directives
+    // 4. Live Traffic Telemetry & Congestion Protocol
     if (delayMinutes >= 10) {
-      sb.write(' [Traffic Bottleneck Warning]: Active queue with +${delayMinutes}m delay, moving at $speedText. Avoid aggressive lane switching; align into toll or exit lanes early.');
+      points.add(
+        'Traffic Telemetry: Active congestion queue causing a +${delayMinutes}m delay, moving at $speedText; avoid erratic lane weaving and stay aligned in your lane.',
+      );
     } else if (delayMinutes > 0) {
-      sb.write(' [Traffic Advisory]: Minor slow-moving traffic (+${delayMinutes}m delay) moving at $speedText. Keep steady braking buffer.');
+      points.add(
+        'Traffic Telemetry: Minor vehicle build-up (+${delayMinutes}m delay) with speeds averaging $speedText; maintain steady braking cushion.',
+      );
     } else {
-      sb.write(' [Traffic Status]: Flow is fluid and unrestricted ($speedText) with 0m delay reported.');
+      points.add(
+        'Traffic Telemetry: Unrestricted free flow moving smoothly at $speedText with 0m delay reported.',
+      );
     }
 
-    // 4. Night Driving Modifier
+    // 5. Night Protocol
     if (isNight) {
-      sb.write(' • [Night Protocol]: Ambient lighting is minimal on unlit stretches. Dip high-beams when trailing vehicles to avoid blinding drivers ahead.');
+      points.add(
+        'Night Driving Guidance: Ambient illumination is limited on unlit highway sectors; dip high-beams when following within 150m of other vehicles to prevent blinding drivers ahead.',
+      );
     }
 
-    return sb.toString();
+    return points.map((p) => '• $p').join('\n\n');
   }
 
-  /// Builds a comprehensive, human-readable safety assessment and outlook
-  /// that quotes real weather metrics, traffic speeds, and predictive horizons.
+  /// Builds a comprehensive, dynamic safety assessment and outlook in point-wise format
+  /// that quotes real weather metrics, elevation, traffic speeds, and predictive horizons.
+  /// (Strictly no bracketed tags; formatted as clean point-wise bullet items).
   String _buildDynamicSafetyAssessment({
+    required String code,
     required int sVal,
     required String title,
     required bool isRain,
@@ -959,58 +1009,130 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     required String? travelDate,
     required String? travelTime,
   }) {
-    final StringBuffer sb = StringBuffer();
+    final List<String> points = [];
 
-    // 1. Overall Safety Classification
-    if (sVal >= 85) {
-      sb.write('Optimal Travel Safety ($sVal/100). ');
-    } else if (sVal >= 75) {
-      sb.write('Good Travel Conditions ($sVal/100). ');
-    } else if (sVal >= 60) {
-      sb.write('Moderate Caution Advised ($sVal/100). ');
-    } else {
-      sb.write('Elevated Hazard Warning ($sVal/100). ');
+    // 1. Safety Score & Condition Index
+    final String statusLabel = sVal >= 85
+        ? 'Optimal Travel Safety'
+        : (sVal >= 75
+            ? 'Good Travel Conditions'
+            : (sVal >= 60 ? 'Moderate Caution Advised' : 'Elevated Hazard Warning'));
+    final String statusSummary = sVal >= 75
+        ? 'Road telemetry confirms stable vehicle handling and low hazard probability.'
+        : (sVal >= 60
+            ? 'Moderate friction or visibility variance requires active driver attention.'
+            : 'Adverse weather or severe congestion detected; defensive driving required.');
+    points.add('Safety Rating: $statusLabel ($sVal/100) — $statusSummary');
+
+    // 2. Elevation & Topographical Classification
+    switch (code) {
+      case 'R1':
+        points.add(
+          'Elevation & Topography: Coastal plain base at ~12m elevation with 0% grade and multi-directional flyover merges.',
+        );
+        break;
+      case 'R2':
+        points.add(
+          'Elevation & Topography: Open Konkan lowland plain at ~35m elevation with flat 6-lane high-speed cruising stretches.',
+        );
+        break;
+      case 'R3':
+        points.add(
+          'Elevation & Topography: Western Ghats foothills at ~75m elevation with gradual 1-2% incline approaching Khalapur Toll Plaza.',
+        );
+        break;
+      case 'R4':
+        points.add(
+          'Elevation & Topography: Mountain pass climbing from 90m to 550m elevation with steep 1:20 incline gradients, hairpin curves, and Adoshi tunnel.',
+        );
+        break;
+      case 'R5':
+        points.add(
+          'Elevation & Topography: High Sahyadri mountain crest at 620m elevation with elevated viaduct bridges, deep valley drops, and Amrutanjan curve.',
+        );
+        break;
+      case 'R6':
+        points.add(
+          'Elevation & Topography: Elevated Deccan plateau at ~590m elevation featuring twin Kamshet tunnels and wide sweeping turns.',
+        );
+        break;
+      case 'R7':
+        points.add(
+          'Elevation & Topography: Plateau descent corridor at ~575m elevation leading to Urse Toll Plaza and industrial freight lanes.',
+        );
+        break;
+      case 'R8':
+        points.add(
+          'Elevation & Topography: Pune metropolitan plateau at ~560m elevation transitioning into Dehu Road urban bypass intersections.',
+        );
+        break;
+      default:
+        points.add(
+          'Elevation & Topography: Monitored expressway sector ($title) at intermediate elevation with regulated grade gradients.',
+        );
     }
 
-    // 2. Weather Diagnostic
+    // 3. Weather & Road Friction Telemetry
     if (isRain) {
       if (rainMm != null && rainMm >= 7.5) {
-        sb.write('Heavy downpour of ${rainMm.toStringAsFixed(1)} mm/h over $title. High aquaplaning hazard on asphalt with significantly reduced braking grip. ');
+        points.add(
+          'Weather & Surface: Heavy downpour of ${rainMm.toStringAsFixed(1)} mm/h over $title with high aquaplaning risk and significantly reduced braking grip.',
+        );
       } else {
-        sb.write('Active precipitation ($precipitationStr) with wet road surfaces. Road friction coefficient is moderately reduced. ');
+        points.add(
+          'Weather & Surface: Active precipitation ($precipitationStr) with wet road surfaces and reduced tire friction coefficient.',
+        );
       }
     } else {
-      final tempStr = tempC != null ? '${tempC.toStringAsFixed(0)}°C, ' : '';
-      sb.write('Road surface is completely dry ($tempStr). ');
+      final tempText = tempC != null ? ' at ${tempC.toStringAsFixed(0)}°C' : '';
+      points.add(
+        'Weather & Surface: Road surface is dry and clear$tempText with optimal tire adhesion and zero precipitation.',
+      );
     }
 
-    // 3. Visibility & Wind Diagnostic
+    // 4. Sightlines & Wind Conditions
     if (visKm != null && visKm < 3.5) {
-      sb.write('Atmospheric sightlines restricted to ${visKm.toStringAsFixed(1)} km due to mist/fog. ');
+      points.add(
+        'Atmospheric Visibility: Sightlines restricted to ${visKm.toStringAsFixed(1)} km due to mist and low clouds; extra braking buffer required.',
+      );
     } else if (windKmh != null && windKmh > 30.0) {
-      sb.write('Elevated wind speed of ${windKmh.toStringAsFixed(0)} km/h across highway spans. ');
+      points.add(
+        'Wind Conditions: Elevated crosswinds of ${windKmh.toStringAsFixed(0)} km/h across open highway spans and bridge decks.',
+      );
     } else if (!isRain) {
-      sb.write('Atmospheric visibility is optimal at 10+ km. ');
+      points.add(
+        'Atmospheric Visibility: Clear daytime visibility exceeding 10+ km with calm wind conditions.',
+      );
     }
 
-    // 4. Traffic Flow Telemetry
+    // 5. Live Traffic Dynamics
     if (delayMinutes >= 10) {
-      sb.write('TomTom live telemetry detects an active bottleneck causing a +${delayMinutes}m delay, with traffic crawling at $speedText. ');
+      points.add(
+        'Traffic Dynamics: Live telemetry detects a severe bottleneck with +${delayMinutes}m delay, traffic crawling at $speedText.',
+      );
     } else if (delayMinutes > 0) {
-      sb.write('Moderate vehicle build-up (+${delayMinutes}m delay), vehicles averaging $speedText. ');
+      points.add(
+        'Traffic Dynamics: Moderate vehicle queuing (+${delayMinutes}m delay) with traffic moving at $speedText.',
+      );
     } else {
-      sb.write('Expressway traffic is moving with fluid speed ($speedText) and zero congestion delay. ');
+      points.add(
+        'Traffic Dynamics: Free-flowing corridor traffic moving smoothly at $speedText with zero congestion delay.',
+      );
     }
 
-    // 5. Predictive Outlook
+    // 6. Predictive Outlook
     if (isPlanner && (travelDate != null || travelTime != null)) {
       final dt = '${travelDate ?? ''} ${travelTime ?? ''}'.trim();
-      sb.write('Projected Outlook for $dt: Expect ${isRain ? 'sustained rain showers requiring conservative speeds' : (isNight ? 'unlit night travel with reduced contrast' : 'clear daylight cruising conditions')}.');
+      points.add(
+        'Projected Outlook ($dt): Expect ${isRain ? 'sustained rain showers requiring conservative speeds' : (isNight ? 'unlit night travel with reduced contrast' : 'clear daylight cruising conditions')}.',
+      );
     } else {
-      sb.write('Live Outlook: ${sVal >= 75 ? 'Corridor remains stable for safe travel.' : 'Defensive driving and enhanced vehicle spacing strongly advised.'}');
+      points.add(
+        'Live Outlook: ${sVal >= 75 ? 'Corridor remains stable for safe, uninterrupted travel.' : 'Defensive driving, increased following distance, and speed moderation strongly advised.'}',
+      );
     }
 
-    return sb.toString();
+    return points.map((p) => '• $p').join('\n\n');
   }
 
   /// Dynamically computes statutory and recommended speeds based on sector
@@ -1423,6 +1545,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
     // Dynamically generate safety assessment quoting exact weather & traffic telemetry
     final String conditionAssessment = _buildDynamicSafetyAssessment(
+      code: regCode,
       sVal: sVal,
       title: title,
       isRain: isRain,
@@ -1449,6 +1572,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       isNight: isNight,
       visKm: visKm,
       windKmh: windKmh,
+      tempC: tempC,
       delayMinutes: delayMinutes,
       speedText: speedText,
       recommendedSpeed: recommendedSpeed,
