@@ -156,11 +156,11 @@ def _assess_report_hazards(report: TravelerReport) -> tuple[bool, list[str]]:
 
 @router.get("/live-reports")
 def get_live_community_reports(
-    hours: int = Query(default=1, ge=1, le=24, description="Lookback window in hours"),
+    hours: int = Query(default=6, ge=1, le=24, description="Lookback window in hours"),
     db: Session = Depends(get_db),
 ):
     """
-    Returns active human traveler reports within the past N hours (default 1h).
+    Returns active human traveler reports within the past N hours (default 6h).
     Expired reports are automatically excluded from the output and risk evaluation.
     Computes active risky corridor segments based exclusively on user inputs.
     """
@@ -171,7 +171,6 @@ def get_live_community_reports(
         db.query(TravelerReport)
         .filter(
             TravelerReport.created_at >= cutoff_time,
-            TravelerReport.created_at <= now,
         )
         .order_by(TravelerReport.created_at.desc())
         .all()

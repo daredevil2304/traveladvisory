@@ -378,7 +378,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       _parseDaysForSlot(1, returnHabit['travel_days']?.toString() ?? 'Daily');
 
       // 3. Load Community Radar Reports
-      final res = await ApiService.getLiveCommunityReports(hours: 1);
+      final res = await ApiService.getLiveCommunityReports(hours: 6);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
@@ -423,7 +423,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   Future<void> _refreshLiveReports() async {
     setState(() => _isLoadingReports = true);
     try {
-      final res = await ApiService.getLiveCommunityReports(hours: 1);
+      final res = await ApiService.getLiveCommunityReports(hours: 6);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
@@ -1932,11 +1932,14 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
           if (sector != null) {
             chatArgs['sector'] = sector;
           }
-          Navigator.pushNamed(
+          await Navigator.pushNamed(
             context,
             AppRoutes.chatbot,
             arguments: chatArgs,
           );
+          if (mounted) {
+            _refreshLiveReports();
+          }
           return;
         }
       }
@@ -2446,7 +2449,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+                          Navigator.pushNamed(context, AppRoutes.liveRoadUpdates).then((_) {
+                            if (mounted) _refreshLiveReports();
+                          });
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -2468,7 +2473,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Live road updates reported by drivers on the expressway (valid for 1 hour).',
+                'Live road updates reported by drivers on the expressway (active driver reports).',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -2503,7 +2508,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'All sections clear. No traffic jams, heavy rain, or road hazards reported in the past 1 hour.',
+                          'All sections clear. No traffic jams, heavy rain, or road hazards reported recently.',
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF334155),
@@ -2522,7 +2527,9 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
               // Contribute Quick Action Banner
               InkWell(
                 onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.liveRoadUpdates);
+                  Navigator.pushNamed(context, AppRoutes.liveRoadUpdates).then((_) {
+                            if (mounted) _refreshLiveReports();
+                          });
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
