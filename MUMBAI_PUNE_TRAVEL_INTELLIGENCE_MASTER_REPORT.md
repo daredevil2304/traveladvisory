@@ -261,7 +261,7 @@ graph TD
     Traffic["TomTom Traffic Flow & Incidents API"]
     LLM["Groq / OpenRouter (LLaMA-3.3-70B)"]
 
-    Client <==>|REST / JSON (HTTPS)| API
+    Client <-->|REST HTTPS API| API
     API <==> DB
     API <==> Redis
     API <==> ML
@@ -327,13 +327,13 @@ flowchart TD
     end
 
     %% Clean Inter-Tier Communication Pipes
-    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
-    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
-    Fusion <===>|Telemetry Ingestion| Weather
-    Fusion <===>|Traffic Feeds| Traffic
-    GW <===>|Grounded Chat Queries| Groq
-    SOSHandler ===>|Hardware GPS Coordinates| Emergency
-    Updater <====>|Background Silent CodePush| Shorebird
+    Tier1 <-->|Encrypted HTTPS REST API| Tier2
+    Fusion -->|11-D Vector Inference Under 3.2ms| Tier3
+    Fusion <-->|Telemetry Ingestion| Weather
+    Fusion <-->|Traffic Feeds| Traffic
+    GW <-->|Grounded Chat Queries| Groq
+    SOSHandler -->|Hardware GPS Coordinates| Emergency
+    Updater <-->|Background Silent CodePush| Shorebird
 ```
 
 ## 3.2 UML Domain Class Diagram & Relational Entity Model
@@ -543,7 +543,7 @@ sequenceDiagram
     participant App as Mobile App
     participant API as FastAPI Backend
     participant Weather as Open-Meteo Forecast
-    participant Opt as Departure Optimizer Service
+    participant OptimizerSvc as Departure Optimizer Service
     participant ML as Regional XGBoost Engine
 
     User->>App: Select Origin, Destination & Future Date/Time
@@ -553,24 +553,24 @@ sequenceDiagram
     API->>Weather: Fetch 5-Day Hourly Atmospheric Forecast
     Weather-->>API: Return Rain, Temp, Humidity, Pressure per hour
 
-    API->>Opt: Scan Temporal Windows (-60m, -30m, 0m, +30m, +60m)
-    activate Opt
+    API->>OptimizerSvc: Scan Temporal Windows (-60m, -30m, 0m, +30m, +60m)
+    activate OptimizerSvc
 
     loop For Each Offset Window
-        Opt->>Opt: Filter Out Historical/Past Time Slots
-        Opt->>ML: Run Inference with Projected Weather Features
-        ML-->>Opt: Return Window Hazard Severity
-        Opt->>Opt: Compute Window Safety Score via Weakest-Link
+        OptimizerSvc->>OptimizerSvc: Filter Out Historical/Past Time Slots
+        OptimizerSvc->>ML: Run Inference with Projected Weather Features
+        ML-->>OptimizerSvc: Return Window Hazard Severity
+        OptimizerSvc->>OptimizerSvc: Compute Window Safety Score via Weakest-Link
     end
 
-    Opt->>Opt: Calculate Delta S = S(optimal) - S(scheduled)
-    Opt-->>API: Return Alternative Windows & Smart Timing Advice
-    deactivate Opt
+    OptimizerSvc->>OptimizerSvc: Calculate Delta S = S(optimal) - S(scheduled)
+    OptimizerSvc-->>API: Return Alternative Windows & Smart Timing Advice
+    deactivate OptimizerSvc
 
     API-->>App: Return Full 5-Day Corridor Plan & Timing Recommendations
     deactivate API
 
-    App-->>User: Display "+30m Departure Saves 20 mins & Avoids Ghat Storm (+12 pts)"
+    App-->>User: Display Smart Advisory (+30m Saves 20m, Avoids Ghat Storm)
 ```
 
 ### 3. Community Hazard Crowdsourcing & 2-of-3 Consensus Engine

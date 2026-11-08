@@ -1283,13 +1283,13 @@ flowchart TD
     end
 
     %% Clean Inter-Tier Communication Pipes
-    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
-    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
-    Fusion <===>|Telemetry Ingestion| Weather
-    Fusion <===>|Traffic Feeds| Traffic
-    GW <===>|Grounded Chat Queries| Groq
-    SOSHandler ===>|Hardware GPS Coordinates| Emergency
-    Updater <====>|Background Silent CodePush| Shorebird
+    Tier1 <-->|Encrypted HTTPS REST API| Tier2
+    Fusion -->|11-D Vector Inference Under 3.2ms| Tier3
+    Fusion <-->|Telemetry Ingestion| Weather
+    Fusion <-->|Traffic Feeds| Traffic
+    GW <-->|Grounded Chat Queries| Groq
+    SOSHandler -->|Hardware GPS Coordinates| Emergency
+    Updater <-->|Background Silent CodePush| Shorebird
               </div>
             </div>
           </div>
@@ -1684,7 +1684,6 @@ sequenceDiagram
             <div class="mermaid-wrapper" id="wrapper-uml-state-trip">
               <div class="mermaid" id="mermaid-uml-state-trip">
 stateDiagram-v2
-    classDef stateBox fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
     classDef activeState fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
     classDef failState fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
 
@@ -1703,12 +1702,12 @@ stateDiagram-v2
         FusingSensors --> ComputingScore : Apply AASHTO Physics Engine
     }
 
-    EVALUATING --> ACTIVE : Telemetry fused & score calculated:::activeState
-    EVALUATING --> FAILED : Network timeout / Service down:::failState
+    EVALUATING --> ACTIVE : Telemetry fused & score calculated
+    EVALUATING --> FAILED : Network timeout / Service down
     
     FAILED --> DRAFT : Auto-retry with cached local data
     
-    ACTIVE --> EN_ROUTE : Commuter begins driving (Traveler Mode):::activeState
+    ACTIVE --> EN_ROUTE : Commuter begins driving (Traveler Mode)
     ACTIVE --> PLANNED : Future departure saved (Planner Mode)
     
     PLANNED --> ACTIVE : Departure window arrives
@@ -1720,10 +1719,15 @@ stateDiagram-v2
     }
 
     EN_ROUTE --> COMPLETED : Destination reached safely
-    EN_ROUTE --> CANCELLED : Trip aborted by driver:::failState
+    EN_ROUTE --> CANCELLED : Trip aborted by driver
     
     COMPLETED --> ARCHIVED : Persisted in SQLite Trip Repository
     ARCHIVED --> [*]
+
+    class ACTIVE activeState
+    class EN_ROUTE activeState
+    class FAILED failState
+    class CANCELLED failState
               </div>
             </div>
           </div>
@@ -1760,27 +1764,34 @@ stateDiagram-v2
     classDef neutralState fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
 
     [*] --> SCREEN_OPENED : User triggers Emergency SOS
-    SCREEN_OPENED --> CHECKING_PERMISSION : initState() requests GPS state
+    SCREEN_OPENED --> CHECKING_PERMISSION : initState requests GPS state
 
-    CHECKING_PERMISSION --> GRANTED : Permission already granted:::safeState
-    CHECKING_PERMISSION --> DENIED : Permission denied / GPS disabled:::alertState
+    CHECKING_PERMISSION --> GRANTED : Permission already granted
+    CHECKING_PERMISSION --> DENIED : Permission denied / GPS disabled
 
-    DENIED --> MODAL_BLOCKED : Show un-dismissible location modal:::alertState
-    MODAL_BLOCKED --> SYSTEM_SETTINGS : User taps "Enable High-Accuracy GPS"
+    DENIED --> MODAL_BLOCKED : Show un-dismissible location modal
+    MODAL_BLOCKED --> SYSTEM_SETTINGS : User taps Enable GPS
     SYSTEM_SETTINGS --> APP_RESUMED : Return to app via lifecycle hook
     APP_RESUMED --> CHECKING_PERMISSION : Auto-recheck location state
 
-    GRANTED --> ACQUIRING_GPS : Geolocator.getCurrentPosition():::neutralState
-    ACQUIRING_GPS --> SNAP_CORRIDOR : Reverse-geocode to Expressway KM marker:::neutralState
-    SNAP_CORRIDOR --> DISPATCH_READY : Coordinates locked (Accuracy < 10m):::safeState
+    GRANTED --> ACQUIRING_GPS : Geolocator.getCurrentPosition
+    ACQUIRING_GPS --> SNAP_CORRIDOR : Reverse-geocode to Expressway KM marker
+    SNAP_CORRIDOR --> DISPATCH_READY : Coordinates locked (Accuracy high)
 
     state DISPATCH_READY {
         [*] --> ReadyState
         ReadyState --> CALL_112_ACTIVE : User taps Police 112
-        ReadyState --> WHATSAPP_SHARED : User shares GPS pin with family
+        ReadyState --> WHATSAPP_SHARED : User shares GPS pin
     }
 
     DISPATCH_READY --> [*] : Emergency resolved / Commuter safe
+
+    class GRANTED safeState
+    class SNAP_CORRIDOR safeState
+    class DISPATCH_READY safeState
+    class DENIED alertState
+    class MODAL_BLOCKED alertState
+    class ACQUIRING_GPS neutralState
               </div>
             </div>
           </div>
@@ -2495,7 +2506,7 @@ graph TD
     Traffic["TomTom Traffic Flow & Incidents API"]
     LLM["Groq / OpenRouter (LLaMA-3.3-70B)"]
 
-    Client <==>|REST / JSON (HTTPS)| API
+    Client <-->|REST HTTPS API| API
     API <==> DB
     API <==> Redis
     API <==> ML
@@ -2561,13 +2572,13 @@ flowchart TD
     end
 
     %% Clean Inter-Tier Communication Pipes
-    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
-    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
-    Fusion <===>|Telemetry Ingestion| Weather
-    Fusion <===>|Traffic Feeds| Traffic
-    GW <===>|Grounded Chat Queries| Groq
-    SOSHandler ===>|Hardware GPS Coordinates| Emergency
-    Updater <====>|Background Silent CodePush| Shorebird
+    Tier1 <-->|Encrypted HTTPS REST API| Tier2
+    Fusion -->|11-D Vector Inference Under 3.2ms| Tier3
+    Fusion <-->|Telemetry Ingestion| Weather
+    Fusion <-->|Traffic Feeds| Traffic
+    GW <-->|Grounded Chat Queries| Groq
+    SOSHandler -->|Hardware GPS Coordinates| Emergency
+    Updater <-->|Background Silent CodePush| Shorebird
 ```
 
 ## 3.2 UML Domain Class Diagram & Relational Entity Model
@@ -2777,7 +2788,7 @@ sequenceDiagram
     participant App as Mobile App
     participant API as FastAPI Backend
     participant Weather as Open-Meteo Forecast
-    participant Opt as Departure Optimizer Service
+    participant OptimizerSvc as Departure Optimizer Service
     participant ML as Regional XGBoost Engine
 
     User->>App: Select Origin, Destination & Future Date/Time
@@ -2787,24 +2798,24 @@ sequenceDiagram
     API->>Weather: Fetch 5-Day Hourly Atmospheric Forecast
     Weather-->>API: Return Rain, Temp, Humidity, Pressure per hour
 
-    API->>Opt: Scan Temporal Windows (-60m, -30m, 0m, +30m, +60m)
-    activate Opt
+    API->>OptimizerSvc: Scan Temporal Windows (-60m, -30m, 0m, +30m, +60m)
+    activate OptimizerSvc
 
     loop For Each Offset Window
-        Opt->>Opt: Filter Out Historical/Past Time Slots
-        Opt->>ML: Run Inference with Projected Weather Features
-        ML-->>Opt: Return Window Hazard Severity
-        Opt->>Opt: Compute Window Safety Score via Weakest-Link
+        OptimizerSvc->>OptimizerSvc: Filter Out Historical/Past Time Slots
+        OptimizerSvc->>ML: Run Inference with Projected Weather Features
+        ML-->>OptimizerSvc: Return Window Hazard Severity
+        OptimizerSvc->>OptimizerSvc: Compute Window Safety Score via Weakest-Link
     end
 
-    Opt->>Opt: Calculate Delta S = S(optimal) - S(scheduled)
-    Opt-->>API: Return Alternative Windows & Smart Timing Advice
-    deactivate Opt
+    OptimizerSvc->>OptimizerSvc: Calculate Delta S = S(optimal) - S(scheduled)
+    OptimizerSvc-->>API: Return Alternative Windows & Smart Timing Advice
+    deactivate OptimizerSvc
 
     API-->>App: Return Full 5-Day Corridor Plan & Timing Recommendations
     deactivate API
 
-    App-->>User: Display "+30m Departure Saves 20 mins & Avoids Ghat Storm (+12 pts)"
+    App-->>User: Display Smart Advisory (+30m Saves 20m, Avoids Ghat Storm)
 ```
 
 ### 3. Community Hazard Crowdsourcing & 2-of-3 Consensus Engine
