@@ -908,7 +908,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   };
 
   /// Generates a fully dynamic, context-aware driving advisory in point-wise format
-  /// combining sector topography, elevation, live weather reports, and TomTom traffic congestion.
+  /// combining sector topography, elevation, live weather reports, and live traffic congestion.
   /// (Strictly no brackets or bracket-like label headers; clean point-wise bullet items).
   String _buildDynamicAreaAdvisory({
     required String code,
@@ -1150,7 +1150,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   }
 
   /// Dynamically computes statutory and recommended speeds based on sector
-  /// topography, government limits, live rainfall, visibility, and TomTom traffic speed.
+  /// topography, government limits, live rainfall, visibility, and live traffic speed.
   Map<String, dynamic> _computeDynamicSafeSpeed({
     required String regCode,
     required dynamic safeSpeedAdv,
@@ -1211,7 +1211,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     // 3. Traffic Deductions
     if (delayMinutes >= 15) {
       recommendedSpeed = (recommendedSpeed > 40) ? 35 : recommendedSpeed;
-      reasons.add('Live TomTom congestion (+${delayMinutes}m delay) - traffic crawling at $speedText');
+      reasons.add('Live traffic congestion (+${delayMinutes}m delay) - traffic crawling at $speedText');
     } else if (delayMinutes >= 5) {
       recommendedSpeed -= 15;
       reasons.add('Moderate traffic queue (+${delayMinutes}m delay) near toll/choke point');
@@ -1531,7 +1531,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         })
         .toList();
 
-    // Parse TomTom live traffic delay
+    // Parse live traffic delay
     int delayMinutes = 0;
     if (liveTraffic is Map && liveTraffic['delay_minutes'] is num) {
       delayMinutes = (liveTraffic['delay_minutes'] as num).toInt();

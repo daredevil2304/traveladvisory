@@ -16,21 +16,25 @@ from routes.report_routes import router as report_router
 # DATABASE INITIALIZATION
 # ================================================================
 
-Base.metadata.create_all(bind=engine)
-
-from sqlalchemy import text
-
 try:
+    Base.metadata.create_all(bind=engine)
+    from sqlalchemy import text
     with engine.connect() as _migration_conn:
-        _migration_conn.execute(
-            text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(20) DEFAULT 'outbound';")
-        )
-        _migration_conn.execute(
-            text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS travel_days VARCHAR(50) DEFAULT 'Daily';")
-        )
+        try:
+            _migration_conn.execute(
+                text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(20) DEFAULT 'outbound';")
+            )
+        except Exception:
+            pass
+        try:
+            _migration_conn.execute(
+                text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS travel_days VARCHAR(50) DEFAULT 'Daily';")
+            )
+        except Exception:
+            pass
         _migration_conn.commit()
 except Exception as _migration_err:
-    print(f"Database migration notice: {_migration_err}")
+    print(f"Database initialization/migration notice: {_migration_err}")
 
 
 
