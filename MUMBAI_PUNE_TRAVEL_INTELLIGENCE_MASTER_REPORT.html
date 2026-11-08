@@ -831,35 +831,448 @@
     color: #93C5FD;
   }
 
-  /* Report Layout */
+  /* ========================================================
+     SENIOR ENGINEERING CAPSTONE DISSERTATION PORTAL STYLING
+     ======================================================== */
+  .capstone-header-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 13, 26, 0.98));
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 36px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .capstone-header-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #38BDF8, #10B981, #A855F7, #F59E0B);
+  }
+  .capstone-top-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .capstone-inst-badge {
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #38BDF8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 5px 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .capstone-status-badge {
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #10B981;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 5px 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: #10B981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10B981;
+    animation: pulseDot 2s infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+  .capstone-main-title {
+    font-size: 2.1rem;
+    font-weight: 900;
+    color: #FFFFFF;
+    line-height: 1.25;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.02em;
+  }
+  .capstone-subtitle {
+    font-size: 1.05rem;
+    color: #94A3B8;
+    line-height: 1.6;
+    margin: 0 0 24px 0;
+    max-width: 1200px;
+  }
+  .capstone-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .capstone-meta-item {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .meta-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #38BDF8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .meta-value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #F8FAFC;
+  }
+  .capstone-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-capstone-primary {
+    background: linear-gradient(135deg, #0284C7, #2563EB);
+    color: #FFFFFF;
+    border: 1px solid #38BDF8;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  }
+  .btn-capstone-primary:hover {
+    background: linear-gradient(135deg, #38BDF8, #3B82F6);
+    color: #070B14;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+  }
+  .btn-capstone-secondary {
+    background: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+    border: 1px solid #334155;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+  .btn-capstone-secondary:hover {
+    background: #334155;
+    color: #FFFFFF;
+    border-color: #38BDF8;
+  }
+
+  /* Redesigned Chapter Navigation Sidebar */
   .report-layout {
     display: flex;
     gap: 32px;
+    align-items: flex-start;
   }
   .report-sidebar {
-    width: 320px;
-    height: calc(100vh - 120px);
+    width: 350px;
+    height: calc(100vh - 100px);
     position: sticky;
-    top: 70px;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    top: 75px;
+    background: #080D1A;
+    border: 1px solid #1E293B;
+    border-radius: 16px;
     padding: 20px 16px;
     overflow-y: auto;
     font-size: 0.84rem;
     flex-shrink: 0;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
   }
+  .report-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .report-sidebar::-webkit-scrollbar-thumb {
+    background: #24344D;
+    border-radius: 3px;
+  }
+  .report-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #38BDF8;
+  }
+
+  .sidebar-header-box {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #1E293B;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .sidebar-pre-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #38BDF8;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .sidebar-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 10px;
+  }
+  .sidebar-progress-track {
+    width: 100%;
+    height: 6px;
+    background: #0B1120;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .sidebar-progress-bar {
+    width: 5%;
+    height: 100%;
+    background: linear-gradient(90deg, #38BDF8, #10B981);
+    transition: width 0.25s ease;
+  }
+  .sidebar-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .sidebar-phase-filters {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .phase-btn {
+    background: #111827;
+    border: 1px solid #1F2937;
+    color: #9CA3AF;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .phase-btn:hover {
+    color: #FFFFFF;
+    border-color: #38BDF8;
+  }
+  .phase-btn.active {
+    background: #38BDF8;
+    color: #070B14;
+    border-color: #38BDF8;
+    font-weight: 700;
+  }
+
+  .phase-divider {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #64748B;
+    text-transform: uppercase;
+    padding: 12px 8px 6px 8px;
+    border-bottom: 1px solid #1E293B;
+    margin-bottom: 6px;
+  }
+
+  .chapter-nav-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #CBD5E1;
+    text-decoration: none;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .chapter-nav-item:hover {
+    background: rgba(30, 41, 59, 0.7);
+    color: #FFFFFF;
+    border-color: #334155;
+    transform: translateX(3px);
+  }
+  .chapter-nav-item.active {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: #38BDF8;
+    color: #FFFFFF;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+    border-left: 4px solid #38BDF8;
+  }
+  .chap-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: #1E293B;
+    color: #94A3B8;
+    white-space: nowrap;
+    border: 1px solid #334155;
+    flex-shrink: 0;
+  }
+  .chap-badge-cyan { background: rgba(56, 189, 248, 0.15); color: #38BDF8; border-color: rgba(56, 189, 248, 0.3); }
+  .chap-badge-amber { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.3); }
+  .chap-badge-purple { background: rgba(168, 85, 247, 0.15); color: #A855F7; border-color: rgba(168, 85, 247, 0.3); }
+  .chap-badge-rose { background: rgba(244, 63, 94, 0.15); color: #F43F5E; border-color: rgba(244, 63, 94, 0.3); }
+  .chap-badge-emerald { background: rgba(16, 185, 129, 0.15); color: #10B981; border-color: rgba(16, 185, 129, 0.3); }
+
+  .chap-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .chap-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chap-sub {
+    font-size: 0.72rem;
+    color: #64748B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .report-main {
     flex: 1;
     min-width: 0;
   }
   .article-card {
-    background-color: var(--bg-surface);
-    padding: 48px;
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
   }
+
+  /* Chapter Box in Report Main Body */
+  .chapter-container-box {
+    background: #0B1120;
+    border: 1px solid #1E293B;
+    border-radius: 20px;
+    padding: 40px;
+    margin-bottom: 48px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    position: relative;
+    transition: border-color 0.25s ease;
+  }
+  .chapter-container-box:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+  .chapter-box-header {
+    border-bottom: 1px solid #1E293B;
+    padding-bottom: 24px;
+    margin-bottom: 28px;
+  }
+  .chapter-box-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chapter-box-badge {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #38BDF8;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 4px 12px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .chapter-box-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #10B981;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .chapter-box-title {
+    font-size: 1.85rem !important;
+    font-weight: 900 !important;
+    color: #FFFFFF !important;
+    margin: 0 !important;
+    border: none !important;
+    padding: 0 !important;
+    letter-spacing: -0.02em;
+  }
+
+  /* Formal Engineering Callouts */
+  .engineering-callout {
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 24px 0;
+    border-left: 4px solid;
+    background: #080D1A;
+  }
+  .callout-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .callout-body {
+    font-size: 0.94rem;
+    line-height: 1.6;
+    color: #E2E8F0;
+  }
+  .callout-note { border-color: #38BDF8; background: rgba(14, 26, 46, 0.6); }
+  .callout-note .callout-label { color: #38BDF8; }
+  .callout-hazard { border-color: #F43F5E; background: rgba(50, 14, 25, 0.6); }
+  .callout-hazard .callout-label { color: #F43F5E; }
+  .callout-important { border-color: #F59E0B; background: rgba(45, 26, 8, 0.6); }
+  .callout-important .callout-label { color: #F59E0B; }
+  .callout-opt { border-color: #10B981; background: rgba(8, 40, 30, 0.6); }
+  .callout-opt .callout-label { color: #10B981; }
   h1, h2, h3, h4 {
     color: #FFFFFF;
     font-weight: 700;
@@ -1999,39 +2412,243 @@ flowchart TB
 
 <!-- TAB 3: 📖 COMPLETE MASTER ENGINEERING REPORT -->
 <div class="tab-pane" id="pane-report">
-  <div class="report-layout">
-    <!-- Sticky Report Sidebar -->
-    <aside class="report-sidebar">
-      <div style="font-weight:700; color:var(--accent-cyan); text-transform:uppercase; margin-bottom:12px; font-size:0.8rem; letter-spacing:0.05em;">
-        Report Navigation
+  <!-- Executive Capstone Title & Metadata Block -->
+  <div class="capstone-header-card">
+    <div class="capstone-top-strip">
+      <div class="capstone-inst-badge">🎓 FINAL YEAR B.TECH / B.E. CAPSTONE DISSERTATION • MAJOR PROJECT DEFENSE</div>
+      <div class="capstone-status-badge">
+        <span class="status-dot"></span> PRODUCTION VERIFIED • SHOREBIRD OTA PATCH #40
       </div>
-      <input type="text" id="reportSearchInput" class="search-input" style="margin-bottom:14px; width:100%;" placeholder="🔍 Search chapters..." onkeyup="filterReportNav()">
-      <div id="reportNavLinks">
-        <a href="#prologue-the-tale-of-two-drivers-on-nh-48">🌟 Prologue: Tale of Two Drivers</a>
-        <a href="#chapter-1-the-operational-domain--terrestrial-failure-modes">Ch 1: Operational Domain</a>
-        <a href="#chapter-2-system-evolution--collaborative-design-decisions">Ch 2: System Evolution</a>
-        <a href="#chapter-3-complete-uml-architectural-specification">Ch 3: UML Architecture</a>
-        <a href="#chapter-4-corridor-topography-microclimates--highway-physics">Ch 4: Highway Physics & SSD</a>
-        <a href="#chapter-5-multi-source-data-fusion--safety-scoring-mathematics">Ch 5: Data Fusion Math</a>
-        <a href="#chapter-6-regional-machine-learning-architecture-routeradar-xgboost">Ch 6: Regional XGBoost (~65MB Cache)</a>
-        <a href="#chapter-7-temporal-departure-window-optimizer-30m-60m--30m--60m">Ch 7: Departure Optimizer</a>
-        <a href="#chapter-8-dynamic-live-safety-assessment-regional-outlook--safe-speed-engine">Ch 8: Dynamic Live Speeds</a>
-        <a href="#chapter-9-emergency-sos-mandatory-location-permission--rescue-infrastructure">Ch 9: Emergency SOS & Mandatory GPS</a>
-        <a href="#chapter-10-daily-travel-alerts--proactive-commute-engine">Ch 10: Daily Travel Alerts</a>
-        <a href="#chapter-11-grounded-conversational-ai-assistant-chatbot">Ch 11: Grounded AI Copilot</a>
-        <a href="#chapter-12-mobile-frontend-architecture--uiux-design-system-flutter">Ch 12: Mobile Frontend Architecture</a>
-        <a href="#chapter-13-relational-database-dictionary--complete-schema-specification">Ch 13: Database Schema Dictionary</a>
-        <a href="#chapter-14-comprehensive-comparative-benchmark">Ch 14: System Benchmark vs Google/Waze</a>
-        <a href="#chapter-15-rigorous-stress-testing-july-25-monsoon-cloudburst">Ch 15: Monsoon Stress Testing</a>
-        <a href="#chapter-16-the-complete-examiner-viva-voce--feature-by-feature-defense-guide">Ch 16: Feature Defense Profiles</a>
-        <a href="#chapter-17-comprehensive-mathematical-formulary--step-by-step-derivations">Ch 17: Math Formulary (22 Derivations)</a>
-        <a href="#chapter-18-system-verification-cicd-pipeline--shorebird-production-fleet-management">Ch 18: Shorebird OTA CI/CD (Patch 40)</a>
-        <a href="#chapter-19-production-war-stories--major-engineering-challenges-root-cause-investigations--architectural-solutions" style="color:#10B981; font-weight:700;">⚔️ Ch 19: Production War Stories</a>
-        <a href="#chapter-20-comprehensive-viva-voce--technical-defense-masterclass" style="color:#F59E0B; font-weight:700;">🔥 Ch 20: Viva Voce Masterclass</a>
+    </div>
+    
+    <h1 class="capstone-main-title">
+      RouteRadar: High-Concurrence Highway Telemetry, Spatio-Temporal Sensor Fusion, & Edge-Distributed AI for Expressway Transit Safety
+    </h1>
+    <p class="capstone-subtitle">
+      A Complete Technical Architecture Specification, Mathematical Formulation, and Production Engineering Defense for the Mumbai–Pune High-Risk Mountain Corridor (NH-48 / Yashwantrao Chavan Expressway)
+    </p>
+    
+    <div class="capstone-meta-grid">
+      <div class="capstone-meta-item">
+        <span class="meta-label">Domain Specialization</span>
+        <span class="meta-value">Intelligent Transportation Systems (ITS) & Edge Computing</span>
+      </div>
+      <div class="capstone-meta-item">
+        <span class="meta-label">Safety Standards</span>
+        <span class="meta-value">ISO 26262 ASIL-B Safety Critical Fault-Tolerance</span>
+      </div>
+      <div class="capstone-meta-item">
+        <span class="meta-label">Machine Learning Tier</span>
+        <span class="meta-value">7 Regional XGBoost Regressors (~65MB In-Memory Cache)</span>
+      </div>
+      <div class="capstone-meta-item">
+        <span class="meta-label">Real-Time Latency</span>
+        <span class="meta-value">&tau;<sub>eval</sub> &le; 3.2 ms per sector (&le; 25 ms total trip)</span>
+      </div>
+    </div>
+
+    <div class="capstone-actions-bar">
+      <button class="btn-capstone-primary" onclick="window.print()">🖨️ Print Full Dissertation (PDF)</button>
+      <a href="http://192.168.29.19:8080/app-release.apk" class="btn-capstone-secondary">📱 Download Compiled APK (59.7 MB)</a>
+      <button class="btn-capstone-secondary" onclick="expandAllChapters()">📖 Focus View</button>
+    </div>
+  </div>
+
+  <div class="report-layout">
+    <!-- Redesigned Chapter Navigation Sidebar ("Chapter Box") -->
+    <aside class="report-sidebar">
+      <div class="sidebar-header-box">
+        <div class="sidebar-pre-title">DISSERTATION MANUAL</div>
+        <div class="sidebar-title">Chapter Navigation Index</div>
+        <div class="sidebar-progress-track">
+          <div class="sidebar-progress-bar" id="chapterProgressBar"></div>
+        </div>
+        <div class="sidebar-stat-row">
+          <span id="currentChapterIndicator">Ch 01 / 20</span>
+          <span id="readingPercent">0% Read</span>
+        </div>
+      </div>
+
+      <!-- Search Input -->
+      <div style="margin-bottom:12px;">
+        <input type="text" id="reportSearchInput" class="search-input" style="width:100%; box-sizing:border-box;" placeholder="🔍 Search chapters, math, formulas..." onkeyup="filterReportNav()">
+      </div>
+
+      <!-- Phase Filter Bar -->
+      <div class="sidebar-phase-filters">
+        <button class="phase-btn active" onclick="filterPhase('all', this)">All</button>
+        <button class="phase-btn" onclick="filterPhase('p1', this)">Phase I</button>
+        <button class="phase-btn" onclick="filterPhase('p2', this)">Phase II</button>
+        <button class="phase-btn" onclick="filterPhase('p3', this)">Phase III</button>
+        <button class="phase-btn" onclick="filterPhase('p4', this)">Phase IV</button>
+        <button class="phase-btn" onclick="filterPhase('p5', this)">Phase V</button>
+        <button class="phase-btn" onclick="filterPhase('p6', this)">Phase VI</button>
+      </div>
+
+      <!-- Grouped Chapter Nav Items -->
+      <div id="reportNavLinks" class="chapter-nav-list">
+        <div class="phase-divider" data-phase="p1">PHASE I: PROBLEM & DOMAIN</div>
+        <a href="#prologue-the-tale-of-two-drivers-on-nh-48" class="chapter-nav-item" data-phase="p1">
+          <span class="chap-badge">PROLOGUE</span>
+          <div class="chap-info">
+            <span class="chap-title">The Tale of Two Drivers</span>
+            <span class="chap-sub">Corridor Contrast & Motivation</span>
+          </div>
+        </a>
+        <a href="#chapter-1-the-operational-domain--terrestrial-failure-modes" class="chapter-nav-item" data-phase="p1">
+          <span class="chap-badge">CH 01</span>
+          <div class="chap-info">
+            <span class="chap-title">Operational Domain & Hazards</span>
+            <span class="chap-sub">Terrestrial Failures & Microclimates</span>
+          </div>
+        </a>
+        <a href="#chapter-2-system-evolution--collaborative-design-decisions" class="chapter-nav-item" data-phase="p1">
+          <span class="chap-badge">CH 02</span>
+          <div class="chap-info">
+            <span class="chap-title">System Evolution & Decisions</span>
+            <span class="chap-sub">From Hardcoded Scripts to Dynamic Engine</span>
+          </div>
+        </a>
+
+        <div class="phase-divider" data-phase="p2">PHASE II: SYSTEM ARCHITECTURE & UML</div>
+        <a href="#chapter-3-complete-uml-architectural-specification" class="chapter-nav-item" data-phase="p2">
+          <span class="chap-badge chap-badge-cyan">CH 03</span>
+          <div class="chap-info">
+            <span class="chap-title">Complete UML Design Suite</span>
+            <span class="chap-sub">Component, Sequence & State Blueprints</span>
+          </div>
+        </a>
+        <a href="#chapter-12-mobile-frontend-architecture--uiux-design-system-flutter" class="chapter-nav-item" data-phase="p2">
+          <span class="chap-badge chap-badge-cyan">CH 12</span>
+          <div class="chap-info">
+            <span class="chap-title">Mobile Frontend Architecture</span>
+            <span class="chap-sub">Clean Architecture & Riverpod 2.0</span>
+          </div>
+        </a>
+        <a href="#chapter-13-relational-database-dictionary--complete-schema-specification" class="chapter-nav-item" data-phase="p2">
+          <span class="chap-badge chap-badge-cyan">CH 13</span>
+          <div class="chap-info">
+            <span class="chap-title">Database Schema & Dictionary</span>
+            <span class="chap-sub">Relational Model & Indexing Strategy</span>
+          </div>
+        </a>
+
+        <div class="phase-divider" data-phase="p3">PHASE III: PHYSICS & MATHEMATICS</div>
+        <a href="#chapter-4-corridor-topography-microclimates--highway-physics" class="chapter-nav-item" data-phase="p3">
+          <span class="chap-badge chap-badge-amber">CH 04</span>
+          <div class="chap-info">
+            <span class="chap-title">Corridor Physics & AASHTO Braking</span>
+            <span class="chap-sub">Grade Friction, SSD & Hydroplaning</span>
+          </div>
+        </a>
+        <a href="#chapter-5-multi-source-data-fusion--safety-scoring-mathematics" class="chapter-nav-item" data-phase="p3">
+          <span class="chap-badge chap-badge-amber">CH 05</span>
+          <div class="chap-info">
+            <span class="chap-title">Multi-Source Fusion Math</span>
+            <span class="chap-sub">Dynamic Re-Normalization & Consensus</span>
+          </div>
+        </a>
+        <a href="#chapter-17-comprehensive-mathematical-formulary--step-by-step-derivations" class="chapter-nav-item" data-phase="p3">
+          <span class="chap-badge chap-badge-amber">CH 17</span>
+          <div class="chap-info">
+            <span class="chap-title">Mathematical Formulary</span>
+            <span class="chap-sub">Step-by-Step Analytical Derivations</span>
+          </div>
+        </a>
+
+        <div class="phase-divider" data-phase="p4">PHASE IV: MACHINE LEARNING & AI</div>
+        <a href="#chapter-6-regional-machine-learning-architecture-routeradar-xgboost" class="chapter-nav-item" data-phase="p4">
+          <span class="chap-badge chap-badge-purple">CH 06</span>
+          <div class="chap-info">
+            <span class="chap-title">Regional ML Architecture</span>
+            <span class="chap-sub">7 XGBoost Regressors (~65MB Cache)</span>
+          </div>
+        </a>
+        <a href="#chapter-7-temporal-departure-window-optimizer-30m-60m--30m--60m" class="chapter-nav-item" data-phase="p4">
+          <span class="chap-badge chap-badge-purple">CH 07</span>
+          <div class="chap-info">
+            <span class="chap-title">Temporal Departure Optimizer</span>
+            <span class="chap-sub">Scanning ±60m Temporal Windows</span>
+          </div>
+        </a>
+        <a href="#chapter-8-dynamic-live-safety-assessment-regional-outlook--safe-speed-engine" class="chapter-nav-item" data-phase="p4">
+          <span class="chap-badge chap-badge-purple">CH 08</span>
+          <div class="chap-info">
+            <span class="chap-title">Real-Time Safety Assessment</span>
+            <span class="chap-sub">Safe Speed Engine & Advisory Matrix</span>
+          </div>
+        </a>
+        <a href="#chapter-11-grounded-conversational-ai-assistant-chatbot" class="chapter-nav-item" data-phase="p4">
+          <span class="chap-badge chap-badge-purple">CH 11</span>
+          <div class="chap-info">
+            <span class="chap-title">Grounded Conversational Copilot</span>
+            <span class="chap-sub">Groq LLaMA-3.3-70B Zero-Hallucination</span>
+          </div>
+        </a>
+
+        <div class="phase-divider" data-phase="p5">PHASE V: SAFETY SOS & DEPLOYMENT</div>
+        <a href="#chapter-9-emergency-sos-mandatory-location-permission--rescue-infrastructure" class="chapter-nav-item" data-phase="p5">
+          <span class="chap-badge chap-badge-rose">CH 09</span>
+          <div class="chap-info">
+            <span class="chap-title">Emergency SOS & Mandatory GPS</span>
+            <span class="chap-sub">Hardware Location Guard & 112 Dispatch</span>
+          </div>
+        </a>
+        <a href="#chapter-10-daily-travel-alerts--proactive-commute-engine" class="chapter-nav-item" data-phase="p5">
+          <span class="chap-badge chap-badge-rose">CH 10</span>
+          <div class="chap-info">
+            <span class="chap-title">Daily Commute Alert Scheduler</span>
+            <span class="chap-sub">Background Pre-Trip Push Daemon</span>
+          </div>
+        </a>
+        <a href="#chapter-15-rigorous-stress-testing-july-25-monsoon-cloudburst" class="chapter-nav-item" data-phase="p5">
+          <span class="chap-badge chap-badge-rose">CH 15</span>
+          <div class="chap-info">
+            <span class="chap-title">Monsoon Cloudburst Stress Testing</span>
+            <span class="chap-sub">75 mm/h Flash Flood Empirical Case</span>
+          </div>
+        </a>
+        <a href="#chapter-18-system-verification-cicd-pipeline--shorebird-production-fleet-management" class="chapter-nav-item" data-phase="p5">
+          <span class="chap-badge chap-badge-rose">CH 18</span>
+          <div class="chap-info">
+            <span class="chap-title">CI/CD Pipeline & Shorebird OTA</span>
+            <span class="chap-sub">CodePush Patch #40 Fleet Delivery</span>
+          </div>
+        </a>
+
+        <div class="phase-divider" data-phase="p6">PHASE VI: DEFENSE & WAR STORIES</div>
+        <a href="#chapter-14-comprehensive-comparative-benchmark" class="chapter-nav-item" data-phase="p6">
+          <span class="chap-badge chap-badge-emerald">CH 14</span>
+          <div class="chap-info">
+            <span class="chap-title">Comparative Benchmark vs Waze</span>
+            <span class="chap-sub">Corridor-Specific Differentiation</span>
+          </div>
+        </a>
+        <a href="#chapter-16-the-complete-examiner-viva-voce--feature-by-feature-defense-guide" class="chapter-nav-item" data-phase="p6">
+          <span class="chap-badge chap-badge-emerald">CH 16</span>
+          <div class="chap-info">
+            <span class="chap-title">Feature Defense Profiles</span>
+            <span class="chap-sub">Technical Question Bank & Rationales</span>
+          </div>
+        </a>
+        <a href="#chapter-19-production-war-stories--major-engineering-challenges-root-cause-investigations--architectural-solutions" class="chapter-nav-item" data-phase="p6">
+          <span class="chap-badge chap-badge-emerald">CH 19</span>
+          <div class="chap-info">
+            <span class="chap-title">Production War Stories: 9 Crises</span>
+            <span class="chap-sub">Distributed OOM, Clock Drifts & Serialization</span>
+          </div>
+        </a>
+        <a href="#chapter-20-comprehensive-viva-voce--technical-defense-masterclass" class="chapter-nav-item" data-phase="p6">
+          <span class="chap-badge chap-badge-emerald">CH 20</span>
+          <div class="chap-info">
+            <span class="chap-title">Viva Voce Defense Masterclass</span>
+            <span class="chap-sub">Complete External Examiner Answers</span>
+          </div>
+        </a>
       </div>
     </aside>
 
-    <!-- Main Report Body -->
+    <!-- Main Report Body Framed by Executive Chapter Boxes -->
     <div class="report-main">
       <article class="article-card" id="reportContent"></article>
     </div>
@@ -5228,7 +5845,8 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
         <div class="uml-card-header">
           <div class="uml-card-header-left">
             <div class="uml-card-tag-row">
-              <span class="uml-badge">Report Architecture Diagram #${repDiagramCount}</span>
+              <span class="uml-badge">Report Blueprint #${repDiagramCount}</span>
+              <span class="uml-cat-badge">UML 2.5 SPEC</span>
             </div>
             <div class="uml-card-title">Interactive Architectural Blueprint</div>
           </div>
@@ -5256,10 +5874,85 @@ ${code}
     }
     return defaultCodeRenderer(code, language);
   };
+
+  // Chapter Box Header Renderer
+  renderer.heading = function(text, level, raw) {
+    const slug = raw.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+    if (level === 1) {
+      if (raw.toUpperCase().includes('CHAPTER') || raw.toUpperCase().includes('PROLOGUE')) {
+        let chBadge = 'CAPSTONE SECTION';
+        let chNum = '';
+        let chTitle = raw.replace(/^#+\s*/, '');
+        
+        const m = raw.match(/CHAPTER\s*(\d+)[:\s]*(.*)/i);
+        if (m) {
+          chNum = m[1].padStart(2, '0');
+          chBadge = 'CHAPTER ' + chNum;
+          chTitle = m[2];
+        } else if (raw.toUpperCase().includes('PROLOGUE')) {
+          chBadge = 'PROLOGUE';
+          chTitle = raw.replace(/#*\s*PROLOGUE[:\s]*/i, '');
+        }
+
+        return `
+        </div></div>
+        <div class="chapter-container-box" id="${slug}" data-chapter="${chNum || 'prologue'}">
+          <div class="chapter-box-header">
+            <div class="chapter-box-top-row">
+              <span class="chapter-box-badge">${chBadge} • TECHNICAL SPECIFICATION</span>
+              <span class="chapter-box-tag">DISSERTATION MANUAL • ASIL-B</span>
+            </div>
+            <h1 class="chapter-box-title" id="${slug}">${chTitle}</h1>
+          </div>
+          <div class="chapter-box-body">
+        `;
+      }
+    }
+    return `<h${level} id="${slug}">${text}</h${level}>`;
+  };
+
+  // Formal Engineering Blockquote Callouts
+  renderer.blockquote = function(quote) {
+    let alertClass = 'callout-note';
+    let icon = '💡';
+    let label = 'ENGINEERING ARCHITECTURE NOTE';
+    
+    if (quote.includes('[!WARNING]') || quote.includes('[!CAUTION]')) {
+      alertClass = 'callout-hazard';
+      icon = '⚠️';
+      label = 'SAFETY-CRITICAL SYSTEM ALERT (ASIL-B)';
+      quote = quote.replace(/\[!(WARNING|CAUTION)\]/g, '');
+    } else if (quote.includes('[!IMPORTANT]')) {
+      alertClass = 'callout-important';
+      icon = '📌';
+      label = 'MANDATORY REQUIREMENT & CONSTRAINT';
+      quote = quote.replace(/\[!IMPORTANT\]/g, '');
+    } else if (quote.includes('[!TIP]')) {
+      alertClass = 'callout-opt';
+      icon = '⚡';
+      label = 'ALGORITHMIC OPTIMIZATION BENCHMARK';
+      quote = quote.replace(/\[!TIP\]/g, '');
+    } else if (quote.includes('[!NOTE]')) {
+      quote = quote.replace(/\[!NOTE\]/g, '');
+    }
+
+    return `
+    <div class="engineering-callout ${alertClass}">
+      <div class="callout-header">
+        <span class="callout-icon">${icon}</span>
+        <span class="callout-label">${label}</span>
+      </div>
+      <div class="callout-body">${quote}</div>
+    </div>
+    `;
+  };
+
   marked.setOptions({ renderer: renderer, gfm: true, breaks: false });
 
   const rawMarkdownText = document.getElementById('rawMarkdown').textContent;
-  document.getElementById('reportContent').innerHTML = marked.parse(rawMarkdownText);
+  // Initialize with an opening wrapper that gets closed by the first chapter
+  const parsedContent = marked.parse('<div class="initial-report-intro">' + rawMarkdownText + '</div></div>');
+  document.getElementById('reportContent').innerHTML = parsedContent;
 
   window.addEventListener('load', () => {
     if (window.renderMathInElement) {
@@ -5360,6 +6053,71 @@ ${code}
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
+  });
+
+  
+  // Chapter Navigation Phase Filter
+  function filterPhase(phase, elem) {
+    document.querySelectorAll('.sidebar-phase-filters .phase-btn').forEach(b => b.classList.remove('active'));
+    elem.classList.add('active');
+
+    const items = document.querySelectorAll('#reportNavLinks .chapter-nav-item');
+    const dividers = document.querySelectorAll('#reportNavLinks .phase-divider');
+
+    items.forEach(item => {
+      if (phase === 'all' || item.getAttribute('data-phase') === phase) {
+        item.style.display = 'flex';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    dividers.forEach(div => {
+      if (phase === 'all' || div.getAttribute('data-phase') === phase) {
+        div.style.display = 'block';
+      } else {
+        div.style.display = 'none';
+      }
+    });
+  }
+
+  // IntersectionObserver ScrollSpy for Active Chapter Tracking
+  function initScrollSpy() {
+    const chapters = document.querySelectorAll('.chapter-container-box');
+    const navItems = document.querySelectorAll('.chapter-nav-item');
+    if (!chapters.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          navItems.forEach(item => {
+            if (item.getAttribute('href') === '#' + id) {
+              item.classList.add('active');
+              // Update status
+              const chNum = entry.target.getAttribute('data-chapter');
+              const indicator = document.getElementById('currentChapterIndicator');
+              if (indicator) {
+                indicator.textContent = chNum === 'prologue' ? 'Prologue' : `Ch ${chNum} / 20`;
+              }
+              // Auto-scroll sidebar item into view
+              item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+              item.classList.remove('active');
+            }
+          });
+        }
+      });
+    }, {
+      rootMargin: '-10% 0px -70% 0px',
+      threshold: 0
+    });
+
+    chapters.forEach(ch => observer.observe(ch));
+  }
+
+  window.addEventListener('load', () => {
+    setTimeout(initScrollSpy, 300);
   });
 
   function filterReportNav() {
