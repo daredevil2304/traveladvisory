@@ -23,16 +23,27 @@ The **Mumbai-Pune Travel Intelligence System (RouteRadar)** was engineered from 
 
 To understand why this system exists, consider two commuters leaving Mumbai for Pune at 08:00 AM on a stormy monsoon Thursday in July.
 
-```
-       DRIVER A (Conventional Map App)                 DRIVER B (RouteRadar AI Platform)
-   +-------------------------------------+         +-------------------------------------+
-   | Objective: Lowest Travel Time (ETA) |         | Objective: Maximum Safety & Survival|
-   | Route: "1 hr 52 min - Fast Route"   |         | Route: Evaluated across 8 Sectors   |
-   | Warning: None (Treats ghat as flat) |         | Warning: Cloudburst in Sector R4    |
-   | Action: Cruises at 90 km/h in rain  |         | Action: Departs at 08:30 AM (+30m)  |
-   | Outcome: Hydroplaning & Brake Fade  |         | Outcome: Smooth, Zero-Stress Transit|
-   | Result: Multi-Vehicle Collision     |         | Result: Arrives Safe & Sound        |
-   +-------------------------------------+         +-------------------------------------+
+```mermaid
+flowchart TD
+    subgraph DriverA["DRIVER A (Conventional Map App - Google / Apple)"]
+        A1["Objective: Lowest Travel Time (min ETA)"]
+        A2["Corridor Model: Flat 1-Dimensional Line"]
+        A3["Warning: None (Treats Bhor Ghat as flat highway)"]
+        A4["Cruising Speed: 90 km/h in 28 mm/h Cloudburst"]
+        A5["Outcome: Hydroplaning & Severe Kinetic Brake Fade"]
+        A6["Result: Catastrophic Multi-Vehicle Collision"]
+        A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    end
+
+    subgraph DriverB["DRIVER B (RouteRadar Autonomous Safety Platform)"]
+        B1["Objective: Maximum Life Safety & Risk Minimization"]
+        B2["Corridor Model: 8 Discretized Topographical Sectors"]
+        B3["Warning: Cloudburst & Fog Detected on R4 Bhor Ghat"]
+        B4["Advisory: Delay Departure by +30m (Safety 48 -> 82/100)"]
+        B5["En-Route Guidance: Cruise at Safe 40 km/h in Low Gear"]
+        B6["Result: Smooth, Zero-Stress Transit & Safe Arrival"]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6
+    end
 ```
 
 * **Driver A relies on conventional commercial navigation (Google Maps / Apple Maps).** The screen shows a green route: *"1 hour 52 minutes — fastest route"*. The navigation engine treats the 148-kilometer highway as a continuous flat line. When Driver A reaches Khopoli and enters the steep Bhor Ghat incline ($R_4$), torrential rain dumps 28 mm/h of water on the roadway. Cruising at 90 km/h, Driver A's tires hit a 4 mm film of standing water. Hydrodynamic lift instantly breaks tire contact (**aquaplaning**). In panic, Driver A slams the brakes continuously down the 7% descent, generating over 117 Megajoules of friction heat until the brake pads vaporize (**brake fade**). The car skids helplessly into a crawling multi-axle freight truck.
@@ -142,18 +153,31 @@ The deep basalt rock surrounding the Bhatan, Adoshi, Khandala, and Kamshet tunne
 The development of the Mumbai-Pune Travel Intelligence System evolved through systematic, iterative engineering breakthroughs addressing real-world operational challenges.
 
 ```mermaid
-timeline
-    title System Evolution & Milestones
-    section Architecture
-      Corridor Discretization : 8 Topographical Sectors (R1-R8)
-      Dual-Persona Engine : Real-Time Traveler vs 5-Day Predictive Planner
-    section Core Services
-      Grounded Telemetry AI : Strict Context-Bound LLM Engine
-      Dynamic Physics & Speeds : Braking Distance & Dynamic Speed Reductions
-    section User Experience
-      Daily Travel Alerts : 5-Step Intuitive UI replacing complex Commute Setup
-      Emergency SOS : Mandatory Location Verification & Dispatch Payloads
-      Dynamic Live Assessment : Telemetry-Driven Outlook & Adaptive Badging
+flowchart LR
+    subgraph P1["Phase 1: Architecture & Spatial Foundations"]
+        M1["8-Sector Corridor Discretization (R1-R8)"]
+        M2["Dual-Persona Engine (Traveler vs Planner)"]
+    end
+
+    subgraph P2["Phase 2: Core Telemetry & Physics Services"]
+        M3["Grounded Telemetry AI (LLaMA-3.3-70B)"]
+        M4["Dynamic Safe Speed & Braking Distance Engine"]
+        M5["Temporal Departure Window Optimizer (-60m to +60m)"]
+    end
+
+    subgraph P3["Phase 3: User Experience & Emergency Dispatch"]
+        M6["Daily Travel Alerts (5-Step Intuitive Setup)"]
+        M7["Mandatory Emergency SOS (GPS-Locked Dispatch)"]
+        M8["Dynamic Regional Outlook & Solid-Color Badging"]
+    end
+
+    subgraph P4["Phase 4: Production Deployment & Field Resilience"]
+        M9["Lazy Model Cache (~65MB Container RAM)"]
+        M10["Everyday Plain English UX Overhaul"]
+        M11["Shorebird CodePush OTA (Patch 40 Stable Fleet)"]
+    end
+
+    P1 ==> P2 ==> P3 ==> P4
 ```
 
 ## 2.1 The Inception Phase: Conceptual Roots & Problem Formulation
@@ -250,48 +274,51 @@ graph TD
 The system architecture follows a decoupled, micro-service-oriented model where presentation, business logic, machine learning inference, and external telemetry ingestion are strictly separated.
 
 ```mermaid
-component
-    package "Mobile Application Layer (Flutter)" {
-        [Presentation UI / Screens]
-        [Core Services & Repositories]
-        [Custom Canvas Painters]
-        [Shorebird CodePush Updater]
-    }
+flowchart TD
+    subgraph MobileLayer["Mobile Application Layer (Flutter 3.x)"]
+        UI["Presentation UI / Screens"]
+        Core["Core Services & Repositories"]
+        Painters["Custom Canvas Painters"]
+        Updater["Shorebird CodePush Updater"]
+        UI --> Core
+        UI --> Painters
+    end
 
-    package "API & Business Logic Layer (FastAPI)" {
-        [Trip & Report Controller]
-        [Safety Score Fusion Engine]
-        [Departure Optimizer Engine]
-        [Corridor Physics Engine]
-        [Commute Alert Scheduler]
-        [Grounded Chatbot Service]
-    }
+    subgraph APILayer["API & Business Logic Layer (FastAPI)"]
+        Controller["Trip & Report Controller"]
+        Fusion["Safety Score Fusion Engine"]
+        Optimizer["Departure Optimizer Engine"]
+        Physics["Corridor Physics Engine"]
+        Scheduler["Commute Alert Scheduler"]
+        Chatbot["Grounded Chatbot Service"]
+        Controller --> Fusion
+        Controller --> Optimizer
+        Fusion --> Physics
+    end
 
-    package "Intelligence & ML Layer" {
-        [Observation Normalizer (LLM)]
-        [Regional Model Loader]
-        [XGBoost Cost-Weighted Regressors]
-        [Spatial-Temporal Consensus Engine]
-    }
+    subgraph MLLayer["Intelligence & ML Layer"]
+        Normalizer["Observation Normalizer (LLM)"]
+        ModelLoader["Lazy Regional Model Loader"]
+        XGBoost["XGBoost Cost-Weighted Regressors"]
+        Consensus["Spatial-Temporal Consensus Engine"]
+        ModelLoader --> XGBoost
+    end
 
-    package "External Telemetry Providers" {
-        [Open-Meteo Radar / Forecast]
-        [TomTom Live Traffic API]
-        [Groq / OpenRouter API]
-        [Twilio / SendGrid OTP Service]
-    }
+    subgraph ExternalLayer["External Telemetry & Cloud Providers"]
+        WeatherAPI["Open-Meteo Radar / Forecast API"]
+        TrafficAPI["TomTom Live Traffic Flow & Incidents API"]
+        GroqAPI["Groq LLaMA-3.3-70B API"]
+        OTPService["Twilio / SendGrid OTP Service"]
+    end
 
-    [Presentation UI / Screens] --> [Core Services & Repositories]
-    [Core Services & Repositories] --> [Trip & Report Controller]
-    [Trip & Report Controller] --> [Safety Score Fusion Engine]
-    [Trip & Report Controller] --> [Departure Optimizer Engine]
-    [Safety Score Fusion Engine] --> [Regional Model Loader]
-    [Safety Score Fusion Engine] --> [Corridor Physics Engine]
-    [Departure Optimizer Engine] --> [Regional Model Loader]
-    [Grounded Chatbot Service] --> [Observation Normalizer (LLM)]
-    [Observation Normalizer (LLM)] --> [Groq / OpenRouter API]
-    [Safety Score Fusion Engine] --> [Open-Meteo Radar / Forecast]
-    [Safety Score Fusion Engine] --> [TomTom Live Traffic API]
+    Core <==>|HTTPS / REST| Controller
+    Fusion --> ModelLoader
+    Fusion --> WeatherAPI
+    Fusion --> TrafficAPI
+    Optimizer --> ModelLoader
+    Chatbot --> Normalizer
+    Normalizer --> GroqAPI
+    Updater <==>|OTA CodePush| ShorebirdCloud["Shorebird Cloud CDN"]
 ```
 
 ## 3.2 UML Domain Class Diagram & Relational Entity Model
@@ -2528,15 +2555,29 @@ Commuters reporting road hazards through the community module observed two sever
 1. Submitting a single report caused **two identical cards** to appear immediately in the Community Feed.
 2. Reports displayed a badge reading **"Active for 6h 0m"**, persisting for over 6 hours instead of disappearing after the statutory 1-hour lifecycle.
 
-```
-       BUGGY TIMEZONE PIPELINE                           FIXED IST-AWARE PIPELINE
-+---------------------------------------+         +---------------------------------------+
-| Client Submits: 02:14 AM IST          |         | Client Submits: 02:14 AM IST          |
-| Backend Writes: 02:14 AM UTC (DB)     |         | Backend Writes: 02:14 AM IST (ISO)    |
-| Timezone Diff:  +5 hr 30 min Error    |         | Strict Expiry:  Delta t <= 60 mins    |
-| Displayed:      "Active for 6h 0m"    |         | Displayed:      "Active for 58m"      |
-| Result: False stale alerts linger!    |         | Result: Auto-purges at 60 mins clean! |
-+---------------------------------------+         +---------------------------------------+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Driver as Commuter on Highway
+    participant Client as Mobile Client (IST)
+    participant Backend as FastAPI Server
+    participant DB as SQLite Database
+
+    Note over Driver,DB: Buggy UTC vs IST Pipeline (Old)
+    Driver->>Client: Tap Submit Report (02:14 AM IST)
+    Client->>Backend: POST /community/reports (No Timezone Tag)
+    Backend->>DB: INSERT created_at = datetime.utcnow() (08:44 PM UTC)
+    Client->>Backend: GET /community/live-reports
+    Backend->>Client: Returns report with 5.5h offset -> 'Active for 6h 0m' (STALE BUG!)
+
+    Note over Driver,DB: Fixed Timezone-Aware Pipeline (RouteRadar v4.0.0)
+    Driver->>Client: Tap Submit Report (02:14 AM IST)
+    Client->>Client: Mutex lock (_isSubmitting = true)
+    Client->>Backend: POST /community/reports (IST ISO-8601)
+    Backend->>DB: INSERT created_at = timezone_service.to_ist() (02:14 AM IST)
+    Backend->>DB: Background Janitor purges records older than 60 mins
+    Client->>Backend: GET /community/live-reports
+    Backend->>Client: Returns active reports with delta <= 60 mins -> 'Active for 58m' (CLEAN!)
 ```
 
 ### Root-Cause Investigation
