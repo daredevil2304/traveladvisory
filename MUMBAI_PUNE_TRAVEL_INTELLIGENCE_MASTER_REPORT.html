@@ -491,35 +491,111 @@
     background: rgba(7, 11, 20, 0.96);
     backdrop-filter: blur(20px);
     z-index: 2000;
-    padding: 32px;
+    padding: 24px;
     align-items: center;
     justify-content: center;
   }
   .lightbox-content {
-    width: 95vw;
-    height: 90vh;
+    width: 96vw;
+    height: 92vh;
     background: #060A12;
     border: 1px solid var(--accent-cyan);
     border-radius: 16px;
-    padding: 32px;
-    overflow: auto;
+    padding: 20px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(56, 189, 248, 0.15);
+  }
+  .lightbox-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1E293B;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .lightbox-title-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .lightbox-badge {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .lightbox-sub {
+    font-size: 12px;
+    color: #94A3B8;
+  }
+  .lightbox-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .uml-zoom-level {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 5px 9px;
+    border-radius: 6px;
+    min-width: 48px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    user-select: none;
   }
   .btn-close-modal {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: #EF4444;
-    border: none;
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    position: static !important;
+    background: #1E293B;
+    border: 1px solid #334155;
+    color: #94A3B8;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
     cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn-close-modal:hover {
+    background: #EF4444;
+    color: #FFFFFF;
+    border-color: #EF4444;
+  }
+  #modalDiagramContainer {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    background: radial-gradient(circle at center, #0B132B 0%, #060A12 100%);
+    border-radius: 10px;
+  }
+  #modalDiagramContainer:active {
+    cursor: grabbing;
+  }
+  #modalDiagramContainer svg {
+    max-width: none !important;
+    transform-origin: center center;
+    transition: transform 0.15s ease-out;
   }
 
   /* Simulator Styles */
@@ -1631,6 +1707,7 @@
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-layered-arch', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-layered-arch', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-layered-arch">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-layered-arch')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-layered-arch')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-layered-arch')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -1721,6 +1798,7 @@ flowchart TD
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-use-case', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-use-case', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-use-case">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-use-case')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-use-case')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-use-case')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -1809,6 +1887,7 @@ flowchart LR
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-data-fusion-activity', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-data-fusion-activity', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-data-fusion-activity">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-data-fusion-activity')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-data-fusion-activity')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-data-fusion-activity')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -1890,6 +1969,7 @@ flowchart TD
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-traveler-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-traveler-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-traveler-seq">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-traveler-seq')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-traveler-seq')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-traveler-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -1955,6 +2035,7 @@ sequenceDiagram
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-departure-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-departure-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-departure-seq">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-departure-seq')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-departure-seq')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-departure-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2016,6 +2097,7 @@ sequenceDiagram
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-sos-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-sos-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-sos-seq">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-sos-seq')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-sos-seq')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-sos-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2084,6 +2166,7 @@ sequenceDiagram
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-state-trip', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-state-trip', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-state-trip">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-state-trip')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-state-trip')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-state-trip')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2159,6 +2242,7 @@ stateDiagram-v2
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-state-sos', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-state-sos', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-state-sos">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-state-sos')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-state-sos')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-state-sos')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2223,6 +2307,7 @@ stateDiagram-v2
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-domain-classes', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-domain-classes', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-domain-classes">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-domain-classes')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-domain-classes')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-domain-classes')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2335,6 +2420,7 @@ classDiagram
             <div class="uml-card-toolbar">
               <button class="btn-uml-action" onclick="diagramZoom('uml-cloud-topology', 0.15)" title="Zoom In">➕ Zoom In</button>
               <button class="btn-uml-action" onclick="diagramZoom('uml-cloud-topology', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <span class="uml-zoom-level" id="zoom-lvl-uml-cloud-topology">100%</span>
               <button class="btn-uml-action" onclick="diagramReset('uml-cloud-topology')" title="Reset to 100%">↺ 100%</button>
               <button class="btn-uml-action" onclick="diagramFitToggle('uml-cloud-topology')" title="Fit to Container / Scroll">↔ Fit</button>
               <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-cloud-topology')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -2850,11 +2936,24 @@ flowchart TB
   </div>
 </div>
 
-<!-- Lightbox Modal for Diagram Zoom -->
+<!-- Lightbox Modal for Diagram Zoom & Deep Inspection -->
 <div class="lightbox-modal" id="lightboxModal">
   <div class="lightbox-content">
-    <button class="btn-close-modal" onclick="closeModal()">✕</button>
-    <div id="modalDiagramContainer" style="flex:1; display:flex; align-items:center; justify-content:center; overflow:auto;"></div>
+    <div class="lightbox-toolbar">
+      <div class="lightbox-title-section">
+        <span class="lightbox-badge">FULLSCREEN ARCHITECTURAL INSPECTION</span>
+        <span class="lightbox-sub">Use buttons or mouse wheel to zoom • Drag to pan</span>
+      </div>
+      <div class="lightbox-controls">
+        <button class="btn-uml-action" onclick="modalZoom(0.2)" title="Zoom In (➕)">➕ Zoom In</button>
+        <button class="btn-uml-action" onclick="modalZoom(-0.2)" title="Zoom Out (➖)">➖ Zoom Out</button>
+        <span class="uml-zoom-level" id="modalZoomLevel">100%</span>
+        <button class="btn-uml-action" onclick="modalReset()" title="Reset to 100%">↺ 100%</button>
+        <button class="btn-uml-action" onclick="modalFit()" title="Fit to Screen">↔ Fit</button>
+        <button class="btn-close-modal" onclick="closeModal()" title="Close Lightbox (Esc)">✕</button>
+      </div>
+    </div>
+    <div id="modalDiagramContainer"></div>
   </div>
 </div>
 
@@ -5833,6 +5932,157 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     }
   });
 
+  // Global Diagram Zoom & Scale State
+  window.diagramScales = window.diagramScales || {};
+  let currentModalCardId = null;
+  let modalScale = 1.0;
+
+  window.diagramZoom = function(cardId, delta) {
+    if (!window.diagramScales[cardId]) window.diagramScales[cardId] = 1.0;
+    window.diagramScales[cardId] = Math.max(0.25, Math.min(3.5, Number((window.diagramScales[cardId] + delta).toFixed(2))));
+    window.applyDiagramTransform(cardId);
+  };
+
+  window.diagramReset = function(cardId) {
+    window.diagramScales[cardId] = 1.0;
+    window.applyDiagramTransform(cardId);
+  };
+
+  window.diagramFitToggle = function(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const wrapper = card.querySelector('.mermaid-wrapper');
+    const svg = card.querySelector('.mermaid svg');
+    if (!wrapper || !svg) return;
+
+    const wrapperWidth = wrapper.clientWidth - 48;
+    const svgBBox = svg.getBBox ? svg.getBBox() : { width: svg.clientWidth };
+    const naturalWidth = svgBBox.width || svg.clientWidth;
+
+    if (naturalWidth > 0) {
+      if (!window.diagramScales[cardId] || Math.abs(window.diagramScales[cardId] - 1.0) < 0.05) {
+        window.diagramScales[cardId] = Number(Math.min(1.0, wrapperWidth / naturalWidth).toFixed(2));
+      } else {
+        window.diagramScales[cardId] = 1.0;
+      }
+      window.applyDiagramTransform(cardId);
+    }
+  };
+
+  window.applyDiagramTransform = function(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const mermaidDiv = card.querySelector('.mermaid');
+    const scale = window.diagramScales[cardId] !== undefined ? window.diagramScales[cardId] : 1.0;
+    if (mermaidDiv) {
+      mermaidDiv.style.transform = `scale(${scale})`;
+      mermaidDiv.style.transformOrigin = 'center top';
+    }
+    const badge = document.getElementById(`zoom-lvl-${cardId}`);
+    if (badge) {
+      badge.textContent = `${Math.round(scale * 100)}%`;
+    }
+  };
+
+  // Lightbox Modal Controls
+  window.zoomDiagram = function(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const svgElem = card.querySelector('.mermaid svg');
+    if (!svgElem) return;
+
+    currentModalCardId = cardId;
+    modalScale = 1.0;
+    const modal = document.getElementById('lightboxModal');
+    const container = document.getElementById('modalDiagramContainer');
+    container.innerHTML = svgElem.outerHTML;
+    const innerSvg = container.querySelector('svg');
+    if (innerSvg) {
+      innerSvg.style.maxWidth = 'none';
+      innerSvg.style.width = 'auto';
+      innerSvg.style.height = 'auto';
+      innerSvg.style.transform = `scale(${modalScale})`;
+      innerSvg.style.transformOrigin = 'center center';
+    }
+    const zoomBadge = document.getElementById('modalZoomLevel');
+    if (zoomBadge) zoomBadge.textContent = '100%';
+    modal.style.display = 'flex';
+  };
+
+  window.modalZoom = function(delta) {
+    const container = document.getElementById('modalDiagramContainer');
+    const innerSvg = container ? container.querySelector('svg') : null;
+    if (!innerSvg) return;
+    modalScale = Math.max(0.2, Math.min(4.0, Number((modalScale + delta).toFixed(2))));
+    innerSvg.style.transform = `scale(${modalScale})`;
+    const zoomBadge = document.getElementById('modalZoomLevel');
+    if (zoomBadge) zoomBadge.textContent = `${Math.round(modalScale * 100)}%`;
+  };
+
+  window.modalReset = function() {
+    modalScale = 1.0;
+    const container = document.getElementById('modalDiagramContainer');
+    const innerSvg = container ? container.querySelector('svg') : null;
+    if (innerSvg) innerSvg.style.transform = 'scale(1.0)';
+    const zoomBadge = document.getElementById('modalZoomLevel');
+    if (zoomBadge) zoomBadge.textContent = '100%';
+  };
+
+  window.modalFit = function() {
+    const container = document.getElementById('modalDiagramContainer');
+    const innerSvg = container ? container.querySelector('svg') : null;
+    if (!innerSvg) return;
+    const cw = container.clientWidth - 40;
+    const ch = container.clientHeight - 40;
+    const svgBBox = innerSvg.getBBox ? innerSvg.getBBox() : { width: innerSvg.clientWidth, height: innerSvg.clientHeight };
+    const sw = svgBBox.width || innerSvg.clientWidth || 800;
+    const sh = svgBBox.height || innerSvg.clientHeight || 500;
+    modalScale = Number(Math.min(cw / sw, ch / sh).toFixed(2));
+    innerSvg.style.transform = `scale(${modalScale})`;
+    const zoomBadge = document.getElementById('modalZoomLevel');
+    if (zoomBadge) zoomBadge.textContent = `${Math.round(modalScale * 100)}%`;
+  };
+
+  window.closeModal = function() {
+    const modal = document.getElementById('lightboxModal');
+    if (modal) modal.style.display = 'none';
+    currentModalCardId = null;
+  };
+
+  // Lightbox Mousewheel Zoom & Panning
+  document.addEventListener('DOMContentLoaded', () => {
+    const modalContainer = document.getElementById('modalDiagramContainer');
+    if (modalContainer) {
+      modalContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.15 : -0.15;
+        window.modalZoom(delta);
+      }, { passive: false });
+
+      let isDown = false;
+      let startX, startY, scrollLeft, scrollTop;
+
+      modalContainer.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - modalContainer.offsetLeft;
+        startY = e.pageY - modalContainer.offsetTop;
+        scrollLeft = modalContainer.scrollLeft;
+        scrollTop = modalContainer.scrollTop;
+      });
+      window.addEventListener('mouseup', () => { isDown = false; });
+      modalContainer.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - modalContainer.offsetLeft;
+        const y = e.pageY - modalContainer.offsetTop;
+        const walkX = (x - startX) * 1.5;
+        const walkY = (y - startY) * 1.5;
+        modalContainer.scrollLeft = scrollLeft - walkX;
+        modalContainer.scrollTop = scrollTop - walkY;
+      });
+    }
+  });
+
   const renderer = new marked.Renderer();
   const defaultCodeRenderer = renderer.code.bind(renderer);
   let repDiagramCount = 0;
@@ -5861,6 +6111,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
           <div class="uml-card-toolbar">
             <button class="btn-uml-action" onclick="diagramZoom('${cardId}', 0.15)" title="Zoom In">➕ Zoom In</button>
             <button class="btn-uml-action" onclick="diagramZoom('${cardId}', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+            <span class="uml-zoom-level" id="zoom-lvl-${cardId}">100%</span>
             <button class="btn-uml-action" onclick="diagramReset('${cardId}')" title="Reset to 100%">↺ 100%</button>
             <button class="btn-uml-action" onclick="diagramFitToggle('${cardId}')" title="Fit to Container / Scroll">↔ Fit</button>
             <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('${cardId}')" title="Fullscreen Lightbox">⛶ Lightbox</button>
@@ -5930,7 +6181,15 @@ ${code}
   };
 
   // Formal Engineering Blockquote Callouts
-  renderer.blockquote = function(quote) {
+    // Formal Engineering Blockquote Callouts (Marked v12+ Safe)
+  renderer.blockquote = function(arg1) {
+    let quote = '';
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      quote = arg1.text || arg1.raw || '';
+    } else {
+      quote = String(arg1 || '');
+    }
+
     let alertClass = 'callout-note';
     let icon = '💡';
     let label = 'ENGINEERING ARCHITECTURE NOTE';
@@ -5969,8 +6228,13 @@ ${code}
 
   const rawMarkdownText = document.getElementById('rawMarkdown').textContent;
   // Initialize with an opening wrapper that gets closed by the first chapter
-  const parsedContent = marked.parse('<div class="initial-report-intro">' + rawMarkdownText + '</div></div>');
-  document.getElementById('reportContent').innerHTML = parsedContent;
+  try {
+    const parsedContent = marked.parse('<div class="initial-report-intro">' + rawMarkdownText + '</div></div>');
+    document.getElementById('reportContent').innerHTML = parsedContent;
+  } catch (err) {
+    console.error('Marked parsing error:', err);
+    document.getElementById('reportContent').innerHTML = '<div class="chapter-container-box"><div class="chapter-box-body"><p>Error rendering markdown: ' + err.message + '</p></div></div>';
+  }
 
   window.addEventListener('load', () => {
     if (window.renderMathInElement) {
@@ -5988,39 +6252,7 @@ ${code}
     renderMermaidInActivePane();
   });
 
-  const diagramScales = {};
-
-  function diagramZoom(cardId, delta) {
-    if (!diagramScales[cardId]) diagramScales[cardId] = 1.0;
-    diagramScales[cardId] = Math.max(0.35, Math.min(3.5, diagramScales[cardId] + delta));
-    applyDiagramTransform(cardId);
-  }
-
-  function diagramReset(cardId) {
-    diagramScales[cardId] = 1.0;
-    applyDiagramTransform(cardId);
-  }
-
-  function diagramFitToggle(cardId) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-    const wrapper = card.querySelector('.mermaid-wrapper');
-    const svg = card.querySelector('.mermaid svg');
-    if (!wrapper || !svg) return;
-
-    const wrapperWidth = wrapper.clientWidth - 48;
-    const svgBBox = svg.getBBox ? svg.getBBox() : { width: svg.clientWidth };
-    const naturalWidth = svgBBox.width || svg.clientWidth;
-
-    if (naturalWidth > 0) {
-      if (!diagramScales[cardId] || Math.abs(diagramScales[cardId] - 1.0) < 0.05) {
-        diagramScales[cardId] = Math.min(1.0, wrapperWidth / naturalWidth);
-      } else {
-        diagramScales[cardId] = 1.0;
-      }
-      applyDiagramTransform(cardId);
-    }
-  }
+  // (Diagram functions hoisted to global window above)
 
   function applyDiagramTransform(cardId) {
     const card = document.getElementById(cardId);
