@@ -148,7 +148,9 @@ IMPORTANT RULES:
                 model=response.model,
                 trip_id=trip_id,
             )
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Groq provider fallback triggered: {exc}")
             fallback = self._generate_fallback_answer(
                 trip=trip,
                 analysis=analysis_data,
@@ -156,7 +158,7 @@ IMPORTANT RULES:
             )
             return ChatbotResponse(
                 answer=fallback,
-                provider="deterministic_intelligence",
+                provider="contextual_intelligence",
                 model=None,
                 trip_id=trip_id,
             )
@@ -450,9 +452,81 @@ Answer the user's question using the backend context below.
         problematic = analysis.get("problematic_segments") or []
         precautions = analysis.get("precautions") or []
         segment_results = analysis.get("segment_results") or []
+        dep_opt = analysis.get("departure_optimization") or {}
 
         msg_lower = message.lower()
-        if "score" in msg_lower or "why" in msg_lower or "low" in msg_lower:
+
+        # 1. Weather / Rain / Fog / Visibility Queries
+        if any(w in msg_lower for w in ["weather", "rain", "fog", "visibility", "temp", "temperature", "cloud", "monsoon"]):
+            weather_findings = []
+            for seg in segment_results:
+                w_info = seg.get("weather_result") or {}
+                if isinstance(w_info, dict) and w_info:
+                    reg_name = (seg.get("segment_details") or {}).get("start", seg.get("region"))
+                    cond = w_info.get("condition") or w_info.get("rain") or "Clear"
+                    temp = w_info.get("temp") or w_info.get("temperature")
+                    vis = w_info.get("visibility_km")
+                    desc = f"{reg_name}: {cond}"
+                    if temp is not None:
+                        desc += f" at {round(float(temp))}°C"
+                    if vis is not None:
+                        desc += f", sightline {vis} km"
+                    weather_findings.append(desc)
+            if weather_findings:
+                return f"Weather conditions along {src} to {dst}: " + "; ".join(weather_findings[:3]) + ". Maintain safe following distance on wet pavement."
+            return f"Weather outlook between {src} and {dst} shows clear skies with standard atmospheric visibility across all expressway sections."
+
+        # 2. Traffic / Congestion / Delay Queries
+        if any(w in msg_lower for w in ["traffic", "jam", "congestion", "delay", "slow", "standstill", "blocked"]):
+            traffic_delays = []
+            total_delay = 0
+            for seg in segment_results:
+                t_info = seg.get("live_traffic") or {}
+                if isinstance(t_info, dict):
+                    d_min = t_info.get("delay_minutes", 0)
+                    total_delay += d_min
+                    if d_min >= 3:
+                        reg_name = (seg.get("segment_details") or {}).get("start", seg.get("region"))
+                        traffic_delays.append(f"{reg_name} (+{d_min}m slowdown)")
+            if traffic_delays:
+                return f"Live traffic delay on {src} to {dst}: Total corridor delay is approximately +{total_delay} minutes. Active slowdowns noted at: {', '.join(traffic_delays)}."
+            return f"Corridor traffic between {src} and {dst} is fluid with free-flow speeds (85-100 km/h) and minimal delay (+{total_delay}m)."
+
+        # 3. Hazard / Road Condition / Pothole / Landslide Queries
+        if any(w in msg_lower for w in ["hazard", "landslide", "rockfall", "pothole", "accident", "road condition", "danger", "risk", "waterlog"]):
+            hazards = [r for r in reasons if any(hz in str(r).lower() for hz in ["landslide", "rockfall", "waterlog", "pothole", "accident", "hazard", "congestion"])]
+            if hazards:
+                return f"Active road alerts on your route: {'; '.join(hazards[:3])}. Exercise heightened caution through these affected sectors."
+            return f"No active structural hazards, landslides, or road closures reported on the {src} to {dst} expressway corridor."
+
+        # 4. Departure Timing / Optimization Queries
+        if any(w in msg_lower for w in ["leave", "depart", "when", "time", "wait", "now", "optimal", "timing"]):
+            opt_summary = dep_opt.get("recommendation_summary")
+            opt_score = dep_opt.get("optimal_safety_score")
+            opt_time = dep_opt.get("optimal_departure_time_ist")
+            if opt_summary:
+                return f"Departure timing advisory: {opt_summary}. (Optimal score: {opt_score}/100 at {opt_time})."
+            return f"Current travel conditions are favorable with a corridor Safety Score of {score}/100. Departing now or within the next 30 minutes offers optimal transit flow."
+
+        # 5. Speed / Limit / Driving Advice
+        if any(w in msg_lower for w in ["speed", "limit", "driving", "fast", "mph", "km/h", "kmph"]):
+            if score < 75:
+                return f"Due to current cautionary conditions (Safety Score {score}/100), maintain a moderated speed of 60-70 km/h on express stretches and 40 km/h on Ghat hairpin bends."
+            return f"Posted speed limit is 100 km/h on expressway flats and 50 km/h through Bhor Ghat. Current road conditions support standard expressway cruising speeds."
+
+        # 6. Specific Towns / Ghat Inquiry
+        for town, reg in [("khandala", "R4"), ("lonavala", "R5"), ("khopoli", "R3"), ("panvel", "R1"), ("kamshet", "R6"), ("ghat", "R4"), ("bhor", "R4")]:
+            if town in msg_lower:
+                matching = [s for s in segment_results if s.get("region") == reg]
+                if matching:
+                    m = matching[0]
+                    s_score = m.get("safety_score_result", {}).get("safety_score", score)
+                    reasons_m = m.get("safety_score_result", {}).get("reasons", [])
+                    r_str = f" Noteworthy conditions: {'; '.join(reasons_m[:2])}." if reasons_m else " Road is clear and stable."
+                    return f"{town.capitalize()} section (Sector {reg}): Safety Score is {round(float(s_score))}/100.{r_str}"
+
+        # 7. Safety Score & Reasons
+        if any(w in msg_lower for w in ["score", "why", "low", "safe", "danger"]):
             if score >= 85:
                 return (
                     f"Your journey from {src} to {dst} is safe to travel with an optimal Safety Score of {score}/100. "
@@ -465,20 +539,11 @@ Answer the user's question using the backend context below.
                 ans += "Corridor road conditions are generally stable with standard expressway precautions."
             return ans
 
-        if "segment" in msg_lower or "stretch" in msg_lower or "where" in msg_lower or "care" in msg_lower or "attention" in msg_lower or "caution" in msg_lower:
-            genuine_problematic = [
-                p for p in problematic
-                if isinstance(p, dict) and (
-                    (p.get("safety_score") is not None and float(p.get("safety_score")) < 80.0)
-                    or any(
-                        r for r in (p.get("reasons") or [])
-                        if any(hz in str(r).lower() for hz in ("rain", "fog", "delay", "hazard", "congestion", "unlit", "night"))
-                    )
-                )
-            ]
-            if genuine_problematic:
+        # 8. Caution Sections
+        if any(w in msg_lower for w in ["segment", "stretch", "where", "care", "attention", "caution"]):
+            if problematic:
                 names = []
-                for p in genuine_problematic[:3]:
+                for p in problematic[:3]:
                     d = p.get("segment_details") or {}
                     s_val = p.get("safety_score")
                     s_str = f"{int(round(float(s_val)))}/100" if s_val is not None else "caution"
@@ -489,15 +554,11 @@ Answer the user's question using the backend context below.
                 return f"Sections requiring caution along your route: {'; '.join(names)}."
             return f"All route sections between {src} and {dst} are clear and safe. There are no caution areas on your route."
 
-        if "precaution" in msg_lower or "tip" in msg_lower or "advice" in msg_lower:
-            if precautions:
-                return f"Recommended precautions: {'; '.join(str(p) for p in precautions[:3])}."
-            return "Maintain a safe following distance, stay alert on expressway curves and ghat sections, and check real-time weather updates."
-
-        resp = f"Journey from {src} to {dst}: Corridor Safety Score is {score}/100. "
+        # 9. General Comprehensive Response Grounded in Trip Intelligence
+        resp = f"Route analysis for {src} to {dst}: Corridor Safety Score is {score}/100. "
         if reasons:
-            resp += f"Noteworthy conditions: {'; '.join(str(r) for r in reasons[:2])}. "
-        resp += "Drive carefully and follow posted expressway speed limits."
+            resp += f"Current observations: {'; '.join(str(r) for r in reasons[:2])}. "
+        resp += "Drive carefully, maintain safe following distance, and observe expressway speed limits."
         return resp
 
 

@@ -156,15 +156,28 @@ def _assess_report_hazards(report: TravelerReport) -> tuple[bool, list[str]]:
 
 @router.get("/live-reports")
 def get_live_community_reports(
-    hours: int = Query(default=6, ge=1, le=24, description="Lookback window in hours"),
+    hours: int = Query(default=1, ge=1, le=24, description="Lookback window in hours"),
     db: Session = Depends(get_db),
 ):
     """
-    Returns active human traveler reports within the past N hours (default 6h).
-    Expired reports are automatically excluded from the output and risk evaluation.
+    Returns active human traveler reports within the past 1 hour.
+    Expired reports older than 1 hour are automatically purged from the database
+    and excluded from the output and risk evaluation.
     Computes active risky corridor segments based exclusively on user inputs.
     """
     now = get_ist_now()
+
+    # Automatically purge and delete driver updates older than 1 hour from the database
+    try:
+        one_hour_ago = now - timedelta(hours=1)
+        deleted = db.query(TravelerReport).filter(
+            TravelerReport.created_at < one_hour_ago
+        ).delete(synchronize_session=False)
+        if deleted > 0:
+            db.commit()
+    except Exception:
+        db.rollback()
+
     cutoff_time = now - timedelta(hours=hours)
 
     reports_query = (

@@ -211,6 +211,16 @@ class SafetyScoreService:
     HAZARD_SEVERITY_MAP = {
         "road closure": 1.00,
         "road_closure": 1.00,
+        "landslide": 0.90,
+        "rockfall": 0.85,
+        "closure": 1.00,
+        "closed": 1.00,
+        "accident": 0.65,
+        "crash": 0.70,
+        "standstill": 0.75,
+        "flood": 0.95,
+        "waterlog": 0.65,
+        "pothole": 0.40,
         "landslide/rockfall": 0.85,
         "landslide / rockfall": 0.85,
         "landslide_rockfall": 0.85,
@@ -265,6 +275,18 @@ class SafetyScoreService:
         "accident/incident": 40.0,
         "accident_incident": 40.0,
         "waterlogging": 30.0,
+        "landslide": 25.0,
+        "rockfall": 25.0,
+        "closure": 10.0,
+        "closed": 10.0,
+        "accident": 40.0,
+        "crash": 35.0,
+        "standstill": 25.0,
+        "flood": 20.0,
+        "waterlogging": 30.0,
+        "waterlog": 30.0,
+        "pothole": 55.0,
+        "breakdown": 50.0,
         "landslide/rockfall": 25.0,
         "landslide_rockfall": 25.0,
         "landslide / rockfall": 25.0,
@@ -324,55 +346,34 @@ class SafetyScoreService:
             or (terrain_score is not None and terrain_score < 95.0)
         )
 
-        if is_planner:
-            # Planner Mode: Traffic is strictly excluded (0% weight)
-            # In Ghat passes (R4/R5), ML model weight is boosted to 55% over macro weather
-            active_weights = (
-                self.PLANNER_GHAT_SOURCE_WEIGHTS
-                if is_ghat
-                else self.PLANNER_SOURCE_WEIGHTS
-            )
-            traffic_score = None
-            traffic_dimensions = {}
-            traveler_score = None
-            traveler_dimensions = {}
+        # Unified, dynamic multi-source weights (weights auto-normalize for any missing sources)
+        # Ghat passes (R4/R5) emphasize ML model (40%) and terrain geometry
+        active_weights = (
+            self.TRAVELER_GHAT_SOURCE_WEIGHTS
+            if is_ghat
+            else self.TRAVELER_SOURCE_WEIGHTS
+        )
+        traffic_score, traffic_dimensions = self._calculate_traffic_score(
+            traffic_result=traffic_result,
+            traveler_result=traveler_result,
+        )
+        traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
+        if terrain_score is not None:
             terrain_val, terrain_dims = self._calculate_terrain_score(terrain_score)
             dimension_scores.update(terrain_dims)
-
-            source_scores = {
-                "ml": ml_score,
-                "weather": weather_score,
-                "terrain": terrain_val,
-            }
         else:
-            # Traveler Mode: Live traffic and community reports included
-            # In Ghat passes (R4/R5), ML model weight is boosted to 40%
-            active_weights = (
-                self.TRAVELER_GHAT_SOURCE_WEIGHTS
-                if is_ghat
-                else self.TRAVELER_SOURCE_WEIGHTS
-            )
-            traffic_score, traffic_dimensions = self._calculate_traffic_score(
-                traffic_result=traffic_result,
-                traveler_result=traveler_result,
-            )
-            traveler_score, traveler_dimensions = self._calculate_traveler_score(traveler_result)
-            if terrain_score is not None:
-                terrain_val, terrain_dims = self._calculate_terrain_score(terrain_score)
-                dimension_scores.update(terrain_dims)
-            else:
-                terrain_val = None
-                terrain_dims = {}
-            dimension_scores.update(traveler_dimensions)
-            dimension_scores.update(traffic_dimensions)
+            terrain_val = None
+            terrain_dims = {}
+        dimension_scores.update(traveler_dimensions)
+        dimension_scores.update(traffic_dimensions)
 
-            source_scores = {
-                "ml": ml_score,
-                "weather": weather_score,
-                "traffic": traffic_score,
-                "traveler": traveler_score,
-                "terrain": terrain_val,
-            }
+        source_scores = {
+            "ml": ml_score,
+            "weather": weather_score,
+            "traffic": traffic_score,
+            "traveler": traveler_score,
+            "terrain": terrain_val,
+        }
 
         if ml_score is not None:
             dimension_scores["ml_prediction"] = ml_score
@@ -492,6 +493,8 @@ class SafetyScoreService:
                         f"Precipitation Alert: {rain}{r_det}. Maintain safe following distance."
                     )
 
+            if unusual_cond:
+                planner_reasons.insert(0, f"Road Hazard Alert: Active traveler report of '{unusual_cond}'.")
             if terrain_reasons:
                 planner_reasons.extend(terrain_reasons)
 
@@ -1463,20 +1466,29 @@ class SafetyScoreService:
         mapping: dict[str, float],
     ) -> float | None:
         """
-        Case-insensitive score lookup.
+        Case-insensitive score lookup with substring and token matching.
         """
-
-        normalized = (
-            value.strip()
-            .casefold()
-        )
-
+        normalized = value.strip().casefold()
         if normalized in mapping:
             return mapping[normalized]
 
+        matches = []
         for k, v in mapping.items():
-            if k == normalized or k in normalized or normalized in k:
-                return v
+            if k in normalized or normalized in k:
+                matches.append(v)
+
+        if matches:
+            return min(matches)
+
+        words = normalized.replace("/", " ").replace("-", " ").replace("_", " ").split()
+        for word in words:
+            if len(word) >= 4:
+                for k, v in mapping.items():
+                    if word in k or k in word:
+                        matches.append(v)
+
+        if matches:
+            return min(matches)
 
         return None
 

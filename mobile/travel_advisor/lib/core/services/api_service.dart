@@ -854,7 +854,7 @@ class ApiService {
   // ============================================================
 
   static Future<Map<String, dynamic>> getLiveCommunityReports({
-    int hours = 6,
+    int hours = 1,
   }) async {
     final uri = Uri.parse('$baseUrl/community/live-reports?hours=$hours');
 

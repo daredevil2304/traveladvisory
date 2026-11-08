@@ -43,7 +43,7 @@ class _CommunityReportsScreenState
     });
 
     try {
-      final data = await ApiService.getLiveCommunityReports(hours: 6);
+      final data = await ApiService.getLiveCommunityReports(hours: 1);
 
       if (!mounted) return;
 

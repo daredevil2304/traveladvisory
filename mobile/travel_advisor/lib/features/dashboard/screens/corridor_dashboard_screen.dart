@@ -378,7 +378,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       _parseDaysForSlot(1, returnHabit['travel_days']?.toString() ?? 'Daily');
 
       // 3. Load Community Radar Reports
-      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final res = await ApiService.getLiveCommunityReports(hours: 1);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
@@ -423,7 +423,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
   Future<void> _refreshLiveReports() async {
     setState(() => _isLoadingReports = true);
     try {
-      final res = await ApiService.getLiveCommunityReports(hours: 6);
+      final res = await ApiService.getLiveCommunityReports(hours: 1);
       final list = (res['reports'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??

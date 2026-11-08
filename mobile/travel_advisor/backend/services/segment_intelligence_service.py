@@ -168,41 +168,48 @@ class SegmentIntelligenceService:
         )
 
         # =========================================================
-        # 4. Recent traveler reports (Traveler mode only)
+        # 4. Recent traveler and community reports (All modes)
         # =========================================================
 
-        if not is_planner:
-            if prefetched_reports is not None:
-                reports = prefetched_reports
-            elif db is not None:
-                reports = (
-                    traveler_report_retrieval_service.get_recent_reports(
-                        db=db,
-                        region=normalized_region,
-                        reference_datetime=travel_datetime,
-                        lookback_hours=self.REPORT_LOOKBACK_HOURS,
-                    )
-                )
-            else:
-                reports = []
-
-            serialized_reports = (
-                traveler_report_retrieval_service.serialize_reports(
-                    reports
-                )
-            )
-
-            report_dimensions = (
-                self._build_report_dimensions(
-                    serialized_reports,
-                    weather_dimensions=weather_dimensions,
-                    live_traffic=live_traffic,
+        if prefetched_reports is not None:
+            reports = prefetched_reports
+        elif db is not None:
+            reports = (
+                traveler_report_retrieval_service.get_recent_reports(
+                    db=db,
+                    region=normalized_region,
+                    reference_datetime=travel_datetime,
+                    lookback_hours=self.REPORT_LOOKBACK_HOURS,
                 )
             )
         else:
-            reports = []
-            serialized_reports = []
-            report_dimensions = None
+            try:
+                from database import SessionLocal
+                with SessionLocal() as local_db:
+                    reports = (
+                        traveler_report_retrieval_service.get_recent_reports(
+                            db=local_db,
+                            region=normalized_region,
+                            reference_datetime=travel_datetime,
+                            lookback_hours=self.REPORT_LOOKBACK_HOURS,
+                        )
+                    )
+            except Exception:
+                reports = []
+
+        serialized_reports = (
+            traveler_report_retrieval_service.serialize_reports(
+                reports
+            )
+        )
+
+        report_dimensions = (
+            self._build_report_dimensions(
+                serialized_reports,
+                weather_dimensions=weather_dimensions,
+                live_traffic=live_traffic,
+            )
+        )
 
         # =========================================================
         # 5. Dimension-aware fusion

@@ -205,18 +205,16 @@ class TripAnalysisService:
         ist_hour = ist_travel_dt.hour
         is_night_travel = (ist_hour >= 19 or ist_hour < 6)
 
-        # Batch fetch all recent traveler reports in a single query across segments
-        reports_by_region: dict[str, list[Any]] = {}
-        if is_traveler:
-            from services.traveler_report_retrieval_service import (
-                traveler_report_retrieval_service,
-            )
-            reports_by_region = traveler_report_retrieval_service.get_reports_for_regions(
-                db=db,
-                regions=route_segments,
-                reference_datetime=travel_dt,
-                lookback_hours=1,
-            )
+        # Batch fetch all recent traveler & community reports across segments
+        from services.traveler_report_retrieval_service import (
+            traveler_report_retrieval_service,
+        )
+        reports_by_region = traveler_report_retrieval_service.get_reports_for_regions(
+            db=db,
+            regions=route_segments,
+            reference_datetime=travel_dt,
+            lookback_hours=1,
+        )
 
         # Parallelize independent segment evaluation across threads
         results_by_region: dict[str, dict[str, Any]] = {}
@@ -346,40 +344,41 @@ class TripAnalysisService:
         seg_terrain_score = None
         seg_terrain_reasons: list[str] = []
 
-        if is_traveler:
-            start_name, end_name = seg_endpoints.get(reg_code, ("Panvel", "Pune"))
-            start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
-            end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
-            segment_traffic = google_maps_traffic_service.get_segment_traffic(
-                start_coords=start_c,
-                end_coords=end_c,
-                start_name=start_name,
-                end_name=end_name,
-            )
-        else:
-            if reg_code in ("R4", "R5"):  # Bhor Ghat mountain pass & crest
-                t_score = 90.0 if reg_code == "R4" else 94.0
-                if is_night_travel:
-                    t_score -= 15.0  # Drops to 75 / 79 for night mountain curves & low lighting
-                    seg_terrain_reasons.append(
-                        f"Night mountain driving ({ist_hour:02d}:00 IST): Low lighting, darkness and sharp hairpin turns."
-                    )
-            elif reg_code in ("R3", "R6"):  # Foothills & descending plateau
-                t_score = 97.0
-                if is_night_travel:
-                    t_score -= 8.0  # Drops to 89
-                    seg_terrain_reasons.append(
-                        f"Night highway approach ({ist_hour:02d}:00 IST): Darkness on unlit stretches approaching Ghat."
-                    )
-            else:  # R1, R2, R7 plain expressway
-                t_score = 100.0
-                if is_night_travel:
-                    t_score -= 6.0  # Drops to 94
-                    seg_terrain_reasons.append(
-                        f"Night travel window ({ist_hour:02d}:00 IST): Darkness on unlit stretches and headlight glare."
-                    )
+        # Always fetch live Google Maps segment traffic
+        start_name, end_name = seg_endpoints.get(reg_code, ("Panvel", "Pune"))
+        start_c = ROUTE_POINT_COORDINATES.get(start_name, (18.98878, 73.11013))
+        end_c = ROUTE_POINT_COORDINATES.get(end_name, (18.52050, 73.85650))
+        segment_traffic = google_maps_traffic_service.get_segment_traffic(
+            start_coords=start_c,
+            end_coords=end_c,
+            start_name=start_name,
+            end_name=end_name,
+        )
 
-            seg_terrain_score = max(0.0, min(100.0, t_score))
+        # Always evaluate terrain geometry and night lighting
+        if reg_code in ("R4", "R5"):  # Bhor Ghat mountain pass & crest
+            t_score = 90.0 if reg_code == "R4" else 94.0
+            if is_night_travel:
+                t_score -= 15.0  # Drops to 75 / 79 for night mountain curves & low lighting
+                seg_terrain_reasons.append(
+                    f"Night mountain driving ({ist_hour:02d}:00 IST): Low lighting, darkness and sharp hairpin turns."
+                )
+        elif reg_code in ("R3", "R6"):  # Foothills & descending plateau
+            t_score = 97.0
+            if is_night_travel:
+                t_score -= 8.0  # Drops to 89
+                seg_terrain_reasons.append(
+                    f"Night highway approach ({ist_hour:02d}:00 IST): Darkness on unlit stretches approaching Ghat."
+                )
+        else:  # R1, R2, R7 plain expressway
+            t_score = 100.0
+            if is_night_travel:
+                t_score -= 6.0  # Drops to 94
+                seg_terrain_reasons.append(
+                    f"Night travel window ({ist_hour:02d}:00 IST): Darkness on unlit stretches and headlight glare."
+                )
+
+        seg_terrain_score = max(0.0, min(100.0, t_score))
 
         latitude, longitude = get_segment_coordinates(region)
 

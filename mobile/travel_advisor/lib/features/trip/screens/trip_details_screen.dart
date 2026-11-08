@@ -363,7 +363,7 @@ class _TripDetailsScreenState
 
       final response =
           await ApiService.createTripRequest(
-        role: 'planner',
+        role: _role,
         source: _selectedSource!,
         latitude:
             sourcePoint.latitude,
