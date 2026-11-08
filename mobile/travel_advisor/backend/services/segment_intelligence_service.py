@@ -573,9 +573,21 @@ class SegmentIntelligenceService:
                 # Track corroboration count for consensus validation
                 dimensions[f"{field}_count"] = counts.get(str(selected_value).casefold(), 1)
 
-        # Compute time decay and clearance dynamics for each hazard report
+        # Adaptive Multi-Source Clearance Verification Model:
+        # A hazard's clearance duration is uncertain (can clear in 1h or take 5-8+ hours).
+        # We cross-examine report age against real-time Google Maps telemetry & structural severity:
         from services.timezone_service import get_ist_now, to_ist
         now_ist = get_ist_now()
+
+        traffic_delay = live_traffic.get("delay_minutes", 0) if isinstance(live_traffic, dict) else 0
+        traffic_congestion = str(live_traffic.get("congestion_level", "")).lower() if isinstance(live_traffic, dict) else ""
+        is_traffic_blocked = traffic_delay >= 10 or traffic_congestion in ("standstill", "heavy", "moderate")
+        is_traffic_free_flow = traffic_delay <= 2 and traffic_congestion in ("free_flow", "low", "")
+
+        STRUCTURAL_HAZARDS = {
+            "landslide", "rockfall", "road closure", "road_closure",
+            "flooding", "severe_waterlogging", "mud_rockfall_alert", "fallen tree"
+        }
 
         hazard_reports: list[dict[str, Any]] = []
         for report in reports:
@@ -598,14 +610,35 @@ class SegmentIntelligenceService:
                     created_ist = now_ist
 
                 age_minutes = max(0.0, (now_ist - created_ist).total_seconds() / 60.0)
-                # Highway clearance model: Quadratic decay over 6 hours (360 mins)
-                # As time elapses, highway emergency patrol clears obstructions and lanes normalize
-                time_decay = max(0.0, (1.0 - (age_minutes / 360.0)) ** 2) if age_minutes < 360.0 else 0.0
+                is_structural = any(h in raw_unusual.lower() for h in STRUCTURAL_HAZARDS)
+
+                # Clearance Uncertainty Resolution:
+                # 1. Active Traffic Jam: If Google Maps shows standstill / heavy congestion,
+                #    the hazard is STILL ACTIVE regardless of time! Freeze decay at 1.0.
+                if is_traffic_blocked:
+                    time_decay = 1.0
+                    clearance_state = "ongoing_active_congestion"
+                # 2. Verified Free Flow: If traffic is confirmed at statutory 85-100 km/h and report >30m old,
+                #    real-world sensor evidence confirms traffic is passing and clearance has occurred.
+                elif is_traffic_free_flow and age_minutes >= 30.0:
+                    time_decay = max(0.0, (1.0 - (age_minutes / 180.0)) ** 2) if age_minutes < 180.0 else 0.0
+                    clearance_state = "radar_confirmed_clearing"
+                # 3. Structural Hazards (Landslides, Road Closures): Slow clearance horizon (up to 10 hours),
+                #    preventing premature clearance assumptions.
+                elif is_structural:
+                    time_decay = max(0.20, (1.0 - (age_minutes / 600.0)) ** 1.5) if age_minutes < 600.0 else 0.0
+                    clearance_state = "extended_clearance_uncertainty"
+                # 4. Standard incident clearance (up to 6 hours)
+                else:
+                    time_decay = max(0.0, (1.0 - (age_minutes / 360.0)) ** 2) if age_minutes < 360.0 else 0.0
+                    clearance_state = "standard_clearance"
 
                 hazard_reports.append({
                     "condition": raw_unusual.strip(),
                     "age_minutes": round(age_minutes, 1),
                     "time_decay": round(time_decay, 3),
+                    "clearance_state": clearance_state,
+                    "is_structural": is_structural,
                 })
 
         if dimensions:

@@ -573,15 +573,26 @@ class SafetyScoreService:
                 hazard_reps = traveler_result.get("hazard_reports", [])
                 h_cnt = traveler_result.get("unusual_conditions_count", len(hazard_reps) if hazard_reps else 1)
                 
-                # Format clearance / time recency note
+                # Format clearance / time recency note based on adaptive telemetry state
                 if hazard_reps:
                     min_age = min(hr.get("age_minutes", 0) for hr in hazard_reps)
-                    if min_age < 15:
+                    top_state = hazard_reps[0].get("clearance_state", "")
+
+                    if top_state == "ongoing_active_congestion":
+                        time_status = "Confirmed active by live traffic delay"
+                    elif top_state == "radar_confirmed_clearing":
+                        time_status = "Traffic resuming • radar verified clearing"
+                    elif top_state == "extended_clearance_uncertainty":
+                        if min_age < 30:
+                            time_status = "Recently reported • clearance uncertain"
+                        else:
+                            time_status = f"Reported {int(min_age // 60)}h ago • clearance ongoing"
+                    elif min_age < 15:
                         time_status = "just reported"
                     elif min_age < 60:
                         time_status = f"reported {int(min_age)}m ago"
                     else:
-                        time_status = f"reported {int(min_age // 60)}h ago • clearance underway"
+                        time_status = f"reported {int(min_age // 60)}h ago"
                 else:
                     time_status = "active report"
 
