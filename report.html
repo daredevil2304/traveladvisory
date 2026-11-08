@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RouteRadar — Mumbai-Pune Travel Intelligence Master Engineering Report (10/10 Master Edition)</title>
+<title>RouteRadar — Mumbai-Pune Travel Intelligence Master Engineering Suite (10/10 Master Edition)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,7 +13,21 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+  mermaid.initialize({ 
+    startOnLoad: false, 
+    theme: 'dark',
+    securityLevel: 'loose',
+    themeVariables: {
+      darkMode: true,
+      background: '#070B14',
+      primaryColor: '#0F2942',
+      primaryBorderColor: '#38BDF8',
+      primaryTextColor: '#FFFFFF',
+      lineColor: '#60A5FA',
+      secondaryColor: '#064E3B',
+      tertiaryColor: '#3B0764'
+    }
+  });
   window.mermaid = mermaid;
   window.dispatchEvent(new Event('mermaid-ready'));
 </script>
@@ -30,6 +44,7 @@
     --accent-amber: #F59E0B;
     --accent-crimson: #EF4444;
     --accent-blue: #3B82F6;
+    --accent-purple: #A855F7;
   }
   body.high-contrast {
     --bg-base: #000000;
@@ -43,6 +58,7 @@
     --accent-amber: #FFCC00;
     --accent-crimson: #FF3333;
     --accent-blue: #3399FF;
+    --accent-purple: #CC66FF;
   }
   * { box-sizing: border-box; }
   body {
@@ -54,7 +70,6 @@
     padding: 0;
     scroll-behavior: smooth;
   }
-  /* Top Progress Bar */
   #read-progress {
     position: fixed;
     top: 0;
@@ -65,15 +80,15 @@
     z-index: 1000;
     transition: width 0.1s ease;
   }
-  /* App Header & Navigation */
+  /* Header & Navigation Bar */
   .top-navbar {
     position: sticky;
     top: 0;
     z-index: 900;
-    background: rgba(7, 11, 20, 0.92);
-    backdrop-filter: blur(12px);
+    background: rgba(7, 11, 20, 0.94);
+    backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
-    padding: 12px 24px;
+    padding: 10px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -84,15 +99,15 @@
     gap: 12px;
   }
   .brand-logo {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     background: linear-gradient(135deg, #38BDF8, #1E40AF);
-    border-radius: 8px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    font-size: 19px;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
   }
   .brand-title {
     font-size: 1.15rem;
@@ -109,21 +124,53 @@
     border-radius: 999px;
     font-weight: 600;
   }
+  /* Modern Multi-Tab Switcher */
+  .tabs-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-surface);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .tab-btn.active {
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    box-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
+  }
   .nav-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .btn-action {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-main);
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 8px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -133,83 +180,163 @@
     border-color: var(--accent-cyan);
     color: #FFFFFF;
   }
-  /* Layout */
-  .app-layout {
-    display: flex;
+
+  /* Tab Viewports */
+  .tab-pane {
+    display: none;
+    padding: 24px;
     max-width: 1600px;
     margin: 0 auto;
+    animation: fadeIn 0.25s ease-in-out;
   }
-  .sidebar {
-    width: 340px;
-    height: calc(100vh - 58px);
-    position: sticky;
-    top: 58px;
-    background-color: #070B14;
-    border-right: 1px solid var(--border-color);
-    padding: 20px 16px;
-    overflow-y: auto;
-    font-size: 0.84rem;
-    flex-shrink: 0;
-  }
-  .search-box {
-    margin-bottom: 16px;
-  }
-  .search-input {
-    width: 100%;
-    padding: 9px 12px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: #FFFFFF;
-    font-size: 0.85rem;
-    outline: none;
-    transition: border 0.2s;
-  }
-  .search-input:focus {
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
-  }
-  .sidebar-title {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--accent-cyan);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin: 16px 0 8px 0;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border-color);
-  }
-  .sidebar a {
+  .tab-pane.active {
     display: block;
-    color: var(--text-muted);
-    text-decoration: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    margin-bottom: 2px;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .sidebar a:hover, .sidebar a.active {
-    color: #FFFFFF;
-    background-color: var(--bg-elevated);
-    border-left: 3px solid var(--accent-cyan);
-  }
-  .main-content {
-    flex: 1;
-    padding: 32px 56px;
-    max-width: 1200px;
-    min-width: 0;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Interactive Mission Control Simulator Styles */
+  /* UML Gallery Styles */
+  .uml-filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  .filter-pill {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .filter-pill.active {
+    background: var(--accent-cyan);
+    color: #070B14;
+    border-color: var(--accent-cyan);
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  }
+  .uml-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    margin-bottom: 32px;
+    padding: 28px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    transition: border 0.2s;
+  }
+  .uml-card:hover {
+    border-color: var(--accent-cyan);
+  }
+  .uml-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 14px;
+  }
+  .uml-card-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 6px;
+  }
+  .uml-card-summary {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    max-width: 900px;
+  }
+  .uml-badge {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-cyan);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .btn-uml-action {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-uml-action:hover {
+    background: var(--accent-blue);
+    color: #FFFFFF;
+  }
+  .mermaid-wrapper {
+    background: #060A12;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  /* Fullscreen Lightbox Modal */
+  .lightbox-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(7, 11, 20, 0.96);
+    backdrop-filter: blur(20px);
+    z-index: 2000;
+    padding: 32px;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox-content {
+    width: 95vw;
+    height: 90vh;
+    background: #060A12;
+    border: 1px solid var(--accent-cyan);
+    border-radius: 16px;
+    padding: 32px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .btn-close-modal {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: #EF4444;
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  /* Simulator Styles */
   .interactive-lab-card {
     background: linear-gradient(180deg, #0E1626 0%, #090E1A 100%);
     border: 1px solid var(--accent-cyan);
     border-radius: 16px;
     padding: 28px;
-    margin-bottom: 48px;
+    margin-bottom: 32px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
   }
   .lab-header {
@@ -256,10 +383,7 @@
     white-space: nowrap;
     transition: all 0.2s;
   }
-  .sector-btn:hover {
-    color: #FFFFFF;
-    border-color: var(--accent-cyan);
-  }
+  .sector-btn:hover { color: #FFFFFF; border-color: var(--accent-cyan); }
   .sector-btn.active {
     background: linear-gradient(135deg, #1E3A8A, #0284C7);
     color: #FFFFFF;
@@ -338,7 +462,6 @@
     color: #FFFFFF;
     border-color: var(--accent-cyan);
   }
-  /* Live Telemetry Output Cards */
   .lab-outputs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -352,11 +475,6 @@
     padding: 18px;
     text-align: center;
     position: relative;
-    overflow: hidden;
-  }
-  .output-card.alert-hazard {
-    border-color: var(--accent-crimson);
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
   }
   .output-label {
     font-size: 0.78rem;
@@ -372,15 +490,7 @@
     margin-bottom: 6px;
     font-family: 'JetBrains Mono', monospace;
   }
-  .output-subtext {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-  .meter-circle {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 10px auto;
-  }
+  .output-subtext { font-size: 0.8rem; color: var(--text-muted); }
   .warning-banner {
     display: none;
     background: rgba(239, 68, 68, 0.15);
@@ -404,14 +514,7 @@
     color: var(--accent-cyan);
   }
 
-  /* Departure Window Scanner Widget */
-  .departure-scanner-widget {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 24px;
-    margin: 32px 0;
-  }
+  /* Departure Scanner Styles */
   .scanner-timeline {
     display: flex;
     justify-content: space-between;
@@ -437,16 +540,62 @@
   .scan-score { font-size: 1.4rem; font-weight: 800; margin: 4px 0; font-family: 'JetBrains Mono', monospace; }
   .scan-status { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
 
-  /* Viva Voce Defense Interactive Cards */
+  /* War Stories Grid Styles */
+  .war-stories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+  }
+  .war-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.2s;
+  }
+  .war-card:hover {
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+  }
+  .war-badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  .war-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 12px;
+  }
+  .war-section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    margin-top: 10px;
+    margin-bottom: 4px;
+  }
+  .war-text {
+    font-size: 0.9rem;
+    color: #D1D5DB;
+    line-height: 1.6;
+  }
+
+  /* Viva Cards Styles */
   .viva-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     margin-bottom: 16px;
     overflow: hidden;
-    transition: border 0.2s;
   }
-  .viva-card:hover { border-color: var(--accent-cyan); }
   .viva-header {
     padding: 16px 20px;
     cursor: pointer;
@@ -490,7 +639,28 @@
     color: #93C5FD;
   }
 
-  /* General Report Article Elements */
+  /* Report Layout */
+  .report-layout {
+    display: flex;
+    gap: 32px;
+  }
+  .report-sidebar {
+    width: 320px;
+    height: calc(100vh - 120px);
+    position: sticky;
+    top: 70px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px 16px;
+    overflow-y: auto;
+    font-size: 0.84rem;
+    flex-shrink: 0;
+  }
+  .report-main {
+    flex: 1;
+    min-width: 0;
+  }
   .article-card {
     background-color: var(--bg-surface);
     padding: 48px;
@@ -505,13 +675,13 @@
     scroll-margin-top: 80px;
   }
   h1 {
-    font-size: 2.3rem;
+    font-size: 2.2rem;
     border-bottom: 3px solid var(--accent-blue);
     padding-bottom: 16px;
     margin-top: 48px;
   }
   h2 {
-    font-size: 1.65rem;
+    font-size: 1.6rem;
     color: #60A5FA;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
@@ -566,7 +736,7 @@
     transition: transform 0.2s;
   }
   .mermaid:hover { border-color: var(--accent-cyan); }
-  /* Floating Back to Top */
+
   .fab-top {
     position: fixed;
     bottom: 28px;
@@ -585,296 +755,1055 @@
     font-size: 20px;
     z-index: 1000;
   }
-  @media (max-width: 1024px) {
-    .app-layout { flex-direction: column; }
-    .sidebar { width: 100%; height: auto; position: static; }
-    .main-content { padding: 20px 16px; }
-    .article-card { padding: 24px 16px; }
-  }
 </style>
 </head>
 <body>
 
 <div id="read-progress"></div>
 
-<!-- Top Sticky Navbar -->
+<!-- Top Sticky Navbar with Tabs -->
 <header class="top-navbar">
   <div class="brand-group">
     <div class="brand-logo">🛰️</div>
-    <div class="brand-title">RouteRadar Master Engineering Report</div>
-    <div class="brand-badge">v4.0.0 (10/10 Master Edition)</div>
+    <div class="brand-title">RouteRadar Master Suite</div>
+    <div class="brand-badge">v4.0.0 Master</div>
   </div>
+
+  <nav class="tabs-nav">
+    <button class="tab-btn active" id="tab-btn-simulator" onclick="switchTab('simulator')">🎛️ Simulator</button>
+    <button class="tab-btn" id="tab-btn-uml" onclick="switchTab('uml')">🗺️ UML Blueprints</button>
+    <button class="tab-btn" id="tab-btn-report" onclick="switchTab('report')">📖 Master Report</button>
+    <button class="tab-btn" id="tab-btn-warstories" onclick="switchTab('warstories')">⚔️ War Stories</button>
+    <button class="tab-btn" id="tab-btn-viva" onclick="switchTab('viva')">🎓 Viva Voce</button>
+    <button class="tab-btn" id="tab-btn-math" onclick="switchTab('math')">📐 Math Formulary</button>
+  </nav>
+
   <div class="nav-actions">
-    <button class="btn-action" onclick="toggleContrast()">🌓 Contrast Mode</button>
-    <button class="btn-action" onclick="window.print()">🖨️ Export PDF</button>
-    <a href="http://192.168.29.19:8080/app-release.apk" class="btn-action" style="text-decoration:none; color:#38BDF8;">📲 Download APK</a>
+    <button class="btn-action" onclick="toggleContrast()">🌓 Contrast</button>
+    <button class="btn-action" onclick="window.print()">🖨️ PDF</button>
+    <a href="http://192.168.29.19:8080/app-release.apk" class="btn-action" style="text-decoration:none; color:#38BDF8;">📲 APK</a>
   </div>
 </header>
 
-<div class="app-layout">
-  <!-- Interactive Sidebar Navigation -->
-  <nav class="sidebar" id="sidebarNav">
-    <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search report, math & war stories..." onkeyup="filterSidebar()">
+<!-- TAB 1: 🎛️ MISSION CONTROL & DYNAMIC PHYSICS SIMULATOR -->
+<div class="tab-pane active" id="pane-simulator">
+  <section class="interactive-lab-card">
+    <div class="lab-header">
+      <div class="lab-title">
+        <span>🎛️ RouteRadar Dynamic Physics & Corridor Simulation Lab</span>
+      </div>
+      <div class="lab-badge">Live Interactive Engine</div>
     </div>
-    <div class="sidebar-title">Interactive Simulator</div>
-    <a href="#mission-control-simulator" style="color:var(--accent-cyan); font-weight:700;">🎛️ Live Corridor Physics Lab</a>
-    <a href="#departure-scanner-section" style="color:var(--accent-emerald); font-weight:700;">⏱️ Departure Window Scanner</a>
-    
-    <div class="sidebar-title">Master Chapters</div>
-    <a href="#prologue-the-tale-of-two-drivers-on-nh-48">🌟 Prologue: Tale of Two Drivers</a>
-    <a href="#chapter-1-the-operational-domain--terrestrial-failure-modes">Ch 1: Operational Domain</a>
-    <a href="#chapter-2-system-evolution--collaborative-design-decisions">Ch 2: System Evolution</a>
-    <a href="#chapter-3-complete-uml-architectural-specification">Ch 3: UML Architecture Suite</a>
-    <a href="#chapter-4-corridor-topography-microclimates--highway-physics">Ch 4: Highway Physics & Stopping Sight Distance</a>
-    <a href="#chapter-5-multi-source-data-fusion--safety-scoring-mathematics">Ch 5: Data Fusion Math & Re-Normalization</a>
-    <a href="#chapter-6-regional-machine-learning-architecture-routeradar-xgboost">Ch 6: Regional XGBoost (~65MB Lazy Cache)</a>
-    <a href="#chapter-7-temporal-departure-window-optimizer-30m-60m--30m--60m">Ch 7: Departure Optimizer (-60m to +60m)</a>
-    <a href="#chapter-8-dynamic-live-safety-assessment-regional-outlook--safe-speed-engine">Ch 8: Dynamic Live Speed Throttling</a>
-    <a href="#chapter-9-emergency-sos-mandatory-location-permission--rescue-infrastructure">Ch 9: Emergency SOS & Mandatory GPS</a>
-    <a href="#chapter-10-daily-travel-alerts--proactive-commute-engine">Ch 10: Daily Travel Alerts</a>
-    <a href="#chapter-11-grounded-conversational-ai-assistant-chatbot">Ch 11: Grounded AI Copilot (Groq LLaMA-3.3)</a>
-    <a href="#chapter-12-mobile-frontend-architecture--uiux-design-system-flutter">Ch 12: Mobile Frontend Architecture</a>
-    <a href="#chapter-13-relational-database-dictionary--complete-schema-specification">Ch 13: Database Schema Dictionary</a>
-    <a href="#chapter-14-comprehensive-comparative-benchmark">Ch 14: System Benchmark vs Google/Waze</a>
-    <a href="#chapter-15-rigorous-stress-testing-july-25-monsoon-cloudburst">Ch 15: Monsoon Stress Testing</a>
-    <a href="#chapter-16-the-complete-examiner-viva-voce--feature-by-feature-defense-guide">Ch 16: Feature-by-Feature Defense</a>
-    <a href="#chapter-17-comprehensive-mathematical-formulary--step-by-step-derivations">Ch 17: Comprehensive Math Formulary</a>
-    <a href="#chapter-18-system-verification-cicd-pipeline--shorebird-production-fleet-management">Ch 18: Shorebird OTA CI/CD (Patch 40)</a>
-    <a href="#chapter-19-production-war-stories--major-engineering-challenges-root-cause-investigations--architectural-solutions" style="color:#10B981; font-weight:700;">⚔️ Ch 19: Production War Stories</a>
-    <a href="#chapter-20-comprehensive-viva-voce--technical-defense-masterclass" style="color:#F59E0B; font-weight:700;">🔥 Ch 20: Viva Voce Masterclass</a>
-  </nav>
+    <p style="color:var(--text-muted); font-size:0.92rem; margin-top:-8px; margin-bottom:18px;">
+      Manipulate en-route highway parameters to test real-time multi-source data fusion, AASHTO braking distances, Horne's hydroplaning lift velocities, and kinetic brake dissipation across the 8 sectors of the Mumbai-Pune Expressway.
+    </p>
 
-  <!-- Main Document Container -->
-  <main class="main-content">
-    
-    <!-- 🎛️ INTERACTIVE MISSION CONTROL & DYNAMIC PHYSICS SIMULATOR -->
-    <section class="interactive-lab-card" id="mission-control-simulator">
-      <div class="lab-header">
-        <div class="lab-title">
-          <span>🎛️ RouteRadar Dynamic Physics & Corridor Simulation Lab</span>
+    <!-- Sector Selector Pills -->
+    <div class="control-label">Select Highway Sector ($R_1$ to $R_8$):</div>
+    <div class="sector-pills" id="sectorPills">
+      <button class="sector-btn" onclick="selectSector('R1')">R1: Mumbai-Panvel (14m, Flat)</button>
+      <button class="sector-btn" onclick="selectSector('R2')">R2: Panvel-Khalapur (35m, Straight)</button>
+      <button class="sector-btn" onclick="selectSector('R3')">R3: Khalapur-Khopoli (85m, Foothills)</button>
+      <button class="sector-btn active" onclick="selectSector('R4')">R4: Bhor Ghat (420m, 7% Descent)</button>
+      <button class="sector-btn" onclick="selectSector('R5')">R5: Lonavala Crest (625m, Fog)</button>
+      <button class="sector-btn" onclick="selectSector('R6')">R6: Kamshet Plateau (590m, Crosswinds)</button>
+      <button class="sector-btn" onclick="selectSector('R7')">R7: Somatne Plain (575m, High-Speed)</button>
+      <button class="sector-btn" onclick="selectSector('R8')">R8: Pune Gate (560m, Terminus)</button>
+    </div>
+
+    <!-- Animated Elevation Spline Profile Canvas -->
+    <div class="elevation-canvas-container">
+      <canvas id="elevationCanvas"></canvas>
+      <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-top:6px;">
+        <span>0 km (Kalamboli 14m)</span>
+        <span>48 km (Khopoli 120m)</span>
+        <span style="color:var(--accent-amber); font-weight:700;">58 km (Khandala Crest 625m)</span>
+        <span>94.5 km (Urse Toll 580m)</span>
+        <span>148 km (Pune 560m)</span>
+      </div>
+    </div>
+
+    <!-- Live Controls Grid -->
+    <div class="lab-controls-grid">
+      <!-- Cruising Speed Slider -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Cruising Speed:</span>
+          <span id="speedVal" style="color:#FFFFFF; font-family:'JetBrains Mono';">85 km/h</span>
         </div>
-        <div class="lab-badge">Live Interactive Engine</div>
-      </div>
-      <p style="color:var(--text-muted); font-size:0.92rem; margin-top:-8px; margin-bottom:18px;">
-        Manipulate en-route highway parameters to test real-time multi-source data fusion, AASHTO braking distances, Horne's hydroplaning lift velocities, and kinetic brake dissipation across the 8 sectors of the Mumbai-Pune Expressway.
-      </p>
-
-      <!-- Sector Selector Pills -->
-      <div class="control-label">Select Highway Sector ($R_1$ to $R_8$):</div>
-      <div class="sector-pills" id="sectorPills">
-        <button class="sector-btn" onclick="selectSector('R1')">R1: Mumbai-Panvel (14m, Flat)</button>
-        <button class="sector-btn" onclick="selectSector('R2')">R2: Panvel-Khalapur (35m, Straight)</button>
-        <button class="sector-btn" onclick="selectSector('R3')">R3: Khalapur-Khopoli (85m, Foothills)</button>
-        <button class="sector-btn active" onclick="selectSector('R4')">R4: Bhor Ghat (420m, 7% Descent)</button>
-        <button class="sector-btn" onclick="selectSector('R5')">R5: Lonavala Crest (625m, Fog)</button>
-        <button class="sector-btn" onclick="selectSector('R6')">R6: Kamshet Plateau (590m, Crosswinds)</button>
-        <button class="sector-btn" onclick="selectSector('R7')">R7: Somatne Plain (575m, High-Speed)</button>
-        <button class="sector-btn" onclick="selectSector('R8')">R8: Pune Gate (560m, Terminus)</button>
-      </div>
-
-      <!-- Animated Elevation Spline Profile Canvas -->
-      <div class="elevation-canvas-container">
-        <canvas id="elevationCanvas"></canvas>
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-top:6px;">
-          <span>0 km (Kalamboli 14m)</span>
-          <span>48 km (Khopoli 120m)</span>
-          <span style="color:var(--accent-amber); font-weight:700;">58 km (Khandala Crest 625m)</span>
-          <span>94.5 km (Urse Toll 580m)</span>
-          <span>148 km (Pune 560m)</span>
+        <input type="range" min="30" max="130" value="85" class="slider-input" id="speedSlider" oninput="updateSim()">
+        <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+          <span>30 km/h</span><span>80 km/h</span><span>130 km/h</span>
         </div>
       </div>
 
-      <!-- Live Controls Grid -->
-      <div class="lab-controls-grid">
-        <!-- Cruising Speed Slider -->
-        <div class="control-group">
-          <div class="control-label">
-            <span>Cruising Speed:</span>
-            <span id="speedVal" style="color:#FFFFFF; font-family:'JetBrains Mono';">85 km/h</span>
-          </div>
-          <input type="range" min="30" max="130" value="85" class="slider-input" id="speedSlider" oninput="updateSim()">
-          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
-            <span>30 km/h</span><span>80 km/h</span><span>130 km/h</span>
-          </div>
-        </div>
-
-        <!-- Weather Condition -->
-        <div class="control-group">
-          <div class="control-label">Precipitation & Rain:</div>
-          <div class="btn-select-group" id="rainGroup">
-            <button class="btn-select-pill" onclick="setParam('rain', 'clear', this)">Clear (0mm)</button>
-            <button class="btn-select-pill" onclick="setParam('rain', 'light', this)">Light (5mm)</button>
-            <button class="btn-select-pill" onclick="setParam('rain', 'mod', this)">Moderate (15mm)</button>
-            <button class="btn-select-pill active" onclick="setParam('rain', 'heavy', this)">Downpour (35mm)</button>
-            <button class="btn-select-pill" onclick="setParam('rain', 'cloudburst', this)">Cloudburst (50mm)</button>
-          </div>
-        </div>
-
-        <!-- Visibility & Fog -->
-        <div class="control-group">
-          <div class="control-label">Atmospheric Visibility:</div>
-          <div class="btn-select-group" id="visGroup">
-            <button class="btn-select-pill" onclick="setParam('vis', 'clear', this)">Clear (>1km)</button>
-            <button class="btn-select-pill" onclick="setParam('vis', 'mist', this)">Mist (600m)</button>
-            <button class="btn-select-pill active" onclick="setParam('vis', 'fog', this)">Dense Fog (150m)</button>
-            <button class="btn-select-pill" onclick="setParam('vis', 'zero', this)">Zero Visibility (40m)</button>
-          </div>
-        </div>
-
-        <!-- Vehicle Type -->
-        <div class="control-group">
-          <div class="control-label">Vehicle Classification:</div>
-          <div class="btn-select-group" id="vehicleGroup">
-            <button class="btn-select-pill active" onclick="setParam('vehicle', 'sedan', this)">Sedan (1.2T)</button>
-            <button class="btn-select-pill" onclick="setParam('vehicle', 'suv', this)">SUV (2.0T)</button>
-            <button class="btn-select-pill" onclick="setParam('vehicle', 'truck', this)">Truck (35T)</button>
-            <button class="btn-select-pill" onclick="setParam('vehicle', 'bike', this)">Two-Wheeler</button>
-          </div>
-        </div>
-
-        <!-- Tire Pressure Slider -->
-        <div class="control-group">
-          <div class="control-label">
-            <span>Tire Pressure (Horne Lift):</span>
-            <span id="psiVal" style="color:#FFFFFF; font-family:'JetBrains Mono';">32 psi</span>
-          </div>
-          <input type="range" min="22" max="42" value="32" class="slider-input" id="psiSlider" oninput="updateSim()">
-          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
-            <span>22 psi (Soft)</span><span>32 psi (Standard)</span><span>42 psi (High)</span>
-          </div>
-        </div>
-
-        <!-- Road Surface & Night Toggle -->
-        <div class="control-group">
-          <div class="control-label">Road & Time Options:</div>
-          <div class="btn-select-group">
-            <button class="btn-select-pill active" id="nightToggle" onclick="toggleNight(this)">🌙 Night (22:00-05:00)</button>
-            <button class="btn-select-pill active" id="waterlogToggle" onclick="toggleWaterlog(this)">🌊 Standing Water (>3mm)</button>
-            <button class="btn-select-pill" id="hazardToggle" onclick="toggleHazard(this)">⚠️ Active Landslide</button>
-          </div>
+      <!-- Weather Condition -->
+      <div class="control-group">
+        <div class="control-label">Precipitation & Rain:</div>
+        <div class="btn-select-group" id="rainGroup">
+          <button class="btn-select-pill" onclick="setParam('rain', 'clear', this)">Clear (0mm)</button>
+          <button class="btn-select-pill" onclick="setParam('rain', 'light', this)">Light (5mm)</button>
+          <button class="btn-select-pill" onclick="setParam('rain', 'mod', this)">Moderate (15mm)</button>
+          <button class="btn-select-pill active" onclick="setParam('rain', 'heavy', this)">Downpour (35mm)</button>
+          <button class="btn-select-pill" onclick="setParam('rain', 'cloudburst', this)">Cloudburst (50mm)</button>
         </div>
       </div>
 
-      <!-- Warning Banners -->
-      <div class="warning-banner" id="aquaplaningAlert">
-        <span>⚠️</span>
-        <span><strong>CRITICAL AQUAPLANING RISK ACTIVE:</strong> Cruising speed exceeds Horne's critical velocity ($v_p = 80.5	ext{ km/h}$). Dynamic water pressure lifts tires completely off the pavement. Directional steering zeroed!</span>
-      </div>
-      <div class="warning-banner" id="brakeFadeAlert">
-        <span>🔥</span>
-        <span><strong>KINETIC BRAKE FADE ALERT:</strong> Gravitational thermal dissipation exceeds safe friction threshold ($E_k > 100	ext{ MJ}$). Continuous friction braking will vaporize brake pads! Low gear engine braking mandatory.</span>
-      </div>
-
-      <!-- Live Telemetry Outputs Grid -->
-      <div class="lab-outputs-grid">
-        <!-- Safety Score -->
-        <div class="output-card" id="cardSafety">
-          <div class="output-label">Composite Safety Score</div>
-          <div class="output-value" id="valSafetyScore" style="color:var(--accent-amber);">48/100</div>
-          <div class="output-subtext" id="lblSafetyStatus" style="color:var(--accent-amber); font-weight:700;">HIGH CAUTION ADVISED</div>
-        </div>
-
-        <!-- Safe Speed -->
-        <div class="output-card">
-          <div class="output-label">Safe Cruising Speed</div>
-          <div class="output-value" id="valSafeSpeed" style="color:var(--accent-cyan);">35 km/h</div>
-          <div class="output-subtext" id="lblStatutorySpeed">Statutory Limit: 50 km/h</div>
-        </div>
-
-        <!-- AASHTO Stopping Distance -->
-        <div class="output-card">
-          <div class="output-label">AASHTO Stopping Distance</div>
-          <div class="output-value" id="valStoppingDist" style="color:var(--accent-crimson);">194.2 m</div>
-          <div class="output-subtext" id="lblStoppingDiff">+162% vs Dry Plain (74m)</div>
-        </div>
-
-        <!-- Horne Hydroplaning Velocity -->
-        <div class="output-card">
-          <div class="output-label">Hydroplaning Limit ($v_p$)</div>
-          <div class="output-value" id="valHorneSpeed" style="color:var(--accent-emerald);">80.5 km/h</div>
-          <div class="output-subtext" id="lblHorneMargin">Cruising speed is 4.5 km/h ABOVE limit!</div>
-        </div>
-
-        <!-- Kinetic Brake Energy -->
-        <div class="output-card">
-          <div class="output-label">Brake Heat Dissipated ($E_k$)</div>
-          <div class="output-value" id="valBrakeHeat" style="color:#F59E0B;">118.4 MJ</div>
-          <div class="output-subtext" id="lblBrakeStatus">Brake Temp: ~380°C (High Stress)</div>
+      <!-- Visibility & Fog -->
+      <div class="control-group">
+        <div class="control-label">Atmospheric Visibility:</div>
+        <div class="btn-select-group" id="visGroup">
+          <button class="btn-select-pill" onclick="setParam('vis', 'clear', this)">Clear (>1km)</button>
+          <button class="btn-select-pill" onclick="setParam('vis', 'mist', this)">Mist (600m)</button>
+          <button class="btn-select-pill active" onclick="setParam('vis', 'fog', this)">Dense Fog (150m)</button>
+          <button class="btn-select-pill" onclick="setParam('vis', 'zero', this)">Zero Visibility (40m)</button>
         </div>
       </div>
 
-      <!-- Live Formula Trace Box -->
-      <div class="formula-trace-box" id="formulaTrace">
-        Active AASHTO Calculation: SSD = (0.278 * 85 km/h * 2.5s) + [85² / (254 * (0.25 - 0.07))] = 59.1m + 135.1m = 194.2 meters.
-      </div>
-    </section>
-
-    <!-- ⏱️ DEPARTURE WINDOW SCANNER WIDGET -->
-    <section class="departure-scanner-widget" id="departure-scanner-section">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="margin:0; color:#FFFFFF;">⏱️ Interactive Temporal Departure Optimizer Scanner</h3>
-        <span class="lab-badge" style="background:rgba(16,185,129,0.2); color:var(--accent-emerald);">Monsoon Storm Cell Tracking</span>
-      </div>
-      <p style="color:var(--text-muted); font-size:0.9rem; margin:0 0 16px 0;">
-        Simulates atmospheric radar tracking an active cloudburst cell drifting across the Khandala Crest. Select departure time offsets to observe composite route safety score fluctuations:
-      </p>
-
-      <div class="scanner-timeline">
-        <div class="scan-pill" onclick="selectDeparture('-60m', 42, 'Heavy Rain Peak', this)">
-          <div class="scan-time">-60 min</div>
-          <div class="scan-score" style="color:var(--accent-crimson);">42/100</div>
-          <div class="scan-status" style="color:var(--accent-crimson);">Severe Risk</div>
-        </div>
-        <div class="scan-pill" onclick="selectDeparture('-30m', 45, 'Cloudburst Active', this)">
-          <div class="scan-time">-30 min</div>
-          <div class="scan-score" style="color:var(--accent-crimson);">45/100</div>
-          <div class="scan-status" style="color:var(--accent-crimson);">High Risk</div>
-        </div>
-        <div class="scan-pill active" onclick="selectDeparture('Now', 48, 'Torrential Rain & Fog', this)">
-          <div class="scan-time">Depart Now</div>
-          <div class="scan-score" style="color:var(--accent-amber);">48/100</div>
-          <div class="scan-status" style="color:var(--accent-amber);">Caution Advised</div>
-        </div>
-        <div class="scan-pill" onclick="selectDeparture('+30m', 82, 'Storm Cell Clears Crest', this)">
-          <div class="scan-time">+30 min (Optimal)</div>
-          <div class="scan-score" style="color:var(--accent-emerald);">82/100</div>
-          <div class="scan-status" style="color:var(--accent-emerald);">Good & Clear</div>
-        </div>
-        <div class="scan-pill" onclick="selectDeparture('+60m', 89, 'Dry Asphalt & Free Flow', this)">
-          <div class="scan-time">+60 min</div>
-          <div class="scan-score" style="color:var(--accent-emerald);">89/100</div>
-          <div class="scan-status" style="color:var(--accent-emerald);">Optimal Safety</div>
+      <!-- Vehicle Type -->
+      <div class="control-group">
+        <div class="control-label">Vehicle Classification:</div>
+        <div class="btn-select-group" id="vehicleGroup">
+          <button class="btn-select-pill active" onclick="setParam('vehicle', 'sedan', this)">Sedan (1.2T)</button>
+          <button class="btn-select-pill" onclick="setParam('vehicle', 'suv', this)">SUV (2.0T)</button>
+          <button class="btn-select-pill" onclick="setParam('vehicle', 'truck', this)">Truck (35T)</button>
+          <button class="btn-select-pill" onclick="setParam('vehicle', 'bike', this)">Two-Wheeler</button>
         </div>
       </div>
 
-      <div id="departureAdviceBanner" style="background:rgba(16,185,129,0.12); border:1px solid var(--accent-emerald); padding:14px 18px; border-radius:10px; color:#A7F3D0; font-size:0.92rem;">
-        💡 <strong>Smart Commuter Recommendation:</strong> Delaying departure by <strong>+30 minutes</strong> boosts composite route safety from <strong>48/100</strong> to <strong>82/100 (+34 points)</strong> as the convective cloudburst cell clears the Bhor Ghat incline into the Deccan plateau.
+      <!-- Tire Pressure Slider -->
+      <div class="control-group">
+        <div class="control-label">
+          <span>Tire Pressure (Horne Lift):</span>
+          <span id="psiVal" style="color:#FFFFFF; font-family:'JetBrains Mono';">32 psi</span>
+        </div>
+        <input type="range" min="22" max="42" value="32" class="slider-input" id="psiSlider" oninput="updateSim()">
+        <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+          <span>22 psi (Soft)</span><span>32 psi (Standard)</span><span>42 psi (High)</span>
+        </div>
       </div>
-    </section>
 
-    <!-- Main Markdown Body Container -->
-    <article class="article-card" id="content"></article>
+      <!-- Road Surface & Night Toggle -->
+      <div class="control-group">
+        <div class="control-label">Road & Time Options:</div>
+        <div class="btn-select-group">
+          <button class="btn-select-pill active" id="nightToggle" onclick="toggleNight(this)">🌙 Night (22:00-05:00)</button>
+          <button class="btn-select-pill active" id="waterlogToggle" onclick="toggleWaterlog(this)">🌊 Standing Water (>3mm)</button>
+          <button class="btn-select-pill" id="hazardToggle" onclick="toggleHazard(this)">⚠️ Active Landslide</button>
+        </div>
+      </div>
+    </div>
 
-    <!-- 🔥 INTERACTIVE VIVA VOCE DEFENSE HUB -->
-    <section style="margin-top:48px;" id="viva-interactive-hub">
-      <h2 style="color:#F59E0B; border-bottom:2px solid #F59E0B; padding-bottom:12px; margin-bottom:24px;">
-        🔥 Viva Voce Defense Masterclass: Top 10 Examiner Trap Questions
-      </h2>
-      <p style="color:var(--text-muted); font-size:0.95rem; margin-bottom:20px;">
-        Click any trap question below to reveal the examiner's underlying testing objective, mathematical derivation, and bulletproof oral defense script:
-      </p>
+    <!-- Warning Banners -->
+    <div class="warning-banner" id="aquaplaningAlert">
+      <span>⚠️</span>
+      <span><strong>CRITICAL AQUAPLANING RISK ACTIVE:</strong> Cruising speed exceeds Horne's critical velocity ($v_p = 80.5\text{ km/h}$). Dynamic water pressure lifts tires completely off the pavement. Directional steering zeroed!</span>
+    </div>
+    <div class="warning-banner" id="brakeFadeAlert">
+      <span>🔥</span>
+      <span><strong>KINETIC BRAKE FADE ALERT:</strong> Gravitational thermal dissipation exceeds safe friction threshold ($E_k > 100\text{ MJ}$). Continuous friction braking will vaporize brake pads! Low gear engine braking mandatory.</span>
+    </div>
 
-      <div id="vivaContainer"></div>
-    </section>
+    <!-- Live Telemetry Outputs Grid -->
+    <div class="lab-outputs-grid">
+      <div class="output-card" id="cardSafety">
+        <div class="output-label">Composite Safety Score</div>
+        <div class="output-value" id="valSafetyScore" style="color:var(--accent-amber);">48/100</div>
+        <div class="output-subtext" id="lblSafetyStatus" style="color:var(--accent-amber); font-weight:700;">HIGH CAUTION ADVISED</div>
+      </div>
 
-  </main>
+      <div class="output-card">
+        <div class="output-label">Safe Cruising Speed</div>
+        <div class="output-value" id="valSafeSpeed" style="color:var(--accent-cyan);">35 km/h</div>
+        <div class="output-subtext" id="lblStatutorySpeed">Statutory Limit: 50 km/h</div>
+      </div>
+
+      <div class="output-card">
+        <div class="output-label">AASHTO Stopping Distance</div>
+        <div class="output-value" id="valStoppingDist" style="color:var(--accent-crimson);">194.2 m</div>
+        <div class="output-subtext" id="lblStoppingDiff">+162% vs Dry Plain (74m)</div>
+      </div>
+
+      <div class="output-card">
+        <div class="output-label">Hydroplaning Limit ($v_p$)</div>
+        <div class="output-value" id="valHorneSpeed" style="color:var(--accent-emerald);">80.5 km/h</div>
+        <div class="output-subtext" id="lblHorneMargin">Cruising speed is 4.5 km/h ABOVE limit!</div>
+      </div>
+
+      <div class="output-card">
+        <div class="output-label">Brake Heat Dissipated ($E_k$)</div>
+        <div class="output-value" id="valBrakeHeat" style="color:#F59E0B;">118.4 MJ</div>
+        <div class="output-subtext" id="lblBrakeStatus">Brake Temp: ~380°C (High Stress)</div>
+      </div>
+    </div>
+
+    <!-- Live Formula Trace Box -->
+    <div class="formula-trace-box" id="formulaTrace">
+      Active AASHTO Calculation: SSD = (0.278 * 85 km/h * 2.5s) + [85² / (254 * (0.25 - 0.07))] = 59.1m + 135.1m = 194.2 meters.
+    </div>
+  </section>
+
+  <!-- Departure Window Scanner -->
+  <section class="interactive-lab-card" style="border-color:var(--accent-emerald);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; color:#FFFFFF;">⏱️ Interactive Temporal Departure Optimizer Scanner</h3>
+      <span class="lab-badge" style="background:rgba(16,185,129,0.2); color:var(--accent-emerald);">Monsoon Storm Cell Tracking</span>
+    </div>
+    <p style="color:var(--text-muted); font-size:0.9rem; margin:0 0 16px 0;">
+      Simulates atmospheric radar tracking an active cloudburst cell drifting across the Khandala Crest. Select departure time offsets to observe composite route safety score fluctuations:
+    </p>
+
+    <div class="scanner-timeline">
+      <div class="scan-pill" onclick="selectDeparture('-60m', 42, 'Heavy Rain Peak', this)">
+        <div class="scan-time">-60 min</div>
+        <div class="scan-score" style="color:var(--accent-crimson);">42/100</div>
+        <div class="scan-status" style="color:var(--accent-crimson);">Severe Risk</div>
+      </div>
+      <div class="scan-pill" onclick="selectDeparture('-30m', 45, 'Cloudburst Active', this)">
+        <div class="scan-time">-30 min</div>
+        <div class="scan-score" style="color:var(--accent-crimson);">45/100</div>
+        <div class="scan-status" style="color:var(--accent-crimson);">High Risk</div>
+      </div>
+      <div class="scan-pill active" onclick="selectDeparture('Now', 48, 'Torrential Rain & Fog', this)">
+        <div class="scan-time">Depart Now</div>
+        <div class="scan-score" style="color:var(--accent-amber);">48/100</div>
+        <div class="scan-status" style="color:var(--accent-amber);">Caution Advised</div>
+      </div>
+      <div class="scan-pill" onclick="selectDeparture('+30m', 82, 'Storm Cell Clears Crest', this)">
+        <div class="scan-time">+30 min (Optimal)</div>
+        <div class="scan-score" style="color:var(--accent-emerald);">82/100</div>
+        <div class="scan-status" style="color:var(--accent-emerald);">Good & Clear</div>
+      </div>
+      <div class="scan-pill" onclick="selectDeparture('+60m', 89, 'Dry Asphalt & Free Flow', this)">
+        <div class="scan-time">+60 min</div>
+        <div class="scan-score" style="color:var(--accent-emerald);">89/100</div>
+        <div class="scan-status" style="color:var(--accent-emerald);">Optimal Safety</div>
+      </div>
+    </div>
+
+    <div id="departureAdviceBanner" style="background:rgba(16,185,129,0.12); border:1px solid var(--accent-emerald); padding:14px 18px; border-radius:10px; color:#A7F3D0; font-size:0.92rem;">
+      💡 <strong>Smart Commuter Recommendation:</strong> Delaying departure by <strong>+30 minutes</strong> boosts composite route safety from <strong>48/100</strong> to <strong>82/100 (+34 points)</strong> as the convective cloudburst cell clears the Bhor Ghat incline into the Deccan plateau.
+    </div>
+  </section>
 </div>
 
-<!-- Floating Action Button for Back to Top -->
+<!-- TAB 2: 🗺️ UML & ARCHITECTURE BLUEPRINTS GALLERY -->
+<div class="tab-pane" id="pane-uml">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0; color:#FFFFFF;">🗺️ RouteRadar UML & System Architecture Gallery</h2>
+      <p style="color:var(--text-muted); margin:4px 0 0 0; font-size:0.92rem;">
+        Comprehensive architectural blueprints with high-contrast color-coded blocks, swimlanes, and UML specifications.
+      </p>
+    </div>
+  </div>
+
+  <!-- Category Filter Bar -->
+  <div class="uml-filter-bar">
+    <button class="filter-pill active" onclick="filterUML('all', this)">All Blueprints (10)</button>
+    <button class="filter-pill" onclick="filterUML('architecture', this)">Component Architecture</button>
+    <button class="filter-pill" onclick="filterUML('usecase', this)">UML Use Case</button>
+    <button class="filter-pill" onclick="filterUML('activity', this)">UML Activity Diagram</button>
+    <button class="filter-pill" onclick="filterUML('sequence', this)">UML Sequence Diagrams</button>
+    <button class="filter-pill" onclick="filterUML('statemachine', this)">State Machines</button>
+    <button class="filter-pill" onclick="filterUML('class', this)">Domain Classes</button>
+    <button class="filter-pill" onclick="filterUML('topology', this)">Cloud Topology</button>
+  </div>
+
+  <!-- Dynamic Gallery Cards -->
+  <div id="umlGalleryContainer">
+
+        <div class="uml-card" data-cat="architecture" id="uml-layered-arch">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Layered System Component Architecture</div>
+              <div class="uml-card-summary">Full four-tier decomposition separating the Flutter mobile presentation layer, FastAPI business logic controllers, regional XGBoost ML inference cache, and external cloud telemetry providers.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">Core Architecture</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-layered-arch')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+flowchart TD
+    classDef client fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef service fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef ai fill:#3B0764,stroke:#A855F7,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef data fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef cloud fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+
+    subgraph MobileLayer["📱 Mobile Application Layer (Flutter 3.x)"]
+        UI["🖥️ Presentation UI / Riverpod"]:::client
+        Core["⚙️ Core Services & Repositories"]:::client
+        Painters["🎨 Custom Canvas Painters"]:::client
+        Updater["📦 Shorebird CodePush Updater"]:::client
+        UI --> Core
+        UI --> Painters
+    end
+
+    subgraph APILayer["⚡ API & Business Logic Layer (FastAPI)"]
+        Controller["🚦 Trip & Report Controller"]:::service
+        Fusion["🧮 Multi-Source Fusion Engine"]:::service
+        Optimizer["⏱️ Departure Window Optimizer"]:::service
+        Physics["🏎️ Corridor Physics Service"]:::service
+        Scheduler["⏰ Commute Alert Scheduler"]:::service
+        Chatbot["🤖 Grounded Chatbot Service"]:::service
+        Controller --> Fusion
+        Controller --> Optimizer
+        Fusion --> Physics
+    end
+
+    subgraph MLLayer["🧠 Machine Learning & Intelligence Tier"]
+        Normalizer["📝 Observation Normalizer"]:::ai
+        ModelLoader["💾 Lazy Model Cache (~65MB)"]:::ai
+        XGBoost["🌲 Regional XGBoost Regressors"]:::ai
+        Consensus["🤝 2-of-3 Consensus Engine"]:::ai
+        ModelLoader --> XGBoost
+    end
+
+    subgraph ExternalLayer["🌐 External Telemetry Providers"]
+        WeatherAPI["🌧️ Open-Meteo Weather API"]:::cloud
+        TrafficAPI["🚦 TomTom Traffic Flow API"]:::cloud
+        GroqAPI["⚡ Groq LLaMA-3.3-70B API"]:::cloud
+        OTPService["🔐 Twilio SMS / Auth Gateway"]:::cloud
+    end
+
+    Core <==>|HTTPS / REST| Controller
+    Fusion --> ModelLoader
+    Fusion --> WeatherAPI
+    Fusion --> TrafficAPI
+    Optimizer --> ModelLoader
+    Chatbot --> Normalizer
+    Normalizer --> GroqAPI
+    Updater <==>|OTA CodePush| ShorebirdCloud["☁️ Shorebird Cloud CDN"]:::cloud
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="usecase" id="uml-use-case">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Comprehensive UML Use Case Specification</div>
+              <div class="uml-card-summary">Detailed mapping of the six distinct human and system actor personas interacting with RouteRadar's primary and secondary operational use cases.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Use Case</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-use-case')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+flowchart LR
+    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
+    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+
+    Traveler(("👤 Live Commuter")):::actor
+    Planner(("📅 Advance Planner")):::actor
+    Reporter(("📢 Hazard Reporter")):::actor
+    Victim(("🆘 Distress Victim")):::actor
+    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
+    Daemon(("⚙️ Background Scheduler")):::actor
+
+    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
+        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
+        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
+        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
+        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
+        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
+        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
+        UC7(["UC7: Autonomous Push Notification"]):::schedUC
+        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
+        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
+        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
+    end
+
+    Traveler --> UC1
+    Traveler --> UC6
+    Reporter --> UC3
+    Planner --> UC2
+    Planner --> UC5
+    Victim --> UC4
+
+    UC1 -.->|"<<include>>"| UC8
+    UC3 -.->|"<<include>>"| UC9
+    UC4 -.->|"<<include>>"| UC10
+    UC5 -.->|"<<extend>>"| UC7
+
+    Dispatcher <-- UC4
+    Daemon --> UC7
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="activity" id="uml-data-fusion-activity">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Multi-Source Sensor Fusion & Re-Normalization UML Activity Diagram</div>
+              <div class="uml-card-summary">Stateful execution workflow detailing parallel sensor health gates, dynamic weight sum checks, mathematical re-normalization, physics parameter deductions, and confidence grading.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Activity</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-data-fusion-activity')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+flowchart TD
+    classDef terminal fill:#064E3B,stroke:#10B981,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef action fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+    classDef decision fill:#713F12,stroke:#EAB308,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef hazard fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
+
+    Start(["● INITIATE SEGMENT EVALUATION"]):::terminal --> Ingest["📥 Ingest Sector Telemetry (Weather, Traffic, ML, Reports)"]:::action
+
+    subgraph SensorChecks["🔍 Sensor Validation & Availability Gate"]
+        Ingest --> C1{"Open-Meteo<br/>Available?"}:::decision
+        Ingest --> C2{"TomTom<br/>Available?"}:::decision
+        Ingest --> C3{"Regional ML<br/>Available?"}:::decision
+        Ingest --> C4{"Community<br/>Reports Active?"}:::decision
+
+        C1 -- Yes --> W1["Set w_weather = 0.45"]:::action
+        C1 -- No --> W0["Set w_weather = 0.00"]:::hazard
+        C2 -- Yes --> T1["Set w_traffic = 0.30"]:::action
+        C2 -- No --> T0["Set w_traffic = 0.00"]:::hazard
+        C3 -- Yes --> M1["Set w_ml = 0.10"]:::action
+        C3 -- No --> M0["Set w_ml = 0.00"]:::hazard
+        C4 -- Yes --> TR1["Set w_crowd = 0.10"]:::action
+        C4 -- No --> TR0["Set w_crowd = 0.00"]:::hazard
+    end
+
+    W1 & W0 & T1 & T0 & M1 & M0 & TR1 & TR0 --> SumW["Sum Active Weights: W_active = Σ w_k"]:::action
+
+    subgraph NormalizationEngine["⚖️ Dynamic Weight Re-Normalization"]
+        SumW --> ZeroCheck{"W_active > 0?"}:::decision
+        ZeroCheck -- No --> Fail["Return Status: score_unavailable"]:::hazard
+        ZeroCheck -- Yes --> Renorm["Re-normalize Weights: w'_k = w_k / W_active"]:::action
+        Renorm --> WeightedSum["Compute Base Score: S_base = Σ w'_k * S_k"]:::action
+    end
+
+    subgraph PhysicsRiskEngine["🏎️ Physics & User Parameter Deductions"]
+        WeightedSum --> PhysDeduct["Compute Physics Penalties: P_user = P_veh + P_night + P_speed"]:::action
+        PhysDeduct --> ClampScore["Clamp Composite Score: S_sector = clamp(S_base - P_user, 0, 100)"]:::action
+        ClampScore --> CalcConf["Compute Confidence Index: C = W_active * 100%"]:::action
+    end
+
+    subgraph StatusClassification["🚦 Status Classification & Packaging"]
+        CalcConf --> ScoreGate{"Score Thresholds"}:::decision
+        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
+        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
+        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
+        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+    end
+
+    StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="sequence" id="uml-traveler-seq">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Real-Time Traveler Tactical Evaluation Sequence Diagram</div>
+              <div class="uml-card-summary">End-to-end asynchronous interaction showing live GPS bounding box resolution, concurrent parallel API ingestion, regional XGBoost inference, and instant response delivery.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Sequence</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-traveler-seq')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Driver as Commuter En-Route
+    participant App as RouteRadar Flutter App
+    participant GW as FastAPI Gateway
+    participant Fusion as Data Fusion Service
+    participant OpenMeteo as Open-Meteo Weather API
+    participant TomTom as TomTom Traffic Flow API
+    participant ML as Regional XGBoost Loader
+
+    Driver->>App: Open Corridor Telemetry Dashboard
+    activate App
+    App->>GW: GET /trips/telemetry?corridor=mumbai-pune
+    activate GW
+    GW->>Fusion: evaluate_corridor_sectors(R1..R8)
+    activate Fusion
+
+    par Ingest Weather Telemetry
+        Fusion->>OpenMeteo: Fetch Hourly Rain, Fog, Gust (Parallel)
+        OpenMeteo-->>Fusion: Return Radar Precipitation & Vis
+    and Ingest Traffic Telemetry
+        Fusion->>TomTom: Fetch Real-Time Speed & Incident Delays
+        TomTom-->>Fusion: Return Speed Ratios & Jam Coordinates
+    and Ingest Regional ML
+        Fusion->>ML: Predict Sector Accident Risk (R1..R8)
+        ML-->>Fusion: Return Probability Scores (<3ms)
+    end
+
+    Fusion->>Fusion: Dynamic Re-Normalization & User Risk Penalty
+    Fusion-->>GW: Return Composite Sector Scores & Confidence
+    deactivate Fusion
+    GW-->>App: HTTP 200 JSON Telemetry Payload
+    deactivate GW
+    App->>App: Render Dynamic Safety Meter & Safe Speeds
+    App-->>Driver: Display High-Contrast Telemetry Cards
+    deactivate App
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="sequence" id="uml-departure-seq">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Advance 5-Day Planner & Departure Window Scanner Sequence Diagram</div>
+              <div class="uml-card-summary">Illustrates how the departure optimizer scans forward and backward in time across 30-minute intervals to find optimal travel windows during monsoon storms.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Sequence</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-departure-seq')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Planner as Advance Commuter
+    participant App as Mobile App
+    participant GW as FastAPI Router
+    participant Optimizer as Departure Optimizer Service
+    participant WeatherSvc as Open-Meteo 5-Day Radar
+    participant DB as SQLite Trip Repository
+
+    Planner->>App: Select Date, Time & Vehicles (e.g. July 25, 08:00 AM)
+    activate App
+    App->>GW: POST /trips/analyze-departure-windows
+    activate GW
+    GW->>Optimizer: scan_windows(origin, dest, departure_time)
+    activate Optimizer
+
+    loop Scan Windows: -60m, -30m, 0m, +30m, +60m
+        Optimizer->>WeatherSvc: Query Atmospheric Forecast at (t + delta)
+        WeatherSvc-->>Optimizer: Convective Cloudburst & Fog Velocity
+        Optimizer->>Optimizer: Calculate Composite Route Score S(delta)
+    end
+
+    Optimizer->>Optimizer: Identify Optimal Departure delta* = argmax(S)
+    Optimizer->>DB: Cache Window Analysis Results
+    Optimizer-->>GW: Return Delta Scores (+34 pts at +30m)
+    deactivate Optimizer
+    GW-->>App: HTTP 200 JSON Response
+    deactivate GW
+    App->>App: Render Interactive Departure Window Timeline
+    App-->>Planner: Show Proactive Advice: 'Delay +30m for Clear Skies'
+    deactivate App
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="sequence" id="uml-sos-seq">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Emergency SOS Mandatory Location Authorization & Rescue Dispatch Sequence</div>
+              <div class="uml-card-summary">Life-safety protocol demonstrating strict GPS coordinate acquisition, milestone snapping, and WhatsApp/SMS emergency dispatching to MSRDC 98224 98224.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Sequence</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-sos-seq')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Victim as Commuter in Distress
+    participant App as Mobile App (SOS Screen)
+    participant Geo as Geolocator System Service
+    participant Modal as Mandatory Location Modal
+    participant Dialer as Android Native Phone Dialer
+    participant Share as Android Intent (WhatsApp/SMS)
+
+    Victim->>App: Tap Emergency SOS Icon
+    activate App
+    App->>Geo: Check Location Permissions
+    alt Permission Denied or GPS Off
+        Geo-->>App: Permission Missing
+        App->>Modal: Display Mandatory Location Modal (Exit Blocked)
+        Victim->>Modal: Tap "Grant Location Permission"
+        Modal->>Geo: Request High-Accuracy GPS
+        Geo-->>App: Return Coordinates (18.7842N, 73.3412E)
+    else Permission Already Granted
+        Geo-->>App: Immediate High-Accuracy GPS Coordinates
+    end
+
+    App->>App: Snap to Expressway KM 48.2 (Amrutanjan Bridge)
+    App-->>Victim: Display Locked Coordinates & Hotline Cards
+
+    alt Emergency Phone Call
+        Victim->>App: Tap "Call MSRDC Control (98224 98224)"
+        App->>Dialer: Launch tel:9822498224
+        Dialer-->>Victim: Connect Call to MSRDC Emergency Dispatch
+    else WhatsApp / SMS Telemetry Broadcast
+        Victim->>App: Tap "Send WhatsApp SOS Broadcast"
+        App->>Share: Format Pre-Populated Rescue Payload with Google Maps Pin
+        Share-->>Victim: Broadcast Exact Crash Coordinates to Responders
+    end
+    deactivate App
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="statemachine" id="uml-state-trip">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Trip Entity Lifecycle State Machine Diagram</div>
+              <div class="uml-card-summary">State transitions of a corridor trip entity from Draft initialization through active evaluation, en-route telemetry tracking, and persistent archive.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML State Machine</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-state-trip')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+stateDiagram-v2
+    [*] --> DRAFT : User enters Origin & Destination
+    DRAFT --> EVALUATING : Submit evaluation request
+    EVALUATING --> ACTIVE : Telemetry ingested & score calculated
+    EVALUATING --> FAILED : Timeout / Service unavailable
+    FAILED --> DRAFT : Retry with cached telemetry
+    ACTIVE --> EN_ROUTE : User departs (Traveler Mode)
+    ACTIVE --> PLANNED : Future trip saved (Planner Mode)
+    EN_ROUTE --> COMPLETED : Arrives at destination
+    EN_ROUTE --> CANCELLED : Trip aborted by user
+    PLANNED --> ACTIVE : Departure window arrives
+    COMPLETED --> ARCHIVED : Saved to SQLite Report Database
+    CANCELLED --> [*]
+    ARCHIVED --> [*]
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="statemachine" id="uml-state-sos">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Emergency SOS Mandatory Location State Machine Diagram</div>
+              <div class="uml-card-summary">Rigorous finite state machine enforcing that emergency dispatch is impossible without high-accuracy verified GPS coordinates.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML State Machine</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-state-sos')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+stateDiagram-v2
+    [*] --> SCREEN_OPENED : User taps SOS
+    SCREEN_OPENED --> CHECKING_PERMISSION : initState triggers permission check
+    CHECKING_PERMISSION --> GRANTED : Permission already granted
+    CHECKING_PERMISSION --> DENIED : Permission missing / GPS off
+    DENIED --> MODAL_BLOCKED : Show mandatory location modal
+    MODAL_BLOCKED --> CHECKING_PERMISSION : User taps "Grant Permission"
+    MODAL_BLOCKED --> SCREEN_CLOSED : User cancels (Navigates Back)
+    GRANTED --> ACQUIRING_COORDINATES : Geolocator.getCurrentPosition()
+    ACQUIRING_COORDINATES --> DISPATCH_READY : Coordinates locked + KM Marker resolved
+    DISPATCH_READY --> CALLING_HOTLINE : User taps 98224 98224 or 112
+    DISPATCH_READY --> SHARING_TELEMETRY : User taps WhatsApp / SMS
+    CALLING_HOTLINE --> DISPATCH_READY : Call concluded
+    SHARING_TELEMETRY --> DISPATCH_READY : Message broadcast
+    SCREEN_CLOSED --> [*]
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="class" id="uml-domain-classes">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Domain Class Diagram & Relational Entity Model</div>
+              <div class="uml-card-summary">Object-oriented class hierarchy detailing entities, associations, type signatures, and methods powering RouteRadar's database and business logic.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">UML Class Diagram</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-domain-classes')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+classDiagram
+    class User {
+        +int id
+        +string email
+        +string phone
+        +string full_name
+        +datetime created_at
+        +list~Trip~ trips
+        +list~CommuteHabit~ habits
+    }
+
+    class Trip {
+        +int id
+        +int user_id
+        +string source_name
+        +string destination_name
+        +datetime travel_datetime
+        +float safety_score
+        +string status
+        +string persona_type
+        +dict route_geometry
+    }
+
+    class TravelReport {
+        +int id
+        +int trip_id
+        +float corridor_score
+        +float confidence
+        +string primary_hazard
+        +dict sector_breakdown
+        +datetime created_at
+    }
+
+    class TravelerReport {
+        +int id
+        +string region_code
+        +string condition_type
+        +string severity
+        +float latitude
+        +float longitude
+        +datetime created_at
+    }
+
+    class CommuteHabit {
+        +int id
+        +int user_id
+        +string typical_origin
+        +string typical_destination
+        +time typical_departure_time
+        +list~int~ travel_days
+        +bool is_active
+    }
+
+    User "1" --> "*" Trip : plans
+    User "1" --> "*" CommuteHabit : establishes
+    Trip "1" --> "1" TravelReport : generates
+    Trip "*" --> "*" TravelerReport : cross_references
+            </div>
+          </div>
+        </div>
+        
+        <div class="uml-card" data-cat="topology" id="uml-cloud-topology">
+          <div class="uml-card-header">
+            <div>
+              <div class="uml-card-title">Cloud Infrastructure & Deployment Topology Diagram</div>
+              <div class="uml-card-summary">Production infrastructure mapping edge CDN ingress, Render PaaS container instances, persistent SQLite databases, and Shorebird CodePush OTA pipelines.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="uml-badge">Deployment Topology</span>
+              <button class="btn-uml-action" onclick="zoomDiagram('uml-cloud-topology')">🔍 Fullscreen</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+flowchart TB
+    classDef client fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef edge fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef app fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef storage fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef ext fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+
+    subgraph UserFleet["📱 Mobile Client Fleet"]
+        AndroidFleet["Android Devices (v1.0.5+6)"]:::client
+        IOSFleet["iOS Devices"]:::client
+    end
+
+    subgraph EdgeTier["🛡️ Edge Network & CDN"]
+        CloudflareEdge["Cloudflare Edge SSL / DDoS Protection"]:::edge
+        ShorebirdEdge["Shorebird Cloud CDN (Patch 40 Stable)"]:::edge
+    end
+
+    subgraph ContainerPaaS["⚡ Render Cloud Application Tier"]
+        FastAPIInstance["FastAPI Uvicorn Container (Port 8000)"]:::app
+        HealthEndpoint["/health Fast Probe (<2ms)"]:::app
+        LazyML["Lazy Model Cache (~65MB Container RAM)"]:::app
+        FastAPIInstance --> HealthEndpoint
+        FastAPIInstance --> LazyML
+    end
+
+    subgraph StorageTier["💾 Persistent Storage Tier"]
+        SQLiteDB[("SQLite Persistent Database")]:::storage
+        TripArchive[("Archived Trip Analysis JSON")]:::storage
+        FastAPIInstance --> SQLiteDB
+        FastAPIInstance --> TripArchive
+    end
+
+    subgraph ExternalAPIs["🌐 External Live Telemetry Services"]
+        OpenMeteo["Open-Meteo Hourly Weather API"]:::ext
+        TomTom["TomTom Traffic Flow & Incidents"]:::ext
+        Groq["Groq Cloud (LLaMA-3.3-70B)"]:::ext
+        FastAPIInstance --> OpenMeteo
+        FastAPIInstance --> TomTom
+        FastAPIInstance --> Groq
+    end
+
+    UserFleet <==>|HTTPS / REST| CloudflareEdge
+    CloudflareEdge <==> FastAPIInstance
+    UserFleet <==>|Silent OTA CodePush| ShorebirdEdge
+            </div>
+          </div>
+        </div>
+        
+  </div>
+</div>
+
+<!-- TAB 3: 📖 COMPLETE MASTER ENGINEERING REPORT -->
+<div class="tab-pane" id="pane-report">
+  <div class="report-layout">
+    <!-- Sticky Report Sidebar -->
+    <aside class="report-sidebar">
+      <div style="font-weight:700; color:var(--accent-cyan); text-transform:uppercase; margin-bottom:12px; font-size:0.8rem; letter-spacing:0.05em;">
+        Report Navigation
+      </div>
+      <input type="text" id="reportSearchInput" class="search-input" style="margin-bottom:14px; width:100%;" placeholder="🔍 Search chapters..." onkeyup="filterReportNav()">
+      <div id="reportNavLinks">
+        <a href="#prologue-the-tale-of-two-drivers-on-nh-48">🌟 Prologue: Tale of Two Drivers</a>
+        <a href="#chapter-1-the-operational-domain--terrestrial-failure-modes">Ch 1: Operational Domain</a>
+        <a href="#chapter-2-system-evolution--collaborative-design-decisions">Ch 2: System Evolution</a>
+        <a href="#chapter-3-complete-uml-architectural-specification">Ch 3: UML Architecture</a>
+        <a href="#chapter-4-corridor-topography-microclimates--highway-physics">Ch 4: Highway Physics & SSD</a>
+        <a href="#chapter-5-multi-source-data-fusion--safety-scoring-mathematics">Ch 5: Data Fusion Math</a>
+        <a href="#chapter-6-regional-machine-learning-architecture-routeradar-xgboost">Ch 6: Regional XGBoost (~65MB Cache)</a>
+        <a href="#chapter-7-temporal-departure-window-optimizer-30m-60m--30m--60m">Ch 7: Departure Optimizer</a>
+        <a href="#chapter-8-dynamic-live-safety-assessment-regional-outlook--safe-speed-engine">Ch 8: Dynamic Live Speeds</a>
+        <a href="#chapter-9-emergency-sos-mandatory-location-permission--rescue-infrastructure">Ch 9: Emergency SOS & Mandatory GPS</a>
+        <a href="#chapter-10-daily-travel-alerts--proactive-commute-engine">Ch 10: Daily Travel Alerts</a>
+        <a href="#chapter-11-grounded-conversational-ai-assistant-chatbot">Ch 11: Grounded AI Copilot</a>
+        <a href="#chapter-12-mobile-frontend-architecture--uiux-design-system-flutter">Ch 12: Mobile Frontend Architecture</a>
+        <a href="#chapter-13-relational-database-dictionary--complete-schema-specification">Ch 13: Database Schema Dictionary</a>
+        <a href="#chapter-14-comprehensive-comparative-benchmark">Ch 14: System Benchmark vs Google/Waze</a>
+        <a href="#chapter-15-rigorous-stress-testing-july-25-monsoon-cloudburst">Ch 15: Monsoon Stress Testing</a>
+        <a href="#chapter-16-the-complete-examiner-viva-voce--feature-by-feature-defense-guide">Ch 16: Feature Defense Profiles</a>
+        <a href="#chapter-17-comprehensive-mathematical-formulary--step-by-step-derivations">Ch 17: Math Formulary (22 Derivations)</a>
+        <a href="#chapter-18-system-verification-cicd-pipeline--shorebird-production-fleet-management">Ch 18: Shorebird OTA CI/CD (Patch 40)</a>
+        <a href="#chapter-19-production-war-stories--major-engineering-challenges-root-cause-investigations--architectural-solutions" style="color:#10B981; font-weight:700;">⚔️ Ch 19: Production War Stories</a>
+        <a href="#chapter-20-comprehensive-viva-voce--technical-defense-masterclass" style="color:#F59E0B; font-weight:700;">🔥 Ch 20: Viva Voce Masterclass</a>
+      </div>
+    </aside>
+
+    <!-- Main Report Body -->
+    <div class="report-main">
+      <article class="article-card" id="reportContent"></article>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: ⚔️ PRODUCTION WAR STORIES -->
+<div class="tab-pane" id="pane-warstories">
+  <div style="margin-bottom:28px;">
+    <h2 style="color:#FFFFFF; margin:0 0 6px 0;">⚔️ Production War Stories: 9 Real-World Engineering Battles</h2>
+    <p style="color:var(--text-muted); font-size:0.95rem; margin:0;">
+      Forensic case studies documenting the real-world distributed systems, cloud memory, mobile geofencing, and timezone crises encountered and solved in RouteRadar.
+    </p>
+  </div>
+
+  <div class="war-stories-grid">
+    <div class="war-card">
+      <span class="war-badge">Distributed Scoring Disparity</span>
+      <div class="war-title">19.1 Corridor Dashboard vs Trip Analysis Score Mismatch</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Dashboard telemetry showed 96/100, but Journey Analysis showed a differing score for the same trip, and user vehicle inputs had no impact.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Dashboard called calculate_corridor_telemetry while Journey Analysis called an older uncalibrated arithmetic heuristic that omitted vehicle/night risk penalties.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Unified both engines into an identical single-source-of-truth formula with parameterized user risk penalties and Modified Weakest-Link aggregation (0.85 * avg + 0.15 * min).</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge">Dynamic Telemetry Integrity</span>
+      <div class="war-title">19.2 Total Eradication of Static Fallback Heuristics</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Simulated network timeouts revealed hardcoded static scores (90.0 on R4, 94.0 on plains) masking sensor outages.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Early developmental mock numbers remained active in trip_analysis_service.py to prevent mobile UI crashes.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Purged all static constants. Engineered Dynamic Weight Re-Normalization that dynamically scales remaining active sensors and drops the Evidence Confidence Index rather than faking scores.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge">Timezone & Concurrency</span>
+      <div class="war-title">19.3 Community Updates Double-Submit & 6-Hour Timezone Bug</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Submitting 1 report caused 2 duplicate cards to appear, and badges displayed "Active for 6h 0m" instead of 1 hour.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">UI submit button lacked debounce locking. Backend stored naive UTC timestamps (datetime.utcnow()), while frontend subtracted against local IST (UTC+5:30), creating a +5.5h artificial offset.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Added frontend _isSubmitting mutex. Standardized database writes to explicit IST ISO-8601 strings and enforced strict 60-minute cutoff with an automated background database janitor.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge">Mobile Spatial UX</span>
+      <div class="war-title">19.4 Intelligent GPS Corridor Geofence Auto-Snapping</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Drivers had to scroll through a manual dropdown of 7 regions while driving at highway speeds, risking false hazard reports.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Location was modeled as an arbitrary user form field rather than an automated sensor input.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Integrated device GPS with the 8-Sector Corridor Matrix using Haversine distance. Automatically snaps to current sector with one-tap confirmation, slashing interaction time from 25s to 3s.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge">Client-Server Cache Sync</span>
+      <div class="war-title">19.5 'No Completed Analysis Available' Report Save Disconnect</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Tapping bookmark icon after trip analysis produced: "Failed to save report: Exception: No completed analysis available".</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Analysis payload was held only in ephemeral client state. POST /reports checked for trip.analysis_data in DB, found None, and rejected with HTTP 400.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Client now passes cached analysis directly in request body. If omitted, backend self-heals by running analyze_trip() on the fly and saves the report atomically.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge" style="background:rgba(168,85,247,0.2); color:#C084FC;">Cloud Memory & OOM</span>
+      <div class="war-title">19.6 Render 512 MB RAM OOM & Lazy Model Cache (~65MB)</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Render deploy failed with Linux container exit code 137 (SIGKILL).</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Render free-tier has a 512 MB RAM limit. Eager multi-threaded warmup of all 7 XGBoost models spiked startup RAM to 540 MB. Furthermore, requirements.txt was encoded in UTF-16LE with a BOM.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Replaced eager warmup with Lazy-Loaded Dynamic Model Caching (ModelLoader), slashing startup RAM to ~65 MB (88% reduction). Converted requirements.txt to UTF-8 and added root Procfile.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge" style="background:rgba(56,189,248,0.2); color:#38BDF8;">Human Factors & UX</span>
+      <div class="war-title">19.7 Everyday Plain English UX Overhaul</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Commuters were baffled by physics jargon: "ASL", "friction coefficient μ", "3rd gear engine braking on 4.6% grade".</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">System was engineered from an academic civil engineering textbook perspective without a plain-language translation layer.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Rewrote all user-facing prompts, route overviews, and LLM guidelines into simple, friendly everyday English while preserving 100% of underlying physics formulas.</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge" style="background:rgba(16,185,129,0.2); color:#34D399;">Visual Accessibility</span>
+      <div class="war-title">19.8 High-Contrast Ceramic/Azure Logo & Cyan Aura</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Original dark blue logo camouflaged invisibly against the dark navy splash screen.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Luminance contrast ratio was &lt; 1.8:1, failing WCAG accessibility guidelines.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Redesigned emblem with Ceramic White centerline, Electric Azure concentric rings, and radial cyan luminous aura, boosting contrast to 11.4:1 (exceeding WCAG AAA).</div>
+    </div>
+
+    <div class="war-card">
+      <span class="war-badge" style="background:rgba(245,158,11,0.2); color:#FBBF24;">DevOps & Fleet CI/CD</span>
+      <div class="war-title">19.9 Windows Shorebird OTA Fleet CI/CD (Patch 40 Active)</div>
+      <div class="war-section-label">🚨 The Crisis</div>
+      <div class="war-text">Waiting 24-48 hours for Google Play Store review cycles delayed critical field testing on expressway vehicles.</div>
+      <div class="war-section-label">🔬 Forensic Diagnosis</div>
+      <div class="war-text">Traditional native Android store releases cannot provide rapid iteration for life-safety highway telemetry.</div>
+      <div class="war-section-label">🛠️ Resilient Solution</div>
+      <div class="war-text">Integrated Shorebird CodePush OTA directly into the release pipeline. Deployed 40 consecutive patches to the stable channel, self-updating client devices silently on background resume.</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: 🎓 VIVA VOCE & DEFENSE MASTERCLASS -->
+<div class="tab-pane" id="pane-viva">
+  <div style="margin-bottom:28px;">
+    <h2 style="color:#F59E0B; margin:0 0 6px 0;">🎓 Viva Voce & Technical Defense Masterclass</h2>
+    <p style="color:var(--text-muted); font-size:0.95rem; margin:0;">
+      Interactive examiner trap question simulator with testing objectives, mathematical proofs, and oral defense scripts.
+    </p>
+  </div>
+
+  <div id="vivaContainer"></div>
+</div>
+
+<!-- TAB 6: 📐 MATHEMATICAL FORMULARY -->
+<div class="tab-pane" id="pane-math">
+  <div style="margin-bottom:28px;">
+    <h2 style="color:#38BDF8; margin:0 0 6px 0;">📐 Comprehensive Highway Physics & Mathematical Formulary</h2>
+    <p style="color:var(--text-muted); font-size:0.95rem; margin:0;">
+      Step-by-step physical derivations and mathematical models powering RouteRadar's multi-source telemetry engine.
+    </p>
+  </div>
+
+  <div class="war-stories-grid">
+    <div class="war-card">
+      <div class="war-title">Formula 01: AASHTO Stopping Sight Distance (SSD)</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$SSD = 0.278 \cdot v \cdot t_{pr} + \frac{v^2}{254 \cdot (\mu \pm G)}$$
+      </div>
+      <div class="war-text">
+        Quantifies total distance required for a vehicle to brake to a complete stop on roadway grade G with tire-pavement friction coefficient μ. Proves that braking distance increases by +135% down the 7% wet Bhor Ghat descent.
+      </div>
+    </div>
+
+    <div class="war-card">
+      <div class="war-title">Formula 02: Thermal Kinetic Brake Dissipation (Ek)</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$E_k = \frac{1}{2} m (v_1^2 - v_2^2) + m \cdot g \cdot \Delta h$$
+      </div>
+      <div class="war-text">
+        Calculates thermal friction energy absorbed by vehicle brake drums/rotors. Descending Khandala Ghat in a 35-tonne commercial truck dissipates >230 Megajoules, exceeding thermal pad limits and causing total brake fade.
+      </div>
+    </div>
+
+    <div class="war-card">
+      <div class="war-title">Formula 03: NASA Horne's Hydroplaning Lift Velocity (vp)</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$v_p = 6.36 \sqrt{P_{\text{tire}}} \quad (P \text{ in kPa})$$
+      </div>
+      <div class="war-text">
+        Determines the critical speed at which dynamic hydrodynamic water lift breaks physical tire-pavement contact. For passenger cars at 32 psi, $v_p \approx 80.5\text{ km/h}$, mandating speed throttling during heavy rain.
+      </div>
+    </div>
+
+    <div class="war-card">
+      <div class="war-title">Formula 04: Dynamic Weight Re-Normalization</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$\tilde{w}_k = \frac{w_k}{\sum_{j \in \mathcal{K}_{\text{active}}} w_j} \quad \text{where } \sum \tilde{w}_k = 1.0$$
+      </div>
+      <div class="war-text">
+        Guarantees system resilience during sensor outages by dynamically scaling surviving sensor weights without corrupting safety scoring or crashing.
+      </div>
+    </div>
+
+    <div class="war-card">
+      <div class="war-title">Formula 05: Modified Weakest-Link Bottleneck Aggregation</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$S_{\text{corridor}} = 0.85 \cdot \left(\frac{1}{L} \sum_{i=1}^n L_i S_i\right) + 0.15 \cdot \min_i S_i$$
+      </div>
+      <div class="war-text">
+        Prevents a single catastrophic roadblock on Bhor Ghat (R4) from being masked by 7 clear expressway sectors, reflecting real-world commuter survival risk.
+      </div>
+    </div>
+
+    <div class="war-card">
+      <div class="war-title">Formula 06: Spatial-Temporal 2-of-3 Consensus</div>
+      <div class="formula-trace-box" style="margin:10px 0;">
+        $$\mathcal{C}_{R_i}(t) = 1 \iff \sum_{r \in \mathcal{R}_{R_i}} \mathbb{I}\left(|\text{dist}(r, R_i)| \le 15\text{km} \land |t - t_r| \le 30\text{m}\right) \ge 2$$
+      </div>
+      <div class="war-text">
+        Requires at least two corroborated crowdsourced incident reports within 15 km and 30 minutes before escalating a sector to High Risk status, preventing malicious spoofing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox Modal for Diagram Zoom -->
+<div class="lightbox-modal" id="lightboxModal">
+  <div class="lightbox-content">
+    <button class="btn-close-modal" onclick="closeModal()">✕</button>
+    <div id="modalDiagramContainer" style="flex:1; display:flex; align-items:center; justify-content:center; overflow:auto;"></div>
+  </div>
+</div>
+
 <button class="fab-top" id="fabTop" onclick="window.scrollTo({top:0, behavior:'smooth'})">↑</button>
 
-<!-- JSON Markdown Payload -->
 <script id="rawMarkdown" type="text/plain"># RouteRadar — Mumbai-Pune Travel Intelligence Platform: Comprehensive Master Engineering Report & System Architecture Manual
 **Document Version:** 4.0.0 (The Definitive 10/10 Master Production Edition)  
 **Corridor Focus:** Yashwantrao Chavan Mumbai-Pune Expressway (NH-48) & NH-48 Parallel Old Highway  
@@ -1291,34 +2220,46 @@ The system supports three primary actors: **Live Traveler**, **Advance Trip Plan
 
 ```mermaid
 flowchart LR
-    Traveler((Live Traveler))
-    Planner((Advance Planner))
-    Dispatcher((Emergency Dispatcher))
-    SystemDaemon((Background Alert Scheduler))
+    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
+    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
 
-    subgraph RouteRadar Platform
-        UC1[Real-Time Tactical Journey Evaluation]
-        UC2[Proactive Departure Window Optimization]
-        UC3[Submit Crowdsourced Road Hazard]
-        UC4[Trigger Mandatory SOS Dispatch]
-        UC5[Configure Daily Travel Alerts]
-        UC6[Grounded Conversational AI Assistance]
-        UC7[Dispatch Automated Pre-Trip Notification]
+    Traveler(("👤 Live Commuter")):::actor
+    Planner(("📅 Advance Planner")):::actor
+    Reporter(("📢 Hazard Reporter")):::actor
+    Victim(("🆘 Distress Victim")):::actor
+    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
+    Daemon(("⚙️ Background Scheduler")):::actor
+
+    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
+        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
+        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
+        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
+        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
+        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
+        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
+        UC7(["UC7: Autonomous Push Notification"]):::schedUC
+        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
+        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
+        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
     end
 
     Traveler --> UC1
-    Traveler --> UC3
-    Traveler --> UC4
     Traveler --> UC6
-
+    Reporter --> UC3
     Planner --> UC2
     Planner --> UC5
-    Planner --> UC6
+    Victim --> UC4
+
+    UC1 -.->|"<<include>>"| UC8
+    UC3 -.->|"<<include>>"| UC9
+    UC4 -.->|"<<include>>"| UC10
+    UC5 -.->|"<<extend>>"| UC7
 
     Dispatcher <-- UC4
-
-    SystemDaemon --> UC7
-    UC5 -.-> UC7
+    Daemon --> UC7
 ```
 
 ## 3.4 Comprehensive UML Sequence Diagrams
@@ -1516,37 +2457,53 @@ sequenceDiagram
 ## 3.5 UML Activity Diagram: Multi-Source Data Fusion & Safety Score Engine
 ```mermaid
 flowchart TD
-    Start([Initiate Segment Evaluation]) --> CheckInputs[Check Available Inputs]
-    CheckInputs --> CheckWeather{Weather Data Present?}
-    CheckInputs --> CheckTraffic{Traffic Data Present?}
-    CheckInputs --> CheckTraveler{Traveler Reports Present?}
-    CheckInputs --> CheckML{Regional ML Available?}
+    classDef terminal fill:#064E3B,stroke:#10B981,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef action fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+    classDef decision fill:#713F12,stroke:#EAB308,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef hazard fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
 
-    CheckWeather -- Yes --> W1[Assign Baseline Weight w_weather]
-    CheckWeather -- No --> W0[Set w_weather = 0.0]
-    CheckTraffic -- Yes --> T1[Assign Baseline Weight w_traffic]
-    CheckTraffic -- No --> T0[Set w_traffic = 0.0]
-    CheckTraveler -- Yes --> TR1[Assign Baseline Weight w_traveler]
-    CheckTraveler -- No --> TR0[Set w_traveler = 0.0]
-    CheckML -- Yes --> M1[Assign Baseline Weight w_ml]
-    CheckML -- No --> M0[Set w_ml = 0.0]
+    Start(["● INITIATE SEGMENT EVALUATION"]):::terminal --> Ingest["📥 Ingest Sector Telemetry (Weather, Traffic, ML, Reports)"]:::action
 
-    W1 & W0 & T1 & T0 & TR1 & TR0 & M1 & M0 --> SumWeights[Sum Active Weights W_active = sum w_k]
-    SumWeights --> CheckSum{W_active > 0?}
-    CheckSum -- No --> ScoreUnavailable[Return Status: score_unavailable]
-    CheckSum -- Yes --> Normalize[Re-normalize Weights: w'_k = w_k / W_active]
+    subgraph SensorChecks["🔍 Sensor Validation & Availability Gate"]
+        Ingest --> C1{"Open-Meteo<br/>Available?"}:::decision
+        Ingest --> C2{"TomTom<br/>Available?"}:::decision
+        Ingest --> C3{"Regional ML<br/>Available?"}:::decision
+        Ingest --> C4{"Community<br/>Reports Active?"}:::decision
 
-    Normalize --> ComputeWeightedSum[Compute Score S = sum w'_k * S_k]
-    ComputeWeightedSum --> DeductHazards[Apply Physics Deductions: Aquaplaning, Fog, Night]
-    DeductHazards --> ClampScore[Clamp Safety Score to Range 0 - 100]
-    ClampScore --> ComputeConfidence[Compute Evidence Confidence C = W_active * 100%]
-    ComputeConfidence --> ClassifyStatus{Score & Confidence Thresholds}
+        C1 -- Yes --> W1["Set w_weather = 0.45"]:::action
+        C1 -- No --> W0["Set w_weather = 0.00"]:::hazard
+        C2 -- Yes --> T1["Set w_traffic = 0.30"]:::action
+        C2 -- No --> T0["Set w_traffic = 0.00"]:::hazard
+        C3 -- Yes --> M1["Set w_ml = 0.10"]:::action
+        C3 -- No --> M0["Set w_ml = 0.00"]:::hazard
+        C4 -- Yes --> TR1["Set w_crowd = 0.10"]:::action
+        C4 -- No --> TR0["Set w_crowd = 0.00"]:::hazard
+    end
 
-    ClassifyStatus -- "Score >= 75" --> Safe[Status: Safe / Normal Flow]
-    ClassifyStatus -- "60 <= Score < 75" --> Caution[Status: Caution / Advisory Reduced]
-    ClassifyStatus -- "Score < 60" --> HighRisk[Status: High Risk / Critical Caution]
+    W1 & W0 & T1 & T0 & M1 & M0 & TR1 & TR0 --> SumW["Sum Active Weights: W_active = Σ w_k"]:::action
 
-    Safe & Caution & HighRisk --> End([Return Standardized SafetyScoreResult])
+    subgraph NormalizationEngine["⚖️ Dynamic Weight Re-Normalization"]
+        SumW --> ZeroCheck{"W_active > 0?"}:::decision
+        ZeroCheck -- No --> Fail["Return Status: score_unavailable"]:::hazard
+        ZeroCheck -- Yes --> Renorm["Re-normalize Weights: w'_k = w_k / W_active"]:::action
+        Renorm --> WeightedSum["Compute Base Score: S_base = Σ w'_k * S_k"]:::action
+    end
+
+    subgraph PhysicsRiskEngine["🏎️ Physics & User Parameter Deductions"]
+        WeightedSum --> PhysDeduct["Compute Physics Penalties: P_user = P_veh + P_night + P_speed"]:::action
+        PhysDeduct --> ClampScore["Clamp Composite Score: S_sector = clamp(S_base - P_user, 0, 100)"]:::action
+        ClampScore --> CalcConf["Compute Confidence Index: C = W_active * 100%"]:::action
+    end
+
+    subgraph StatusClassification["🚦 Status Classification & Packaging"]
+        CalcConf --> ScoreGate{"Score Thresholds"}:::decision
+        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
+        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
+        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
+        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+    end
+
+    StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal
 ```
 
 ## 3.6 UML State Machine Diagrams
@@ -3750,7 +4707,44 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 </script>
 
 <script>
-  // 1. Configure marked.js to wrap Mermaid code blocks cleanly
+  const renderedPanes = new Set();
+  function renderMermaidInActivePane() {
+    if (!window.mermaid) return;
+    const activePane = document.querySelector('.tab-pane.active');
+    if (!activePane) return;
+    if (renderedPanes.has(activePane.id)) return;
+    
+    const unrendered = activePane.querySelectorAll('.mermaid:not([data-processed="true"])');
+    if (unrendered.length > 0) {
+      window.mermaid.run({ nodes: Array.from(unrendered) });
+      renderedPanes.add(activePane.id);
+    }
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    const activeBtn = document.getElementById('tab-btn-' + tabId);
+    const activePane = document.getElementById('pane-' + tabId);
+    if (activeBtn) activeBtn.classList.add('active');
+    if (activePane) activePane.classList.add('active');
+
+    window.location.hash = tabId;
+
+    if (tabId === 'simulator') {
+      setTimeout(drawElevationCanvas, 50);
+    }
+    setTimeout(renderMermaidInActivePane, 60);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && ['simulator', 'uml', 'report', 'warstories', 'viva', 'math'].includes(hash)) {
+      switchTab(hash);
+    }
+  });
+
   const renderer = new marked.Renderer();
   const defaultCodeRenderer = renderer.code.bind(renderer);
   renderer.code = function(code, language) {
@@ -3761,14 +4755,12 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
   };
   marked.setOptions({ renderer: renderer, gfm: true, breaks: false });
 
-  // 2. Parse Markdown into DOM
   const rawMarkdownText = document.getElementById('rawMarkdown').textContent;
-  document.getElementById('content').innerHTML = marked.parse(rawMarkdownText);
+  document.getElementById('reportContent').innerHTML = marked.parse(rawMarkdownText);
 
-  // 3. Render KaTeX Math
   window.addEventListener('load', () => {
     if (window.renderMathInElement) {
-      renderMathInElement(document.getElementById('content'), {
+      renderMathInElement(document.body, {
         delimiters: [
           {left: '$$', right: '$$', display: true},
           {left: '$', right: '$', display: false}
@@ -3778,45 +4770,67 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     }
   });
 
-  // 4. Render Mermaid Diagrams when ready
   window.addEventListener('mermaid-ready', () => {
-    if (window.mermaid) {
-      window.mermaid.run({ querySelector: '.mermaid' });
-    }
+    renderMermaidInActivePane();
   });
 
-  // 5. Scroll Reading Progress Bar & Active Link Highlighting
+  function filterUML(cat, elem) {
+    document.querySelectorAll('.uml-filter-bar .filter-pill').forEach(p => p.classList.remove('active'));
+    elem.classList.add('active');
+
+    const cards = document.querySelectorAll('.uml-card');
+    cards.forEach(card => {
+      if (cat === 'all' || card.getAttribute('data-cat') === cat) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function zoomDiagram(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const svgElem = card.querySelector('.mermaid svg');
+    if (!svgElem) return;
+
+    const modal = document.getElementById('lightboxModal');
+    const container = document.getElementById('modalDiagramContainer');
+    container.innerHTML = svgElem.outerHTML;
+    const innerSvg = container.querySelector('svg');
+    if (innerSvg) {
+      innerSvg.style.maxWidth = '100%';
+      innerSvg.style.maxHeight = '80vh';
+      innerSvg.style.height = 'auto';
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('lightboxModal').style.display = 'none';
+  }
+
+  function filterReportNav() {
+    const query = document.getElementById('reportSearchInput').value.toLowerCase();
+    document.querySelectorAll('#reportNavLinks a').forEach(a => {
+      if (a.textContent.toLowerCase().includes(query)) a.style.display = 'block';
+      else a.style.display = 'none';
+    });
+  }
+
+  function toggleContrast() {
+    document.body.classList.toggle('high-contrast');
+  }
+
   window.addEventListener('scroll', () => {
     const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
     const progress = (window.scrollY / totalHeight) * 100;
     document.getElementById('read-progress').style.width = progress + '%';
 
     const fab = document.getElementById('fabTop');
-    if (window.scrollY > 400) { fab.style.display = 'flex'; } else { fab.style.display = 'none'; }
+    if (window.scrollY > 400) fab.style.display = 'flex';
+    else fab.style.display = 'none';
   });
-
-  // 6. Contrast Toggle
-  function toggleContrast() {
-    document.body.classList.toggle('high-contrast');
-  }
-
-  // 7. Sidebar In-Page Search Filter
-  function filterSidebar() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    const links = document.querySelectorAll('.sidebar a');
-    links.forEach(link => {
-      const text = link.textContent.toLowerCase();
-      if (text.includes(query)) {
-        link.style.display = 'block';
-      } else {
-        link.style.display = 'none';
-      }
-    });
-  }
-
-  // ==============================================================
-  // 8. INTERACTIVE MISSION CONTROL & DYNAMIC PHYSICS SIMULATOR
-  // ==============================================================
 
   const SECTORS = {
     R1: { name: "Mumbai to Panvel", elev: 14, grade: 0.002, speedLimit: 80, hairpins: 0, km: 18 },
@@ -3843,8 +4857,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
   function selectSector(key) {
     currentSectorKey = key;
-    const buttons = document.querySelectorAll('#sectorPills .sector-btn');
-    buttons.forEach(btn => {
+    document.querySelectorAll('#sectorPills .sector-btn').forEach(btn => {
       if (btn.textContent.includes(key)) btn.classList.add('active');
       else btn.classList.remove('active');
     });
@@ -3854,8 +4867,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
   function setParam(param, value, elem) {
     simState[param] = value;
-    const parent = elem.parentElement;
-    parent.querySelectorAll('.btn-select-pill').forEach(p => p.classList.remove('active'));
+    elem.parentElement.querySelectorAll('.btn-select-pill').forEach(p => p.classList.remove('active'));
     elem.classList.add('active');
     updateSim();
   }
@@ -3887,7 +4899,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
     const sec = SECTORS[currentSectorKey];
 
-    // Determine pavement friction mu
     let mu = 0.80;
     if (simState.rain === 'light') mu = 0.55;
     else if (simState.rain === 'mod') mu = 0.40;
@@ -3895,10 +4906,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     else if (simState.rain === 'cloudburst') mu = 0.15;
     if (simState.isWaterlogged) mu = Math.min(mu, 0.20);
 
-    // Grade G
     const G = sec.grade;
-
-    // AASHTO Stopping Sight Distance
     const t_pr = 2.5;
     const d_reaction = 0.278 * speed * t_pr;
     let denom = 254 * (mu + G);
@@ -3906,23 +4914,19 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     const d_braking = (speed * speed) / denom;
     const ssd = d_reaction + d_braking;
 
-    // Horne Critical Hydroplaning Velocity: vp = 6.36 * sqrt(P_kpa)
     const p_kpa = psi * 6.89476;
     const v_p = 6.36 * Math.sqrt(p_kpa);
 
-    // Vehicle mass
     let mass = 1200;
     if (simState.vehicle === 'suv') mass = 2000;
     else if (simState.vehicle === 'truck') mass = 35000;
     else if (simState.vehicle === 'bike') mass = 180;
 
-    // Kinetic Thermal Dissipated Energy (MJ)
     const delta_h = Math.abs(sec.elev - 120);
     const e_kinetic = 0.5 * mass * Math.pow(speed / 3.6, 2);
     const e_pot = mass * 9.81 * (currentSectorKey === 'R4' ? 450 : 20);
     const total_mj = (e_kinetic + e_pot) / 1000000;
 
-    // Dynamic Safety Score (0-100)
     let score = 100;
     if (simState.rain === 'light') score -= 8;
     else if (simState.rain === 'mod') score -= 20;
@@ -3933,7 +4937,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     else if (simState.vis === 'fog') score -= 18;
     else if (simState.vis === 'zero') score -= 32;
 
-    if (currentSectorKey === 'R4') score -= 15; // Steep ghat penalty
+    if (currentSectorKey === 'R4') score -= 15;
     if (simState.isNight) score -= 8;
     if (simState.isWaterlogged) score -= 12;
     if (simState.hasHazard) score -= 25;
@@ -3942,14 +4946,12 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
     score = Math.max(12, Math.min(98, Math.round(score)));
 
-    // Dynamic Recommended Speed
     let safeSpeed = sec.speedLimit;
     if (mu < 0.3) safeSpeed -= 15;
     if (simState.vis === 'fog' || simState.vis === 'zero') safeSpeed -= 10;
     if (currentSectorKey === 'R4') safeSpeed = Math.min(safeSpeed, 40);
     safeSpeed = Math.max(30, safeSpeed);
 
-    // Render outputs
     const scoreElem = document.getElementById('valSafetyScore');
     scoreElem.textContent = score + '/100';
     let statusColor = 'var(--accent-emerald)';
@@ -3999,7 +5001,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
       d_reaction.toFixed(1) + 'm + ' + d_braking.toFixed(1) + 'm = ' + ssd.toFixed(1) + ' meters.';
   }
 
-  // 9. Draw Elevation Profile Canvas
   function drawElevationCanvas() {
     const canvas = document.getElementById('elevationCanvas');
     if (!canvas) return;
@@ -4012,10 +5013,8 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
     const w = rect.width;
     const h = rect.height;
-
     ctx.clearRect(0, 0, w, h);
 
-    // Profile points (x_pct, elevation_m)
     const points = [
       { x: 0.00, y: 14, name: 'Kalamboli' },
       { x: 0.15, y: 35, name: 'Panvel' },
@@ -4028,11 +5027,9 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
       { x: 1.00, y: 560, name: 'Pune' }
     ];
 
-    // Map y (0 - 650m) to canvas height
     const mapY = (elev) => h - 25 - ((elev / 650) * (h - 40));
     const mapX = (x_pct) => 20 + x_pct * (w - 40);
 
-    // Draw grid lines
     ctx.strokeStyle = '#162238';
     ctx.lineWidth = 1;
     [100, 300, 500, 625].forEach(el => {
@@ -4046,7 +5043,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
       ctx.fillText(el + 'm', 5, y + 3);
     });
 
-    // Fill gradient under curve
     ctx.beginPath();
     ctx.moveTo(mapX(points[0].x), mapY(points[0].y));
     for (let i = 1; i < points.length; i++) {
@@ -4066,7 +5062,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Draw main spline line
     ctx.beginPath();
     ctx.moveTo(mapX(points[0].x), mapY(points[0].y));
     for (let i = 1; i < points.length; i++) {
@@ -4079,13 +5074,11 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Active Sector Vehicle Marker
     const sectorLocs = { R1: 0.08, R2: 0.24, R3: 0.38, R4: 0.52, R5: 0.58, R6: 0.70, R7: 0.82, R8: 0.94 };
     const currLoc = sectorLocs[currentSectorKey] || 0.52;
     const markerX = mapX(currLoc);
     const markerY = mapY(SECTORS[currentSectorKey].elev);
 
-    // Glowing circle
     ctx.beginPath();
     ctx.arc(markerX, markerY, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#F59E0B';
@@ -4097,13 +5090,11 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Vehicle label
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 11px Inter, sans-serif';
     ctx.fillText('🚘 ' + currentSectorKey + ' (' + SECTORS[currentSectorKey].elev + 'm)', markerX - 35, markerY - 14);
   }
 
-  // 10. Departure Scanner Selector
   function selectDeparture(time, score, reason, elem) {
     document.querySelectorAll('.scanner-timeline .scan-pill').forEach(p => p.classList.remove('active'));
     elem.classList.add('active');
@@ -4121,7 +5112,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     }
   }
 
-  // 11. Populate Viva Voce Interactive Hub
   const VIVA_QUESTIONS = [
     {
       q: "Q1: Why did you build RouteRadar when Google Maps and Apple Maps already exist?",
@@ -4187,6 +5177,7 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
   function buildVivaHub() {
     const container = document.getElementById('vivaContainer');
+    if (!container) return;
     container.innerHTML = '';
     VIVA_QUESTIONS.forEach((item, idx) => {
       const card = document.createElement('div');
@@ -4215,7 +5206,6 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     body.classList.toggle('open');
   }
 
-  // Initialize Simulator & Viva on load
   window.addEventListener('DOMContentLoaded', () => {
     buildVivaHub();
     selectSector('R4');

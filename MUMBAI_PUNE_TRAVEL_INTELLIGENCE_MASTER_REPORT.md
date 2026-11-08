@@ -414,34 +414,46 @@ The system supports three primary actors: **Live Traveler**, **Advance Trip Plan
 
 ```mermaid
 flowchart LR
-    Traveler((Live Traveler))
-    Planner((Advance Planner))
-    Dispatcher((Emergency Dispatcher))
-    SystemDaemon((Background Alert Scheduler))
+    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
+    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
 
-    subgraph RouteRadar Platform
-        UC1[Real-Time Tactical Journey Evaluation]
-        UC2[Proactive Departure Window Optimization]
-        UC3[Submit Crowdsourced Road Hazard]
-        UC4[Trigger Mandatory SOS Dispatch]
-        UC5[Configure Daily Travel Alerts]
-        UC6[Grounded Conversational AI Assistance]
-        UC7[Dispatch Automated Pre-Trip Notification]
+    Traveler(("👤 Live Commuter")):::actor
+    Planner(("📅 Advance Planner")):::actor
+    Reporter(("📢 Hazard Reporter")):::actor
+    Victim(("🆘 Distress Victim")):::actor
+    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
+    Daemon(("⚙️ Background Scheduler")):::actor
+
+    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
+        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
+        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
+        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
+        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
+        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
+        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
+        UC7(["UC7: Autonomous Push Notification"]):::schedUC
+        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
+        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
+        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
     end
 
     Traveler --> UC1
-    Traveler --> UC3
-    Traveler --> UC4
     Traveler --> UC6
-
+    Reporter --> UC3
     Planner --> UC2
     Planner --> UC5
-    Planner --> UC6
+    Victim --> UC4
+
+    UC1 -.->|"<<include>>"| UC8
+    UC3 -.->|"<<include>>"| UC9
+    UC4 -.->|"<<include>>"| UC10
+    UC5 -.->|"<<extend>>"| UC7
 
     Dispatcher <-- UC4
-
-    SystemDaemon --> UC7
-    UC5 -.-> UC7
+    Daemon --> UC7
 ```
 
 ## 3.4 Comprehensive UML Sequence Diagrams
@@ -639,37 +651,53 @@ sequenceDiagram
 ## 3.5 UML Activity Diagram: Multi-Source Data Fusion & Safety Score Engine
 ```mermaid
 flowchart TD
-    Start([Initiate Segment Evaluation]) --> CheckInputs[Check Available Inputs]
-    CheckInputs --> CheckWeather{Weather Data Present?}
-    CheckInputs --> CheckTraffic{Traffic Data Present?}
-    CheckInputs --> CheckTraveler{Traveler Reports Present?}
-    CheckInputs --> CheckML{Regional ML Available?}
+    classDef terminal fill:#064E3B,stroke:#10B981,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef action fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+    classDef decision fill:#713F12,stroke:#EAB308,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef hazard fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
 
-    CheckWeather -- Yes --> W1[Assign Baseline Weight w_weather]
-    CheckWeather -- No --> W0[Set w_weather = 0.0]
-    CheckTraffic -- Yes --> T1[Assign Baseline Weight w_traffic]
-    CheckTraffic -- No --> T0[Set w_traffic = 0.0]
-    CheckTraveler -- Yes --> TR1[Assign Baseline Weight w_traveler]
-    CheckTraveler -- No --> TR0[Set w_traveler = 0.0]
-    CheckML -- Yes --> M1[Assign Baseline Weight w_ml]
-    CheckML -- No --> M0[Set w_ml = 0.0]
+    Start(["● INITIATE SEGMENT EVALUATION"]):::terminal --> Ingest["📥 Ingest Sector Telemetry (Weather, Traffic, ML, Reports)"]:::action
 
-    W1 & W0 & T1 & T0 & TR1 & TR0 & M1 & M0 --> SumWeights[Sum Active Weights W_active = sum w_k]
-    SumWeights --> CheckSum{W_active > 0?}
-    CheckSum -- No --> ScoreUnavailable[Return Status: score_unavailable]
-    CheckSum -- Yes --> Normalize[Re-normalize Weights: w'_k = w_k / W_active]
+    subgraph SensorChecks["🔍 Sensor Validation & Availability Gate"]
+        Ingest --> C1{"Open-Meteo<br/>Available?"}:::decision
+        Ingest --> C2{"TomTom<br/>Available?"}:::decision
+        Ingest --> C3{"Regional ML<br/>Available?"}:::decision
+        Ingest --> C4{"Community<br/>Reports Active?"}:::decision
 
-    Normalize --> ComputeWeightedSum[Compute Score S = sum w'_k * S_k]
-    ComputeWeightedSum --> DeductHazards[Apply Physics Deductions: Aquaplaning, Fog, Night]
-    DeductHazards --> ClampScore[Clamp Safety Score to Range 0 - 100]
-    ClampScore --> ComputeConfidence[Compute Evidence Confidence C = W_active * 100%]
-    ComputeConfidence --> ClassifyStatus{Score & Confidence Thresholds}
+        C1 -- Yes --> W1["Set w_weather = 0.45"]:::action
+        C1 -- No --> W0["Set w_weather = 0.00"]:::hazard
+        C2 -- Yes --> T1["Set w_traffic = 0.30"]:::action
+        C2 -- No --> T0["Set w_traffic = 0.00"]:::hazard
+        C3 -- Yes --> M1["Set w_ml = 0.10"]:::action
+        C3 -- No --> M0["Set w_ml = 0.00"]:::hazard
+        C4 -- Yes --> TR1["Set w_crowd = 0.10"]:::action
+        C4 -- No --> TR0["Set w_crowd = 0.00"]:::hazard
+    end
 
-    ClassifyStatus -- "Score >= 75" --> Safe[Status: Safe / Normal Flow]
-    ClassifyStatus -- "60 <= Score < 75" --> Caution[Status: Caution / Advisory Reduced]
-    ClassifyStatus -- "Score < 60" --> HighRisk[Status: High Risk / Critical Caution]
+    W1 & W0 & T1 & T0 & M1 & M0 & TR1 & TR0 --> SumW["Sum Active Weights: W_active = Σ w_k"]:::action
 
-    Safe & Caution & HighRisk --> End([Return Standardized SafetyScoreResult])
+    subgraph NormalizationEngine["⚖️ Dynamic Weight Re-Normalization"]
+        SumW --> ZeroCheck{"W_active > 0?"}:::decision
+        ZeroCheck -- No --> Fail["Return Status: score_unavailable"]:::hazard
+        ZeroCheck -- Yes --> Renorm["Re-normalize Weights: w'_k = w_k / W_active"]:::action
+        Renorm --> WeightedSum["Compute Base Score: S_base = Σ w'_k * S_k"]:::action
+    end
+
+    subgraph PhysicsRiskEngine["🏎️ Physics & User Parameter Deductions"]
+        WeightedSum --> PhysDeduct["Compute Physics Penalties: P_user = P_veh + P_night + P_speed"]:::action
+        PhysDeduct --> ClampScore["Clamp Composite Score: S_sector = clamp(S_base - P_user, 0, 100)"]:::action
+        ClampScore --> CalcConf["Compute Confidence Index: C = W_active * 100%"]:::action
+    end
+
+    subgraph StatusClassification["🚦 Status Classification & Packaging"]
+        CalcConf --> ScoreGate{"Score Thresholds"}:::decision
+        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
+        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
+        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
+        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+    end
+
+    StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal
 ```
 
 ## 3.6 UML State Machine Diagrams
