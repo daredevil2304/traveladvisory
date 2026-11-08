@@ -530,9 +530,9 @@ class TripAnalysisService:
         # Distance-weighted corridor average
         corridor_avg = weighted_sum / total_km
 
-        # Balanced blend: 80% corridor average + 20% local bottleneck reflection
+        # Balanced blend: 85% corridor average + 15% local bottleneck reflection
         # This properly reflects regional hazards without setting the whole trip score equal to the lowest segment
-        blended = (0.80 * corridor_avg) + (0.20 * min_score)
+        blended = (0.85 * corridor_avg) + (0.15 * min_score)
 
         return round(max(0.0, min(100.0, blended)), 1)
 

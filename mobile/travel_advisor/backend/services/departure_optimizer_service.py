@@ -156,7 +156,7 @@ class DepartureOptimizerService:
             return 85.0, "Corridor forecast clear"
 
         corridor_avg = sum(segment_scores) / len(segment_scores)
-        final_score = round((0.80 * corridor_avg) + (0.20 * min_score), 1)
+        final_score = round((0.85 * corridor_avg) + (0.15 * min_score), 1)
 
         # Build genuine condition summary from actual intelligence
         if weakest_reasons:

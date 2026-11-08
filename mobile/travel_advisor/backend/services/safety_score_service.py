@@ -439,15 +439,15 @@ class SafetyScoreService:
             # Guard against zero if active report exists
             effective_volume = max(0.05, effective_volume)
 
-            # Volume scaling factor (diminishing returns, smoothly scales 1.0 -> 2.5)
-            vol_factor = min(2.5, effective_volume ** 0.55)
+            # Volume scaling factor: Diminishing returns scaling continuously with effective time-decayed reports
+            vol_factor = effective_volume ** 0.60
 
-            # Progressive continuous score drop (never hardcoded flat 25.0)
-            base_drop = 16.0 * severity
-            total_drop = min(45.0, base_drop * vol_factor)
+            # Progressive continuous score drop scaling purely with report severity and corroboration
+            base_drop = 18.0 * severity
+            total_drop = base_drop * vol_factor
 
-            # Apply deduction from the multi-source weighted baseline
-            safety_score = round(max(45.0, safety_score - total_drop), 1)
+            # Apply deduction from the multi-source weighted baseline down to a physical floor
+            safety_score = round(max(15.0, safety_score - total_drop), 1)
 
         # Ground-truth traveler safe verification:
         # If a traveler on the road confirms that conditions are safe (roads smooth/dry,

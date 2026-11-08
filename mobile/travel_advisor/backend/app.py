@@ -13,28 +13,36 @@ from routes.report_routes import router as report_router
 
 
 # ================================================================
-# DATABASE INITIALIZATION
+# DATABASE INITIALIZATION HELPER
 # ================================================================
 
-try:
-    Base.metadata.create_all(bind=engine)
-    from sqlalchemy import text
-    with engine.connect() as _migration_conn:
-        try:
-            _migration_conn.execute(
-                text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(20) DEFAULT 'outbound';")
+def init_db():
+    try:
+        Base.metadata.create_all(bind=engine)
+        from sqlalchemy import text
+        with engine.connect() as _migration_conn:
+            is_sqlite = engine.dialect.name == "sqlite"
+            sql_schedule = (
+                "ALTER TABLE commute_habits ADD COLUMN schedule_type VARCHAR(20) DEFAULT 'outbound';"
+                if is_sqlite
+                else "ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(20) DEFAULT 'outbound';"
             )
-        except Exception:
-            pass
-        try:
-            _migration_conn.execute(
-                text("ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS travel_days VARCHAR(50) DEFAULT 'Daily';")
+            sql_days = (
+                "ALTER TABLE commute_habits ADD COLUMN travel_days VARCHAR(50) DEFAULT 'Daily';"
+                if is_sqlite
+                else "ALTER TABLE commute_habits ADD COLUMN IF NOT EXISTS travel_days VARCHAR(50) DEFAULT 'Daily';"
             )
-        except Exception:
-            pass
-        _migration_conn.commit()
-except Exception as _migration_err:
-    print(f"Database initialization/migration notice: {_migration_err}")
+            try:
+                _migration_conn.execute(text(sql_schedule))
+            except Exception:
+                pass
+            try:
+                _migration_conn.execute(text(sql_days))
+            except Exception:
+                pass
+            _migration_conn.commit()
+    except Exception as _migration_err:
+        print(f"Database initialization/migration notice: {_migration_err}")
 
 
 
@@ -137,6 +145,7 @@ async def _commute_alert_worker():
 
 @app.on_event("startup")
 async def startup_event():
+    init_db()
     asyncio.create_task(_commute_alert_worker())
     from services.prediction_service import prediction_service
     loop = asyncio.get_event_loop()
