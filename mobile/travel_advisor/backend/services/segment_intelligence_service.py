@@ -573,8 +573,45 @@ class SegmentIntelligenceService:
                 # Track corroboration count for consensus validation
                 dimensions[f"{field}_count"] = counts.get(str(selected_value).casefold(), 1)
 
+        # Compute time decay and clearance dynamics for each hazard report
+        from services.timezone_service import get_ist_now, to_ist
+        now_ist = get_ist_now()
+
+        hazard_reports: list[dict[str, Any]] = []
+        for report in reports:
+            raw_unusual = report.get("unusual_conditions")
+            if (
+                isinstance(raw_unusual, str)
+                and raw_unusual.strip()
+                and raw_unusual.casefold() not in {"none", "null", "smooth", "dry", "clear", "normal", "good", "safe"}
+            ):
+                created = report.get("created_at")
+                if isinstance(created, str):
+                    try:
+                        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                        created_ist = to_ist(created_dt)
+                    except Exception:
+                        created_ist = now_ist
+                elif isinstance(created, datetime):
+                    created_ist = to_ist(created)
+                else:
+                    created_ist = now_ist
+
+                age_minutes = max(0.0, (now_ist - created_ist).total_seconds() / 60.0)
+                # Highway clearance model: Quadratic decay over 6 hours (360 mins)
+                # As time elapses, highway emergency patrol clears obstructions and lanes normalize
+                time_decay = max(0.0, (1.0 - (age_minutes / 360.0)) ** 2) if age_minutes < 360.0 else 0.0
+
+                hazard_reports.append({
+                    "condition": raw_unusual.strip(),
+                    "age_minutes": round(age_minutes, 1),
+                    "time_decay": round(time_decay, 3),
+                })
+
         if dimensions:
             dimensions["total_reports_count"] = len(reports)
+            if hazard_reports:
+                dimensions["hazard_reports"] = hazard_reports
 
         return dimensions or None
 

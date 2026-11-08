@@ -208,6 +208,32 @@ class SafetyScoreService:
     # Traveler-reported unusual conditions
     # -------------------------------------------------------------
 
+    HAZARD_SEVERITY_MAP = {
+        "road closure": 1.00,
+        "road_closure": 1.00,
+        "landslide/rockfall": 0.85,
+        "landslide / rockfall": 0.85,
+        "landslide_rockfall": 0.85,
+        "flooding": 0.85,
+        "severe_waterlogging": 0.80,
+        "severe waterlogging": 0.80,
+        "mud_rockfall_alert": 0.80,
+        "aquaplaning_risk": 0.75,
+        "accident/incident": 0.65,
+        "accident_incident": 0.65,
+        "fallen tree": 0.60,
+        "fallen_tree": 0.60,
+        "debris on road": 0.45,
+        "debris_on_road": 0.45,
+        "waterlogging": 0.45,
+        "water_runoff": 0.40,
+        "construction activity": 0.25,
+        "construction_activity": 0.25,
+        "wet_surface": 0.20,
+        "wet surface": 0.20,
+        "other": 0.25,
+    }
+
     UNUSUAL_CONDITION_SCORES = {
         "none": 100.0,
         "nothing": 100.0,
@@ -370,33 +396,58 @@ class SafetyScoreService:
             weights=active_weights,
         )
 
-        # 4. Critical Hazard Floor Override & Live Traveler Corroboration
-        # USER RULE: A single user input should affect the score moderately, but NOT crash it to 25.
-        # Only if >= 3 users report the same or similar catastrophic hazard (landslide, road closure, flooding)
-        # do we apply the severe floor cap.
-        hazard_report_count = (
-            traveler_result.get("unusual_conditions_count", 1)
+        # 4. Dynamic Continuous Hazard Impact with Report Volume & Time Clearance Decay
+        # Proportional, continuous scaling based on:
+        # a) User input severity (0.10 to 1.00)
+        # b) Corroborating volume (more similar reports = more drop, sublinear saturation)
+        # c) Time decay / clearance (as time passes, emergency patrol clears incident, returning to normal)
+        hazard_reports = (
+            traveler_result.get("hazard_reports", [])
             if isinstance(traveler_result, dict)
-            else 1
+            else []
         )
-        total_reports = (
-            traveler_result.get("total_reports_count", 1)
+        unusual_cond = (
+            traveler_result.get("unusual_conditions")
             if isinstance(traveler_result, dict)
-            else 1
+            else None
         )
 
-        if traveler_dimensions.get("unusual_conditions") is not None:
-            unusual_val = traveler_dimensions["unusual_conditions"]
-            if unusual_val < 35.0 and safety_score is not None:
-                # Corroborated consensus: >= 3 users reported this severe hazard
-                if hazard_report_count >= 3 or total_reports >= 3:
-                    safety_score = min(safety_score, unusual_val)
-                else:
-                    # Single or unverified user report (1-2 users):
-                    # Do NOT apply the catastrophic floor cap!
-                    # The calibrated low traveler weight (10%) applies an organic deduction.
-                    # Add a modest caution adjustment (at most 8 pts), keeping score reasonable (>= 75.0).
-                    safety_score = max(75.0, safety_score - 8.0)
+        if unusual_cond and safety_score is not None:
+            cond_key = str(unusual_cond).strip().lower()
+            severity = 0.25
+            for k, s in self.HAZARD_SEVERITY_MAP.items():
+                if k in cond_key:
+                    severity = max(severity, s)
+
+            # Terrain realism: On flat urban plain (R1/R2), landslide report severity is moderated to 0.60
+            if not is_ghat and ("landslide" in cond_key or "rockfall" in cond_key):
+                severity = min(severity, 0.60)
+
+            # Calculate effective time-decayed volume sum
+            if hazard_reports:
+                effective_volume = sum(
+                    hr.get("time_decay", 1.0)
+                    for hr in hazard_reports
+                    if cond_key in str(hr.get("condition", "")).lower()
+                    or str(hr.get("condition", "")).lower() in cond_key
+                )
+                if effective_volume <= 0:
+                    effective_volume = sum(hr.get("time_decay", 1.0) for hr in hazard_reports)
+            else:
+                effective_volume = 1.0
+
+            # Guard against zero if active report exists
+            effective_volume = max(0.05, effective_volume)
+
+            # Volume scaling factor (diminishing returns, smoothly scales 1.0 -> 2.5)
+            vol_factor = min(2.5, effective_volume ** 0.55)
+
+            # Progressive continuous score drop (never hardcoded flat 25.0)
+            base_drop = 16.0 * severity
+            total_drop = min(45.0, base_drop * vol_factor)
+
+            # Apply deduction from the multi-source weighted baseline
+            safety_score = round(max(45.0, safety_score - total_drop), 1)
 
         # Ground-truth traveler safe verification:
         # If a traveler on the road confirms that conditions are safe (roads smooth/dry,
@@ -519,13 +570,27 @@ class SafetyScoreService:
                 and unusual.casefold() not in SAFE_ROAD_CONDITIONS
                 and not any(s in unusual.casefold() for s in ["smooth", "dry", "clear", "normal", "good", "safe"])
             ):
-                h_cnt = traveler_result.get("unusual_conditions_count", 1)
-                if h_cnt >= 3:
-                    risk_factors.append(f"Road hazard: {unusual} (Verified by {h_cnt} drivers).")
-                elif h_cnt > 1:
-                    risk_factors.append(f"Road hazard: {unusual} ({h_cnt} driver reports).")
+                hazard_reps = traveler_result.get("hazard_reports", [])
+                h_cnt = traveler_result.get("unusual_conditions_count", len(hazard_reps) if hazard_reps else 1)
+                
+                # Format clearance / time recency note
+                if hazard_reps:
+                    min_age = min(hr.get("age_minutes", 0) for hr in hazard_reps)
+                    if min_age < 15:
+                        time_status = "just reported"
+                    elif min_age < 60:
+                        time_status = f"reported {int(min_age)}m ago"
+                    else:
+                        time_status = f"reported {int(min_age // 60)}h ago • clearance underway"
                 else:
-                    risk_factors.append(f"Road hazard: {unusual} (Single unverified report).")
+                    time_status = "active report"
+
+                if h_cnt >= 3:
+                    risk_factors.append(f"Road hazard: {unusual} ({h_cnt} verified reports • {time_status}).")
+                elif h_cnt > 1:
+                    risk_factors.append(f"Road hazard: {unusual} ({h_cnt} driver reports • {time_status}).")
+                else:
+                    risk_factors.append(f"Road hazard: {unusual} (Single unverified report • {time_status}).")
 
         # Traffic delay / bottleneck risk (suppressed if traveler confirmed free flow)
         user_traffic = traveler_result.get("traffic") if isinstance(traveler_result, dict) else None

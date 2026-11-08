@@ -490,46 +490,51 @@ class TripAnalysisService:
         Only segments with an actual Safety Score are considered.
         """
 
-        scores: list[float] = []
+        SEGMENT_DISTANCES = {
+            "R1": 14.0,   # Mumbai to Panvel
+            "R2": 24.0,   # Panvel to Khalapur
+            "R3": 12.0,   # Khalapur to Khopoli
+            "R4": 12.0,   # Khopoli to Khandala (Bhor Ghat)
+            "R5": 10.0,   # Khandala to Lonavala
+            "R6": 12.0,   # Lonavala to Kamshet
+            "R7": 10.5,   # Kamshet to Pune
+        }
+
+        weighted_sum = 0.0
+        total_km = 0.0
+        min_score = 100.0
+        has_valid_score = False
 
         for segment in segment_results:
-            safety_result = segment.get(
-                "safety_score_result"
-            )
-
-            if not isinstance(
-                safety_result,
-                dict,
-            ):
+            safety_result = segment.get("safety_score_result")
+            if not isinstance(safety_result, dict):
                 continue
 
-            score = safety_result.get(
-                "safety_score"
-            )
-
-            if not isinstance(
-                score,
-                (int, float),
-            ):
+            score = safety_result.get("safety_score")
+            if not isinstance(score, (int, float)):
                 continue
 
-            scores.append(
-                float(score)
-            )
+            score_f = float(score)
+            reg = str(segment.get("region", "")).strip().upper()
+            km = SEGMENT_DISTANCES.get(reg, 13.5)
 
-        if not scores:
+            weighted_sum += score_f * km
+            total_km += km
+            has_valid_score = True
+            if score_f < min_score:
+                min_score = score_f
+
+        if not has_valid_score or total_km <= 0:
             return None
 
-        return round(
-            max(
-                0.0,
-                min(
-                    100.0,
-                    min(scores),
-                ),
-            ),
-            2,
-        )
+        # Distance-weighted corridor average
+        corridor_avg = weighted_sum / total_km
+
+        # Balanced blend: 80% corridor average + 20% local bottleneck reflection
+        # This properly reflects regional hazards without setting the whole trip score equal to the lowest segment
+        blended = (0.80 * corridor_avg) + (0.20 * min_score)
+
+        return round(max(0.0, min(100.0, blended)), 1)
 
     # =============================================================
     # OVERALL CONFIDENCE
