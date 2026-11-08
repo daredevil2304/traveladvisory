@@ -49,7 +49,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     return segment['region']?.toString() ?? 'Corridor Segment';
   }
 
-  Future<void> _handleSaveReport(int? tripId, String source, String destination) async {
+  Future<void> _handleSaveReport(int? tripId, String source, String destination, [Map<String, dynamic>? analysisPayload]) async {
     if (tripId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Trip ID not available to save report.')),
@@ -64,6 +64,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         userId: userId,
         tripId: tripId,
         title: '$source → $destination Travel Report',
+        analysisData: analysisPayload,
       );
       if (!mounted) return;
       setState(() {
@@ -566,7 +567,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                   child: ElevatedButton.icon(
                     onPressed: (_isSavingReport || _reportSaved)
                         ? null
-                        : () => _handleSaveReport(tripId, source, destination),
+                        : () => _handleSaveReport(tripId, source, destination, analysis),
                     icon: _isSavingReport
                         ? const SizedBox(
                             width: 20,

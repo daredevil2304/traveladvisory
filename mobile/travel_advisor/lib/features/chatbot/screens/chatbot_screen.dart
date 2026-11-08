@@ -1419,20 +1419,16 @@ final Map<String, dynamic> analysisData =
     final defaultName =
         _corridorSegmentMap[defaultRegion] ?? 'Mumbai to Panvel';
 
-    // 3. Confirm corridor segment automatically detected from GPS/route
-    _step = _ConversationStep.liveUpdateRegion;
+    // Directly bind to current detected highway section and immediately ask for conditions
+    _step = _ConversationStep.liveUpdateRain;
 
     _addBotMessage(
-      '📍 Location detected: **$defaultName** ($defaultRegion via GPS).\nConfirming this expressway section for your live community road report. Tap below to confirm or select a different section:',
-      quickReplies: [
-        'Confirm $defaultName',
-        'Mumbai to Panvel',
-        'Panvel to Khalapur',
-        'Khalapur to Khopoli',
-        'Khopoli to Khandala (Bhor Ghat)',
-        'Khandala to Lonavala',
-        'Lonavala to Kamshet',
-        'Kamshet to Pune',
+      '📍 Location detected: **$defaultName** ($defaultRegion via GPS).\n\nSince you are currently at **$defaultName**, let’s share your live road observation for this section.\n\nAre you experiencing rainfall right now?',
+      quickReplies: const [
+        'None',
+        'Light drizzle',
+        'Moderate rain',
+        'Heavy downpour',
         'Skip live updates',
       ],
     );
@@ -1669,23 +1665,9 @@ final Map<String, dynamic> analysisData =
     final String fullReportMessage =
         'Live driver update for $segName: Rain: $_rain; Visibility: $_visibility; Road: $_unusualConditions; Traffic: $_traffic';
 
-    // 1. Submit directly to Community Road Reports so ALL devices with this APK see it in Community Road Alerts!
-    try {
-      await ApiService.submitCommunityReport(
-        routeRegion: resolvedRegion,
-        visibility: _visibility,
-        rain: _rain,
-        roadCondition: _unusualConditions,
-        traffic: _traffic,
-        rawMessage: fullReportMessage,
-        latitude: _latitude,
-        longitude: _longitude,
-      );
-    } catch (e) {
-      debugPrint('Error broadcasting community report: $e');
-    }
-
-    // 2. If part of an active trip, also submit as trip observation for real-time re-analysis
+    // Submit single report: if part of an active trip, submit via observation (which
+    // automatically registers in Community Road Alerts and re-analyzes the trip without duplication).
+    // If not in a trip, submit directly to community reports.
     if (_tripId != null) {
       try {
         final submitRes = await ApiService.submitObservation(
@@ -1707,6 +1689,21 @@ final Map<String, dynamic> analysisData =
         }
       } catch (e) {
         debugPrint('Error submitting trip observation: $e');
+      }
+    } else {
+      try {
+        await ApiService.submitCommunityReport(
+          routeRegion: resolvedRegion,
+          visibility: _visibility,
+          rain: _rain,
+          roadCondition: _unusualConditions,
+          traffic: _traffic,
+          rawMessage: fullReportMessage,
+          latitude: _latitude,
+          longitude: _longitude,
+        );
+      } catch (e) {
+        debugPrint('Error broadcasting community report: $e');
       }
     }
 

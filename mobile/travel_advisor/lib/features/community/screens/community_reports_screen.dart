@@ -141,10 +141,10 @@ class _CommunityReportsScreenState
     if (minutes == null) return 'Active';
     final int m = (minutes as num).toInt();
     if (m <= 0) return 'Expiring';
-    if (m < 60) return 'Expires in $m m';
+    if (m <= 60) return 'Expires in $m min';
     final int hours = m ~/ 60;
     final int rem = m % 60;
-    return 'Active for ${hours}h ${rem}m';
+    return 'Expires in ${hours}h ${rem}m';
   }
 
   void _showSubmitModal() {
@@ -876,6 +876,15 @@ class _SubmitRoadReportSheet extends StatefulWidget {
 }
 
 class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
+  String _resolveSegmentName(String? code) {
+    if (code == null) return 'Mumbai to Panvel';
+    for (final seg in widget.corridorSegments) {
+      if (seg['code'] == code) {
+        return seg['name'] ?? code;
+      }
+    }
+    return code;
+  }
   String? _selectedSegmentCode;
   String _selectedVisibility = 'Clear (> 1 km)';
   String _selectedRain = 'None';
@@ -1049,7 +1058,7 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Your input will be visible to travelers and remains active for 6 hours across the corridor.',
+              'Your input will be visible to travelers and remains active for 1 hour across the corridor.',
               style: TextStyle(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
@@ -1067,34 +1076,42 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
             ),
             const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
+                color: const Color(0xFFF0F9FF),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppTheme.azureSky.withValues(alpha: 0.3)),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: _selectedSegmentCode,
-                  items: widget.corridorSegments.map((seg) {
-                    return DropdownMenuItem<String>(
-                      value: seg['code'],
-                      child: Text(
-                        '${seg['code']}: ${seg['name']}',
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.darkNavy,
+              child: Row(
+                children: [
+                  const Icon(Icons.my_location_rounded, size: 18, color: AppTheme.azureSky),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_selectedSegmentCode ?? 'R1'}: ${_resolveSegmentName(_selectedSegmentCode)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.darkNavy,
+                          ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedSegmentCode = val;
-                    });
-                  },
-                ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Auto-detected from your current GPS location',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.azureSky,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.lock_outline_rounded, size: 16, color: AppTheme.textSecondary),
+                ],
               ),
             ),
             const SizedBox(height: 16),

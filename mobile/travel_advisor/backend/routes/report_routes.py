@@ -56,23 +56,32 @@ def save_report(
         )
 
     # ------------------------------------------------------------
-    # Prevent saving an empty analysis
+    # Resolve or dynamically generate analysis data
     # ------------------------------------------------------------
 
-    analysis_data = getattr(
+    from services.trip_analysis_service import trip_analysis_service
+
+    analysis_data = request.analysis_data or getattr(
         trip,
         "analysis_data",
         None,
     )
 
     if not analysis_data:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "No completed analysis is available for this trip. "
-                "Analyze the trip before saving the report."
-            ),
-        )
+        try:
+            analysis = trip_analysis_service.analyze_trip(
+                db=db,
+                trip_id=trip.id,
+            )
+            analysis_data = analysis.to_dict()
+            trip.analysis_data = analysis_data
+            db.commit()
+            db.refresh(trip)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not compute analysis for trip {trip.id}: {exc}",
+            )
 
     try:
         report = report_service.save_report(

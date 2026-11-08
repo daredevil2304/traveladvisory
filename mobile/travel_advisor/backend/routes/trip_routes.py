@@ -559,11 +559,15 @@ def submit_trip_observation(
     )
 
     # Immediately re-analyze the trip so the updated analysis incorporating
-    # this fresh observation is returned right away
+    # this fresh observation is returned right away and stored in trip.analysis_data
     analysis_result = trip_analysis_service.analyze_trip(
         db=db,
         trip_id=trip.id,
     )
+    analysis_dict = analysis_result.to_dict()
+    trip.analysis_data = analysis_dict
+    db.commit()
+    db.refresh(trip)
 
     return {
         "status": "success",

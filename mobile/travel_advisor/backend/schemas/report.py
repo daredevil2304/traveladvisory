@@ -22,6 +22,11 @@ class SaveReportRequest(BaseModel):
         max_length=200,
     )
 
+    analysis_data: dict | None = Field(
+        default=None,
+        description="Optional pre-computed analysis payload",
+    )
+
 
 # ================================================================
 # SAVED REPORT SUMMARY

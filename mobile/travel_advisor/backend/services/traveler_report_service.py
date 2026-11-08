@@ -61,6 +61,35 @@ class TravelerReportService:
             extraction_confidence
         )
 
+        # Deduplication safeguard: prevent duplicate entries created within 45 seconds
+        from datetime import timedelta
+        from services.timezone_service import get_ist_now
+        cutoff = get_ist_now() - timedelta(seconds=45)
+        
+        recent_duplicate = (
+            db.query(TravelerReport)
+            .filter(
+                TravelerReport.route_region == normalized_region,
+                TravelerReport.created_at >= cutoff,
+            )
+            .order_by(TravelerReport.created_at.desc())
+            .first()
+        )
+        if recent_duplicate is not None:
+            same_user = (user_id and recent_duplicate.user_id == user_id)
+            same_content = (
+                recent_duplicate.rain == rain and
+                recent_duplicate.visibility == visibility and
+                recent_duplicate.unusual_conditions == unusual_conditions and
+                recent_duplicate.traffic == traffic
+            )
+            if same_user or same_content:
+                if trip_id and not recent_duplicate.trip_id:
+                    recent_duplicate.trip_id = trip_id
+                    db.commit()
+                    db.refresh(recent_duplicate)
+                return recent_duplicate
+
         normalized_json = None
 
         if normalized_data is not None:

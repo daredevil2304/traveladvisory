@@ -759,17 +759,23 @@ class ApiService {
     required int userId,
     required int tripId,
     required String title,
+    Map<String, dynamic>? analysisData,
   }) async {
+    final Map<String, dynamic> payload = {
+      'user_id': userId,
+      'trip_id': tripId,
+      'title': title,
+    };
+    if (analysisData != null) {
+      payload['analysis_data'] = analysisData;
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/reports'),
       headers: {
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'user_id': userId,
-        'trip_id': tripId,
-        'title': title,
-      }),
+      body: jsonEncode(payload),
     );
 
     final data = jsonDecode(response.body);

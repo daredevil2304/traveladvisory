@@ -178,7 +178,9 @@ def get_live_community_reports(
     except Exception:
         db.rollback()
 
-    cutoff_time = now - timedelta(hours=hours)
+    # Enforce strictly 1-hour maximum expiry window regardless of query param
+    effective_hours = 1
+    cutoff_time = now - timedelta(hours=effective_hours)
 
     reports_query = (
         db.query(TravelerReport)
@@ -191,14 +193,28 @@ def get_live_community_reports(
 
     serialized_reports = []
     region_hazard_map: dict[str, list[dict[str, Any]]] = {}
+    seen_report_fingerprints = set()
 
     for report in reports_query:
         created_dt = report.created_at or now
         age_seconds = max(0, int((now - created_dt).total_seconds()))
         age_minutes = age_seconds // 60
-        remaining_minutes = max(0, (hours * 60) - age_minutes)
-        if remaining_minutes <= 0 or age_minutes >= (hours * 60):
+        remaining_minutes = max(0, (effective_hours * 60) - age_minutes)
+        if remaining_minutes <= 0 or age_minutes >= (effective_hours * 60):
             continue
+
+        # In-memory deduplication: suppress duplicates submitted within 90 seconds
+        fingerprint = (
+            report.route_region,
+            report.rain,
+            report.visibility,
+            report.unusual_conditions,
+            report.traffic,
+            int(created_dt.timestamp() // 90),
+        )
+        if fingerprint in seen_report_fingerprints:
+            continue
+        seen_report_fingerprints.add(fingerprint)
 
         region_code = (report.route_region or "").strip().upper()
         if region_code not in REGION_METADATA:
