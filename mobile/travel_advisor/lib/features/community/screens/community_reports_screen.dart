@@ -579,7 +579,7 @@ class _CommunityReportsScreenState
             ),
             const SizedBox(height: 6),
             const Text(
-              'Reports remain active for 6 hours. Be the first to post current highway conditions.',
+              'Reports stay active for 1 hour. Be the first to share live road conditions.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -886,40 +886,40 @@ class _SubmitRoadReportSheetState extends State<_SubmitRoadReportSheet> {
     return code;
   }
   String? _selectedSegmentCode;
-  String _selectedVisibility = 'Clear (> 1 km)';
-  String _selectedRain = 'None';
-  String _selectedRoadCondition = 'Smooth / Dry';
-  String _selectedTraffic = 'Free flow';
+  String _selectedVisibility = 'Clear (easy to see ahead)';
+  String _selectedRain = 'No rain';
+  String _selectedRoadCondition = 'Smooth & Dry';
+  String _selectedTraffic = 'Moving smoothly';
   final TextEditingController _notesController = TextEditingController();
   bool _isSubmitting = false;
 
   static const List<String> _visibilityOptions = [
-    'Clear (> 1 km)',
-    'Moderate mist (500m - 1km)',
-    'Dense fog (< 200m)',
-    'Near zero visibility',
+    'Clear (easy to see ahead)',
+    'Light mist or fog',
+    'Dense fog (hard to see)',
+    'Very low visibility',
   ];
 
   static const List<String> _rainOptions = [
-    'None',
+    'No rain',
     'Light drizzle',
     'Moderate rain',
     'Heavy downpour',
   ];
 
   static const List<String> _roadOptions = [
-    'Smooth / Dry',
-    'Wet / Slippery',
-    'Waterlogging',
-    'Potholes',
-    'Landslide / Rockfall',
+    'Smooth & Dry',
+    'Wet & Slippery',
+    'Water on road',
+    'Potholes / Rough road',
+    'Landslide / Rocks on road',
   ];
 
   static const List<String> _trafficOptions = [
-    'Free flow',
-    'Moderate delay',
-    'Heavy congestion',
-    'Standstill',
+    'Moving smoothly',
+    'Slow moving traffic',
+    'Heavy traffic jam',
+    'Completely stopped',
   ];
 
   @override

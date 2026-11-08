@@ -32,11 +32,11 @@ class IntroScreen extends StatelessWidget {
               const SizedBox(height: 42),
 
               const Text(
-                'Real-Time Insights\nfor a Smarter Journey',
+                'Safe & Smart Travel on\nMumbai–Pune Expressway',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 28,
-                  height: 1.2,
+                  fontSize: 26,
+                  height: 1.25,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.darkNavy,
                 ),
@@ -45,11 +45,11 @@ class IntroScreen extends StatelessWidget {
               const SizedBox(height: 14),
 
               const Text(
-                'Get the information you need,\nwhen you need it.',
+                'Check live road traffic, rain, fog, and\nsafe driving speeds before you drive.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  height: 1.5,
+                  fontSize: 15,
+                  height: 1.45,
                   color: AppTheme.textSecondary,
                 ),
               ),
@@ -62,15 +62,15 @@ class IntroScreen extends StatelessWidget {
                     child: _FeatureCard(
                       icon: Icons.cloud_outlined,
                       title: 'Weather',
-                      subtitle: 'Live alerts',
+                      subtitle: 'Rain & fog alerts',
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: _FeatureCard(
                       icon: Icons.route_outlined,
-                      title: 'Route Risk',
-                      subtitle: 'Smart analysis',
+                      title: 'Road Safety',
+                      subtitle: 'Easy safety score',
                     ),
                   ),
                 ],
@@ -83,16 +83,16 @@ class IntroScreen extends StatelessWidget {
                   Expanded(
                     child: _FeatureCard(
                       icon: Icons.groups_outlined,
-                      title: 'Reports',
-                      subtitle: 'Traveler insights',
+                      title: 'Driver Reports',
+                      subtitle: 'Live road updates',
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: _FeatureCard(
                       icon: Icons.shield_outlined,
-                      title: 'Safety',
-                      subtitle: 'Recommendations',
+                      title: 'Safe Speeds',
+                      subtitle: 'Helpful driving tips',
                     ),
                   ),
                 ],

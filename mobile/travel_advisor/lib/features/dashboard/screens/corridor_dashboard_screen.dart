@@ -90,7 +90,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       'status': 'Ghat Approach',
       'statusColor': Color(0xFF10B981),
       'speedAdvice': '60-70 km/h',
-      'desc': 'Base of the Sahyadri mountains. Heavy vehicle lane discipline strictly monitored.',
+      'desc': 'Approaching the mountain hills. Watch out for slow trucks in the left lane.',
     },
     {
       'name': 'Bhor Ghat',
@@ -99,7 +99,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
       'status': 'Mountain Area',
       'statusColor': Color(0xFFF59E0B),
       'speedAdvice': '40-50 km/h',
-      'desc': 'Steep gradient & hairpin curves. Maintain low gear and 50m braking distance.',
+      'desc': 'Steep mountain slopes and winding turns. Drive slowly and keep safe distance.',
     },
     {
       'name': 'Lonavala',

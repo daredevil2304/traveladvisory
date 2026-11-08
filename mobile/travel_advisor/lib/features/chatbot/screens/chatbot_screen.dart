@@ -1423,7 +1423,7 @@ final Map<String, dynamic> analysisData =
     _step = _ConversationStep.liveUpdateRain;
 
     _addBotMessage(
-      '📍 Location detected: **$defaultName** ($defaultRegion via GPS).\n\nSince you are currently at **$defaultName**, let’s share your live road observation for this section.\n\nAre you experiencing rainfall right now?',
+      '📍 **Current Location:** **$defaultName**\n\nWe detected you are near **$defaultName**. Let’s share a quick road update to help fellow drivers on the road.\n\nIs it raining right now?',
       quickReplies: const [
         'None',
         'Light drizzle',
@@ -1649,7 +1649,7 @@ final Map<String, dynamic> analysisData =
 
     if (skipped) {
       _addBotMessage(
-        'Live observations skipped. Feel free to ask questions regarding your route.',
+        'Live road updates skipped. Feel free to ask any questions regarding your route!',
         quickReplies: const [
           'Why is this score low?',
           'Which road section needs care?',
@@ -1824,32 +1824,32 @@ final Map<String, dynamic> analysisData =
           lowestName.toLowerCase().contains('bhor');
 
       final buffer = StringBuffer();
-      buffer.write('📍 **Route Intelligence Overview:**\n');
-      buffer.write('• Journey: **${_source ?? "Mumbai"}** to **${_destination ?? "Pune"}** (corridor elevation spans **14m ASL** at plains up to **625m ASL** at Khandala crest).\n');
+      buffer.write('📍 **Route Overview & Safe Driving Tips:**\n');
+      buffer.write('• **Trip:** From **${_source ?? "Mumbai"}** to **${_destination ?? "Pune"}**.\n');
 
-      if (lowestScore < 95 || trafficDelay > 2 || isGhat) {
-        buffer.write('• Most critical sector: **$lowestName** (Score **$lowestScore/100**');
+      if (lowestScore < 85 || trafficDelay > 5 || isGhat) {
+        buffer.write('• **Area to Watch Out For:** **$lowestName** (Safety Score: **$lowestScore/100**');
         if (trafficDelay > 0) {
-          buffer.write(', +${trafficDelay}m congestion delay');
+          buffer.write(', about $trafficDelay mins traffic delay');
         }
         if (isGhat) {
-          buffer.write(', 4.6% grade mountain curves');
+          buffer.write(', winding mountain turns');
         }
-        buffer.write(').\n');
+        buffer.write('). Please stay alert and drive carefully through this section.\n');
       } else {
-        buffer.write('• Corridor status: All highway sections free-flowing with scores up to **${getScore(sorted.last)}/100**.\n');
+        buffer.write('• **Road Status:** The entire highway is clear and traffic is moving smoothly.\n');
       }
 
       if (tempC != null) {
-        buffer.write('• Live weather: **$weatherCond (${tempC.round()}°C)** with dry asphalt grip (~100%).\n');
+        buffer.write('• **Weather:** **$weatherCond (${tempC.round()}°C)** with clear road visibility.\n');
       }
 
-      buffer.write('• Cruising Advisory: Maintain **85–90 km/h** along open expressway plains; throttle down to **55–60 km/h** with 3rd gear engine braking on the Bhor Ghat descent.');
+      buffer.write('• **Safe Speed Advice:** Cruise comfortably at **80–90 km/h** on open flat roads, but please slow down to **50–60 km/h** when driving through the mountain ghats.');
 
       _addBotMessage(buffer.toString());
     } else {
       _addBotMessage(
-        '✅ All highway sectors are monitored in real time. Cruising speeds are optimal with no road hazards reported along the corridor.',
+        '✅ All highway sections are clear and running smoothly. Have a safe journey!',
       );
     }
   }
@@ -2025,9 +2025,9 @@ final Map<String, dynamic> analysisData =
     final String? groundedAnswer = _generateGroundedAnalysisAnswer(userMessage);
     final String dynamicAnswer = groundedAnswer ??
         'Based on your live trip analysis (Safety Score: ${_tripAnalysis?["overallSafetyScore"]?.round() ?? "N/A"}/100):\n'
-        '• All corridor segments are being monitored with live telemetry.\n'
-        '• Maintain recommended lane cruising speeds and follow safe following distances.\n'
-        '• Check the detailed Journey Report for full ghat protocols and elevation safety benchmarks.';
+        '• All highway sections are monitored in real time.\n'
+        '• Keep a safe distance from other cars and follow recommended speeds.\n'
+        '• Tap "Open Report" below to see full details for each road section.';
 
     setState(() {
       _isTyping = false;
@@ -2116,7 +2116,7 @@ final Map<String, dynamic> analysisData =
           );
         }
 
-        return 'The sections that stand out as needing the most attention along your corridor are:\n${items.join('\n')}\n\nAll safety scores match your Journey Report. Overall highway conditions remain stable, but extra caution is advisable on these stretches.';
+        return 'The sections where you should drive more carefully are:\n${items.join('\n')}\n\nAll safety scores match your Journey Report. Drive with extra care on these stretches.';
       }
     }
 
@@ -2147,7 +2147,7 @@ final Map<String, dynamic> analysisData =
 
         final int highestScore = getSegScore(sorted.last);
 
-        return 'Your overall corridor Safety Score is **$overallScore / 100**, determined by the lowest-scoring segment (**$lowestLabel** at **$lowestScore / 100** $reasonStr).\n\nBy taking the lowest section score, the system ensures potential slowdowns or hazards are never hidden by smooth highway conditions elsewhere (which range up to **$highestScore / 100**).';
+        return 'Your overall route Safety Score is **$overallScore / 100**, based on the section that needs the most care (**$lowestLabel** at **$lowestScore / 100** $reasonStr).\n\nOther highway sections are moving smoothly, with scores up to **$highestScore / 100**!';
       }
     }
 

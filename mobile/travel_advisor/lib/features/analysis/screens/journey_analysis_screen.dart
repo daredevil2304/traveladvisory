@@ -935,94 +935,92 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       keyFeature: 'standard expressway grade and multi-lane flow',
     );
 
-    // 1. Sector Elevation & Gradient Incline Physics
+    // 1. Road Section & Mountain Driving Advice
     if (code == 'R4') {
       if (tempC != null && tempC >= 32.0) {
         points.add(
-          'Steep 4.6% mountain incline climbing from 95m to 550m ASL (+455m vertical climb); ambient temperature of ${tempC.toStringAsFixed(0)}°C under heavy uphill throttle escalates engine coolant temperatures; monitor dashboard gauges.',
+          'Steep mountain climb through Bhor Ghat. Because of the warm weather (${tempC.toStringAsFixed(0)}°C), keep an eye on your engine temperature while driving uphill.',
         );
       } else {
         points.add(
-          'Steep 4.6% mountain incline climbing from 95m to 550m ASL (+455m vertical gain over 10 km); engage 2nd or 3rd gear for progressive engine braking on descents and avoid riding foot brakes continuously to eliminate dangerous brake fade.',
+          'Steep mountain slope through Bhor Ghat with downhill turns. Use lower gears to control your speed and avoid holding your brakes continuously.',
         );
       }
       points.add(
-        'Overloaded commercial vehicles crawl at 15-25 km/h in left crawler lanes; maintain at least a 40m vehicle cushion and never overtake on blind reverse curves or inside Adoshi tunnel.',
+        'Heavy trucks move slowly in the left lanes. Keep a safe distance behind them and avoid overtaking on sharp curves or inside tunnels.',
       );
     } else if (code == 'R5') {
       points.add(
-        'Corridor summit at ${geo.peakElevM}m ASL; moderate speeds to $recommendedSpeed km/h across elevated Khandala viaduct decks to mitigate gorge wind buffeting, and watch for sudden tourist vehicle slowdowns near Lonavala exit ramps.',
+        'High mountain road near Khandala and Lonavala. Strong gusty winds can blow across open bridges. Keep both hands on the steering wheel and drive around $recommendedSpeed km/h.',
       );
     } else if (code == 'R6') {
       points.add(
-        'Deccan volcanic plateau at ~${geo.peakElevM}m ASL with rolling -0.8% grade; maintain steady center-lane discipline at $recommendedSpeed km/h and decelerate before entering twin Kamshet tunnels (300m and 1.2 km) for visual light-adaptation.',
+        'Rolling highway near Kamshet with tunnels. Maintain a steady speed of $recommendedSpeed km/h in the middle lane, and slow down before entering tunnels so your eyes can adjust to the light.',
       );
     } else if (code == 'R7') {
       points.add(
-        'Plateau descent corridor at ~${geo.baseElevM}m ASL; anticipate rapid deceleration waves and heavy container freight merging from Talegaon industrial corridors approaching Urse Toll Plaza.',
+        'Approaching Pune near Urse Toll Plaza. Watch out for trucks merging from industrial areas and be prepared to slow down near the toll booths.',
       );
     } else if (code == 'R1' || code == 'R2') {
       points.add(
-        'Open coastal lowland plain at ~${(geo.baseElevM + geo.peakElevM) ~/ 2}m ASL; maintain center-lane discipline between 80-$statutorySpeed km/h and reserve the extreme right lane strictly for overtaking slower vehicles.',
+        'Straight, open highway between Mumbai and Panvel. Cruise steadily between 80-$statutorySpeed km/h and use the right lane only when safely passing slower cars.',
       );
     } else {
       points.add(
-        'Pune metropolitan terminus at ~${geo.baseElevM}m ASL; transition smoothly from 100 km/h expressway cruising down to $recommendedSpeed km/h as the route narrows into Dehu Road urban bypass intersections.',
+        'Approaching the city bypass road. Smoothly slow down from 100 km/h to $recommendedSpeed km/h as you exit the expressway.',
       );
     }
 
-    // 2. Dynamic Road Surface & Friction Precaution
+    // 2. Weather & Road Surface Advice
     if (isRain) {
       if (code == 'R4' || code == 'R5') {
         final rainAmt = (rainMm != null && rainMm > 0) ? '${rainMm.toStringAsFixed(1)} mm/h' : precipitationStr;
         points.add(
-          'Mountain asphalt is slick due to $rainAmt; friction is reduced. Never apply abrupt steering jerks or emergency braking on wet hairpin bends.',
+          'Mountain roads are wet and slippery from rain ($rainAmt). Avoid sudden sharp turns or hard braking.',
         );
       } else {
         points.add(
-          'Wet pavement ($precipitationStr) creates hydroplaning risk above $recommendedSpeed km/h; steer clear of standing water near shoulders and double your following gap.',
+          'Roads are wet from rain ($precipitationStr). Slow down to avoid skidding and leave extra space behind the car in front.',
         );
       }
     } else if (visKm != null && visKm < 3.0) {
       points.add(
-        'Mountain mist restricts forward sightlines to ${visKm.toStringAsFixed(1)} km; operate low-beam headlights and follow road cat\'s-eye reflective lane studs.',
+        'Light fog or mist is reducing visibility. Turn on your low-beam headlights and follow the road markings carefully.',
       );
     } else if (windKmh != null && windKmh > 25.0) {
       points.add(
-        'Elevated crosswinds of ${windKmh.toStringAsFixed(0)} km/h across unsheltered spans; keep a firm two-handed grip on the steering wheel when exiting rock cuttings and tunnels.',
+        'Breezy crosswinds (${windKmh.toStringAsFixed(0)} km/h) on open road sections. Hold the steering wheel firmly with both hands.',
       );
     } else {
-      final surfaceText = tempC != null && tempC >= 32.0 ? 'warm asphalt (${tempC.toStringAsFixed(0)}°C)' : 'dry pavement';
       points.add(
-        'Clear $surfaceText provides stable grip; maintain a standard 3-second safe following buffer from lead vehicles during highway cruising.',
+        'Road conditions are dry and clear with great tire grip. Keep a safe 3-second distance behind vehicles ahead.',
       );
     }
 
-    // 3. Dynamic Safe Speed Target Calculation
+    // 3. Recommended Safe Speed
     if (statutorySpeed > recommendedSpeed) {
       final diff = statutorySpeed - recommendedSpeed;
       final String reason = isRain
-          ? 'slick road conditions'
-          : (visKm != null && visKm < 3.5 ? 'curtailed visibility' : (geo.gradientPct.abs() > 3.0 ? 'steep mountain curves' : 'traffic queue management'));
+          ? 'wet, slippery roads'
+          : (visKm != null && visKm < 3.5 ? 'foggy conditions' : (geo.gradientPct.abs() > 3.0 ? 'sharp mountain turns' : 'traffic slowdowns'));
       points.add(
-        'Safe cruising speed is dynamically dialed down to $recommendedSpeed km/h (-$diff km/h from the $statutorySpeed km/h legal limit) to accommodate $reason.',
+        'We recommend driving around $recommendedSpeed km/h ($diff km/h below the limit) because of $reason.',
       );
     }
 
-    // 4. Traffic Congestion Protocol (Only when there is an active delay >= 8m - zero duplicate free-flow repetition)
+    // 4. Traffic Delay
     if (delayMinutes >= 8) {
       points.add(
-        'Active congestion queue ahead (+${delayMinutes}m delay); avoid erratic lane switching, prepare for braking waves, and remain aligned with traffic flow.',
+        'Traffic slowdown ahead (about $delayMinutes mins delay). Stay in your lane and prepare to slow down smoothly.',
       );
     }
 
-    // 5. Night Driving Protocol
+    // 5. Night Driving
     if (isNight) {
       points.add(
-        'Ambient lighting is limited on unlit highway sectors; dip high-beams when following within 150m of other vehicles to prevent blinding drivers ahead.',
+        'Driving at night: Dip your high-beam headlights when following or passing other cars so you don’t blind other drivers.',
       );
     }
-
     return points.map((p) => '• $p').join('\n\n');
   }
 
@@ -1049,101 +1047,88 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     required String? travelTime,
   }) {
     final List<String> points = [];
-    final geo = _sectorGeoProfiles[code] ?? const _SectorGeoProfile(
-      baseElevM: 100,
-      peakElevM: 200,
-      gradientPct: 1.0,
-      terrainDesc: 'expressway corridor terrain',
-      keyFeature: 'standard expressway grade and multi-lane flow',
-    );
 
-    // 1. Safety Score & Machine Learning Sensor Fusion Rating
+    // 1. Overall Safety Rating
     final String statusLabel = sVal >= 85
-        ? 'Optimal Travel Safety'
+        ? 'Very Safe'
         : (sVal >= 75
-            ? 'Good Travel Conditions'
-            : (sVal >= 60 ? 'Moderate Caution Advised' : 'Elevated Hazard Warning'));
+            ? 'Good & Clear'
+            : (sVal >= 60 ? 'Drive With Care' : 'Caution Required'));
     final String statusSummary = sVal >= 80
-        ? 'all sensor fusion indicators remain comfortably within safe operational thresholds.'
+        ? 'all road and weather conditions are favorable and safe.'
         : (sVal >= 65
-            ? 'environmental or topographical friction variance requires active driver attention.'
-            : 'adverse weather or geometric risk factors active; defensive speed moderation required.');
-    points.add('Overall safety rating is $statusLabel ($sVal/100) — $statusSummary');
+            ? 'changing road or weather conditions require your attention.'
+            : 'slippery roads or traffic require you to drive slower and more carefully.');
+    points.add('Safety rating: $statusLabel ($sVal/100) — $statusSummary');
 
-    // 2. Dynamic Elevation & Topographical Classification
-    final elevDelta = (geo.peakElevM - geo.baseElevM).abs();
+    // 2. Road Section & Elevation
     if (code == 'R4') {
       points.add(
-        'Mountain pass climbing steeply from ${geo.baseElevM}m to ${geo.peakElevM}m ASL (+$elevDelta m vertical rise over 9.8 km) across a ${geo.gradientPct}% (1:21) incline grade with ${geo.keyFeature}.',
+        'Mountain pass section (Bhor Ghat) with winding slopes and sharp turns.',
       );
     } else if (code == 'R5') {
       points.add(
-        'Highest expressway corridor crest at ${geo.peakElevM}m ASL summit with rolling ${geo.gradientPct}% grade across ${geo.keyFeature}.',
+        'High mountain road near Khandala and Lonavala with open valley bridges.',
       );
     } else if (code == 'R6' || code == 'R7') {
       points.add(
-        'Elevated ${geo.terrainDesc} at ${geo.baseElevM}-${geo.peakElevM}m ASL with ${geo.gradientPct}% gradient and ${geo.keyFeature}.',
+        'Wide expressway plateau with tunnels and open, multi-lane roads.',
       );
     } else if (code == 'R1' || code == 'R2') {
       points.add(
-        'Lowland ${geo.terrainDesc} at ${geo.baseElevM}-${geo.peakElevM}m ASL with near-level ${geo.gradientPct}% grade and ${geo.keyFeature}.',
+        'Flat, straight expressway plains with clear sightlines.',
       );
     } else {
       points.add(
-        'Metropolitan plateau at ~${geo.baseElevM}m ASL transitioning smoothly into ${geo.keyFeature}.',
+        'Smooth highway stretch leading toward Pune city.',
       );
     }
 
-    // 3. Dynamic Road Friction & Weather Telemetry
+    // 3. Road Grip & Weather
     if (isRain) {
-      final double mu = (rainMm != null && rainMm > 7.5) ? 0.35 : ((rainMm != null && rainMm > 2.5) ? 0.48 : 0.60);
-      final int gripPct = (mu / 0.82 * 100).round();
-      final int stoppingPct = ((0.82 / mu - 1.0) * 100).round();
       final rainValStr = rainMm != null && rainMm > 0 ? '${rainMm.toStringAsFixed(1)} mm/h' : precipitationStr;
       points.add(
-        'Active precipitation ($rainValStr) degrades tire surface grip to $gripPct% (friction coefficient μ ≈ ${mu.toStringAsFixed(2)}); emergency stopping distance expands by +$stoppingPct%.',
+        'Wet roads from rain ($rainValStr). Vehicles need more distance to stop safely on wet asphalt.',
       );
     } else {
-      final tempText = tempC != null ? ' (asphalt surface temp ~${(tempC + 10).round()}°C at ${tempC.toStringAsFixed(0)}°C ambient)' : '';
       points.add(
-        'Dry road surface$tempText yields nominal 100% tire adhesion (friction coefficient μ ≈ 0.82) with predictable vehicle braking response.',
+        'Roads are completely dry and tire grip is great.',
       );
     }
 
-    // 4. Sightlines & Atmospheric Conditions
+    // 4. Visibility & Wind
     if (visKm != null && visKm < 3.5) {
       points.add(
-        'Atmospheric sightlines curtailed to ${visKm.toStringAsFixed(1)} km due to mist and low cloud condensation; safe reaction buffer requires speeds capped at $recommendedSpeed km/h.',
+        'Mist or fog is in the air. Keep your speed around $recommendedSpeed km/h so you can clearly see ahead.',
       );
     } else if (windKmh != null && windKmh > 25.0) {
       points.add(
-        'Elevated crosswinds of ${windKmh.toStringAsFixed(0)} km/h across open highway spans and elevated bridges require active two-handed steering stabilization.',
+        'Windy conditions (${windKmh.toStringAsFixed(0)} km/h) on high bridges. Hold your steering wheel steady.',
       );
     } else {
-      final windStr = (windKmh != null && windKmh > 5.0) ? '${windKmh.toStringAsFixed(0)} km/h light airflow' : 'calm atmospheric airflow';
       points.add(
-        'Forward visibility is optimal at ${visKm != null ? '${visKm.toStringAsFixed(0)} km' : '10+ km'} with $windStr, ensuring clear preview of forward traffic.',
+        'Clear visibility ahead with calm weather, making it easy to see the road.',
       );
     }
 
-    // 5. Severe Traffic Congestion Bottleneck (Only if severe delay >= 12m to prevent duplicate traffic reports)
+    // 5. Heavy Traffic
     if (delayMinutes >= 12) {
       points.add(
-        'Severe traffic queue causing a +${delayMinutes}m delay (traffic crawling at $speedText); elevated rear-end collision hazard at the tail of the slowdown.',
+        'Heavy traffic delay (+$delayMinutes mins, traffic moving at $speedText). Please be patient and watch for sudden braking.',
       );
     }
 
-    // 6. Predictive Outlook
+    // 6. Travel Outlook
     if (isPlanner && (travelDate != null || travelTime != null)) {
       final dt = '${travelDate ?? ''} ${travelTime ?? ''}'.trim();
       points.add(
-        'Projected outlook for $dt: expect ${isRain ? 'wet asphalt requiring conservative cornering' : (isNight ? 'unlit nighttime conditions requiring high-beam moderation' : 'clear daylight cruising conditions')}.',
+        'Expected weather for $dt: ${isRain ? 'Rainy roads — please drive slowly on turns.' : (isNight ? 'Night drive — make sure headlights are working properly.' : 'Clear and pleasant daylight driving conditions.')}',
       );
     } else {
       points.add(
         sVal >= 75
-            ? 'Corridor conditions remain stable with low incident probability over the current travel horizon.'
-            : 'Defensive driving, increased following distance, and speed moderation strongly advised.',
+            ? 'Overall road conditions are safe and smooth for your trip.'
+            : 'Please drive carefully and keep extra distance from vehicles ahead.',
       );
     }
 
@@ -1409,9 +1394,9 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     String tempStr = '--';
     String humidityStr = '40% Humidity';
     String visibilityStr = '10.0 km';
-    String visibilityDesc = 'Optimal Sightlines';
+    String visibilityDesc = 'Clear view';
     String precipitationStr = 'No Rain Forecast';
-    String roadGripStr = 'Dry Pavement';
+    String roadGripStr = 'Dry road';
     double? tempC;
     double? visKm;
     double? rainMm;
@@ -1462,10 +1447,10 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
       isRain = hasRainCond || hasRainMm;
       if (isRain) {
         precipitationStr = hasRainMm ? '${rainMm.toStringAsFixed(1)} mm Rain' : (weather['rain_condition'] ?? weather['rain'] ?? 'Rain Expected').toString();
-        roadGripStr = 'Damp Road Surface';
+        roadGripStr = 'Wet road';
       } else {
         precipitationStr = 'No Rain Forecast';
-        roadGripStr = 'Dry Road Surface';
+        roadGripStr = 'Dry road';
       }
 
       final ws = weather['wind_speed_kmh'];
@@ -1493,7 +1478,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
     // Traffic Telemetry (Traveler mode)
     final liveTraffic = segment['live_traffic'];
     String speedText = '85-100 km/h';
-    String trafficState = 'Fluid Flow (No Delay)';
+    String trafficState = 'Smooth traffic (No delays)';
     Color trafficColor = const Color(0xFF16A34A);
     if (liveTraffic is Map && liveTraffic['status_label'] != null) {
       final delay = liveTraffic['delay_minutes'] ?? 0;
@@ -1503,7 +1488,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
         trafficState = '+$delay min delay';
         trafficColor = const Color(0xFFD97706);
       } else {
-        trafficState = 'Free Flowing (+0m delay)';
+        trafficState = 'Smooth traffic (No delays)';
       }
     }
 
@@ -2197,10 +2182,10 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
   }
 
   String _getOverallVerdict(int score) {
-    if (score < 45) return 'Hazardous conditions detected. Caution strongly advised.';
-    if (score < 70) return 'Moderate adverse weather or traffic. Drive with extra care.';
-    if (score < 85) return 'Safe highway conditions with standard travel precautions.';
-    return 'Optimal travel conditions with clear roads and fluid traffic flow.';
+    if (score < 45) return 'Dangerous road conditions. Please drive very carefully or delay your trip.';
+    if (score < 70) return 'Some rain or traffic slowdowns. Please slow down and drive carefully.';
+    if (score < 85) return 'Good highway conditions. Drive safely and follow speed limits.';
+    return 'Great driving conditions! Roads are clear and traffic is moving smoothly.';
   }
 
   // ============================================================

@@ -48,7 +48,13 @@ IMPORTANT RULES:
 4. If the supplied context does not contain an answer, clearly say
    that the available intelligence does not provide that information.
 
-5. Explain technical results in simple, natural language.
+5. ALWAYS USE VERY SIMPLE, EVERYDAY ENGLISH that anyone can easily understand.
+   Never use technical, physics, civil engineering, or academic terms.
+   For example, DO NOT USE words like "ASL", "grade percentage", "friction coefficient",
+   "telemetry", "nominal adhesion", "sensor fusion", "atmospheric sightlines", "buffeting",
+   "coolant temperature escalation", or "curtailed". Talk in friendly, natural, plain English
+   like a helpful local driving friend (e.g. say "safe speed", "mountain turns", "slippery road",
+   "light fog", "delay", "clear road", "good grip").
 
 6. The analysis evaluates route segments individually. When discussing
    a location, identify the relevant route segment when available.
@@ -470,11 +476,11 @@ Answer the user's question using the backend context below.
                     if temp is not None:
                         desc += f" at {round(float(temp))}°C"
                     if vis is not None:
-                        desc += f", sightline {vis} km"
+                        desc += f", visibility {vis} km"
                     weather_findings.append(desc)
             if weather_findings:
-                return f"Weather conditions along {src} to {dst}: " + "; ".join(weather_findings[:3]) + ". Maintain safe following distance on wet pavement."
-            return f"Weather outlook between {src} and {dst} shows clear skies with standard atmospheric visibility across all expressway sections."
+                return f"Weather conditions along {src} to {dst}: " + "; ".join(weather_findings[:3]) + ". Keep a safe distance on wet roads."
+            return f"Weather between {src} and {dst} is clear with good road visibility."
 
         # 2. Traffic / Congestion / Delay Queries
         if any(w in msg_lower for w in ["traffic", "jam", "congestion", "delay", "slow", "standstill", "blocked"]):
@@ -490,14 +496,14 @@ Answer the user's question using the backend context below.
                         traffic_delays.append(f"{reg_name} (+{d_min}m slowdown)")
             if traffic_delays:
                 return f"Live traffic delay on {src} to {dst}: Total corridor delay is approximately +{total_delay} minutes. Active slowdowns noted at: {', '.join(traffic_delays)}."
-            return f"Corridor traffic between {src} and {dst} is fluid with free-flow speeds (85-100 km/h) and minimal delay (+{total_delay}m)."
+            return f"Traffic between {src} and {dst} is moving smoothly with no major delays."
 
         # 3. Hazard / Road Condition / Pothole / Landslide Queries
         if any(w in msg_lower for w in ["hazard", "landslide", "rockfall", "pothole", "accident", "road condition", "danger", "risk", "waterlog"]):
             hazards = [r for r in reasons if any(hz in str(r).lower() for hz in ["landslide", "rockfall", "waterlog", "pothole", "accident", "hazard", "congestion"])]
             if hazards:
-                return f"Active road alerts on your route: {'; '.join(hazards[:3])}. Exercise heightened caution through these affected sectors."
-            return f"No active structural hazards, landslides, or road closures reported on the {src} to {dst} expressway corridor."
+                return f"Active road alerts on your route: {'; '.join(hazards[:3])}. Please drive carefully through these sections."
+            return f"No road hazards, landslides, or road closures reported between {src} and {dst}."
 
         # 4. Departure Timing / Optimization Queries
         if any(w in msg_lower for w in ["leave", "depart", "when", "time", "wait", "now", "optimal", "timing"]):
@@ -512,7 +518,7 @@ Answer the user's question using the backend context below.
         if any(w in msg_lower for w in ["speed", "limit", "driving", "fast", "mph", "km/h", "kmph"]):
             if score < 75:
                 return f"Due to current cautionary conditions (Safety Score {score}/100), maintain a moderated speed of 60-70 km/h on express stretches and 40 km/h on Ghat hairpin bends."
-            return f"Posted speed limit is 100 km/h on expressway flats and 50 km/h through Bhor Ghat. Current road conditions support standard expressway cruising speeds."
+            return f"The speed limit is 100 km/h on open flat roads and 50 km/h in the Bhor Ghat mountains. Current road conditions support smooth cruising."
 
         # 6. Specific Towns / Ghat Inquiry
         for town, reg in [("khandala", "R4"), ("lonavala", "R5"), ("khopoli", "R3"), ("panvel", "R1"), ("kamshet", "R6"), ("ghat", "R4"), ("bhor", "R4")]:
@@ -530,7 +536,7 @@ Answer the user's question using the backend context below.
             if score >= 85:
                 return (
                     f"Your journey from {src} to {dst} is safe to travel with an optimal Safety Score of {score}/100. "
-                    f"The route has clear weather, smooth roads, and fluid traffic flow throughout the corridor."
+                    f"The route has clear weather, smooth roads, and smooth traffic throughout your journey."
                 )
             ans = f"Your journey from {src} to {dst} has an overall Safety Score of {score}/100. "
             if reasons:

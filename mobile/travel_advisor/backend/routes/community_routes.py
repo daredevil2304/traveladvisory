@@ -129,22 +129,22 @@ def _assess_report_hazards(report: TravelerReport) -> tuple[bool, list[str]]:
 
     # Visibility assessment
     vis = (report.visibility or "").lower()
-    if any(k in vis for k in ["fog", "mist", "near zero", "poor", "low", "< 200m", "500m"]):
+    if any(k in vis for k in ["fog", "mist", "near zero", "poor", "low", "hard to see", "< 200m", "500m"]):
         hazards.append(f"Visibility: {report.visibility}")
 
     # Rainfall assessment
     rain = (report.rain or "").lower()
-    if any(k in rain for k in ["heavy", "downpour", "moderate", "torrential"]):
+    if any(k in rain for k in ["heavy", "downpour", "moderate", "torrential", "shower"]):
         hazards.append(f"Rainfall: {report.rain}")
 
     # Road condition assessment
     cond = (report.unusual_conditions or "").lower()
-    if any(k in cond for k in ["landslide", "rockfall", "waterlog", "pothole", "slippery", "debris", "accident", "hazard"]):
+    if any(k in cond for k in ["landslide", "rock", "water", "pothole", "slippery", "debris", "accident", "hazard", "rough"]):
         hazards.append(f"Road condition: {report.unusual_conditions}")
 
     # Traffic assessment
     trf = (report.traffic or "").lower()
-    if any(k in trf for k in ["standstill", "heavy", "congestion", "jam", "severe"]):
+    if any(k in trf for k in ["standstill", "heavy", "congestion", "jam", "severe", "stopped", "slow", "crawl"]):
         hazards.append(f"Traffic: {report.traffic}")
 
     return len(hazards) > 0, hazards
