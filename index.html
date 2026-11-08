@@ -17,15 +17,66 @@
     startOnLoad: false, 
     theme: 'dark',
     securityLevel: 'loose',
+    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    fontSize: 15,
     themeVariables: {
       darkMode: true,
-      background: '#070B14',
-      primaryColor: '#0F2942',
+      background: '#080D1A',
+      primaryColor: '#0B2338',
       primaryBorderColor: '#38BDF8',
       primaryTextColor: '#FFFFFF',
       lineColor: '#60A5FA',
-      secondaryColor: '#064E3B',
-      tertiaryColor: '#3B0764'
+      secondaryColor: '#063B2C',
+      secondaryBorderColor: '#10B981',
+      secondaryTextColor: '#FFFFFF',
+      tertiaryColor: '#2E0854',
+      tertiaryBorderColor: '#A855F7',
+      tertiaryTextColor: '#FFFFFF',
+      actorBkg: '#0B2338',
+      actorBorder: '#38BDF8',
+      actorTextColor: '#FFFFFF',
+      actorLineColor: '#475569',
+      signalColor: '#38BDF8',
+      signalTextColor: '#F1F5F9',
+      labelBoxBkgColor: '#0B2338',
+      labelBoxBorderColor: '#38BDF8',
+      labelTextColor: '#FFFFFF',
+      loopTextColor: '#F1F5F9',
+      noteBorderColor: '#F59E0B',
+      noteBkgColor: '#3B2203',
+      noteTextColor: '#FEF3C7',
+      activationBorderColor: '#38BDF8',
+      activationBkgColor: 'rgba(56, 189, 248, 0.25)',
+      sequenceNumberColor: '#070B14'
+    },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      nodeSpacing: 65,
+      rankSpacing: 75,
+      padding: 20,
+      useMaxWidth: false
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 30,
+      actorMargin: 70,
+      width: 170,
+      height: 55,
+      boxMargin: 15,
+      boxTextMargin: 8,
+      noteMargin: 15,
+      messageMargin: 45,
+      messageAlign: 'center',
+      mirrorActors: false,
+      bottomMarginAdj: 15,
+      useMaxWidth: false
+    },
+    class: {
+      useMaxWidth: false
+    },
+    state: {
+      useMaxWidth: false
     }
   });
   window.mermaid = mermaid;
@@ -225,67 +276,208 @@
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
   }
   .uml-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
+    background: #0B1120;
+    border: 1px solid #1E293B;
     border-radius: 16px;
-    margin-bottom: 32px;
-    padding: 28px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-    transition: border 0.2s;
+    margin-bottom: 36px;
+    padding: 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    transition: all 0.25s ease;
+    position: relative;
   }
   .uml-card:hover {
-    border-color: var(--accent-cyan);
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.12);
   }
   .uml-card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 14px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #1E293B;
+    padding-bottom: 16px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .uml-card-header-left {
+    flex: 1;
+    min-width: 280px;
+  }
+  .uml-card-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
   }
   .uml-card-title {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #FFFFFF;
     margin-bottom: 6px;
+    letter-spacing: -0.01em;
   }
   .uml-card-summary {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    max-width: 900px;
+    font-size: 0.88rem;
+    color: #94A3B8;
+    line-height: 1.5;
+    max-width: 950px;
   }
   .uml-badge {
     background: rgba(56, 189, 248, 0.15);
-    color: var(--accent-cyan);
-    padding: 4px 10px;
+    color: #38BDF8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 3px 10px;
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .uml-cat-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .uml-card-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   .btn-uml-action {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
+    background: #1E293B;
+    border: 1px solid #334155;
+    color: #E2E8F0;
     padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
   .btn-uml-action:hover {
-    background: var(--accent-blue);
+    background: #38BDF8;
+    color: #070B14;
+    border-color: #38BDF8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+  }
+  .btn-primary-action {
+    background: linear-gradient(135deg, #0284C7, #2563EB);
     color: #FFFFFF;
+    border-color: #38BDF8;
+  }
+  .btn-primary-action:hover {
+    background: linear-gradient(135deg, #38BDF8, #3B82F6);
+    color: #070B14;
+  }
+  .mermaid-card-body {
+    position: relative;
+    background: #070C18;
+    border: 1px solid #1E293B;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .diagram-scroll-hint {
+    font-size: 0.72rem;
+    color: #64748B;
+    padding: 8px 16px;
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid #1E293B;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
   }
   .mermaid-wrapper {
-    background: #060A12;
-    padding: 24px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
+    background: transparent;
+    padding: 32px 24px;
     overflow-x: auto;
+    overflow-y: hidden;
     text-align: center;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mermaid-wrapper::-webkit-scrollbar {
+    height: 8px;
+  }
+  .mermaid-wrapper::-webkit-scrollbar-track {
+    background: #0B1120;
+  }
+  .mermaid-wrapper::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  .mermaid-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #38BDF8;
+  }
+  .mermaid {
+    background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: grab;
+    display: inline-block;
+    transform-origin: center top;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mermaid:active {
+    cursor: grabbing;
+  }
+  .mermaid svg {
+    max-width: none !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  }
+  .mermaid svg .node rect,
+  .mermaid svg .node circle,
+  .mermaid svg .node polygon,
+  .mermaid svg .node path {
+    rx: 8px !important;
+    ry: 8px !important;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+  }
+  .mermaid svg .edgeLabel {
+    background-color: #0B1120 !important;
+    color: #38BDF8 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+  }
+  .mermaid svg .cluster rect {
+    rx: 12px !important;
+    stroke-width: 1.5px !important;
+    stroke: #334155 !important;
+    fill: rgba(15, 23, 42, 0.65) !important;
+  }
+  .mermaid svg .actor {
+    rx: 8px !important;
+    stroke-width: 2px !important;
+  }
+  .mermaid svg .messageText {
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    fill: #F1F5F9 !important;
+  }
+  .mermaid svg .note {
+    rx: 6px !important;
+    stroke: #F59E0B !important;
+    fill: #3B2203 !important;
+    color: #FEF3C7 !important;
   }
 
   /* Fullscreen Lightbox Modal */
@@ -1015,425 +1207,612 @@
 
         <div class="uml-card" data-cat="architecture" id="uml-layered-arch">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">Core Architecture</span>
+                <span class="uml-cat-badge">ARCHITECTURE</span>
+              </div>
               <div class="uml-card-title">Layered System Component Architecture</div>
-              <div class="uml-card-summary">Full four-tier decomposition separating the Flutter mobile presentation layer, FastAPI business logic controllers, regional XGBoost ML inference cache, and external cloud telemetry providers.</div>
+              <div class="uml-card-summary">Enterprise 4-tier decomposition separating the Flutter mobile presentation fleet, FastAPI business orchestration controllers, regional XGBoost ML inference tier, and cloud telemetry services with zero cross-tier tangling.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">Core Architecture</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-layered-arch')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-layered-arch', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-layered-arch', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-layered-arch')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-layered-arch')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-layered-arch')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-layered-arch">
+              <div class="mermaid" id="mermaid-uml-layered-arch">
 flowchart TD
-    classDef client fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef service fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef ai fill:#3B0764,stroke:#A855F7,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef data fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef cloud fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef client fill:#0B2338,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef api fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ai fill:#2E0854,stroke:#A855F7,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ext fill:#3D121A,stroke:#F43F5E,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef cdn fill:#3B2203,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
 
-    subgraph MobileLayer["📱 Mobile Application Layer (Flutter 3.x)"]
-        UI["🖥️ Presentation UI / Riverpod"]:::client
-        Core["⚙️ Core Services & Repositories"]:::client
-        Painters["🎨 Custom Canvas Painters"]:::client
-        Updater["📦 Shorebird CodePush Updater"]:::client
-        UI --> Core
-        UI --> Painters
+    subgraph Tier1["📱 TIER 1: CLIENT PRESENTATION (Flutter 3.x Mobile Fleet)"]
+        direction LR
+        UI["<b>Flutter UI Presentation</b><br/>Riverpod State & Nav"]:::client
+        Sensors["<b>Device Sensors & GPS</b><br/>Geolocator & Permission Guard"]:::client
+        Canvas["<b>Custom Canvas Visualizer</b><br/>Corridor Elevation Profile"]:::client
+        Updater["<b>Shorebird Client</b><br/>Silent OTA Patch Manager"]:::client
+        UI <--> Sensors
+        UI <--> Canvas
+        UI <--> Updater
     end
 
-    subgraph APILayer["⚡ API & Business Logic Layer (FastAPI)"]
-        Controller["🚦 Trip & Report Controller"]:::service
-        Fusion["🧮 Multi-Source Fusion Engine"]:::service
-        Optimizer["⏱️ Departure Window Optimizer"]:::service
-        Physics["🏎️ Corridor Physics Service"]:::service
-        Scheduler["⏰ Commute Alert Scheduler"]:::service
-        Chatbot["🤖 Grounded Chatbot Service"]:::service
-        Controller --> Fusion
-        Controller --> Optimizer
-        Fusion --> Physics
+    subgraph Tier2["⚡ TIER 2: API GATEWAY & BUSINESS ORCHESTRATION (FastAPI)"]
+        direction LR
+        GW["<b>FastAPI Router</b><br/>Uvicorn Asynchronous Core"]:::api
+        Fusion["<b>Multi-Source Fusion</b><br/>Dynamic Re-Normalization"]:::api
+        Optimizer["<b>Departure Optimizer</b><br/>±60m Window Search"]:::api
+        Physics["<b>Highway Physics Engine</b><br/>AASHTO SSD & Hydroplaning"]:::api
+        SOSHandler["<b>Emergency Controller</b><br/>Mandatory GPS Verification"]:::api
+        GW --> Fusion
+        GW --> Optimizer
+        GW --> SOSHandler
+        Fusion <--> Physics
+        Optimizer <--> Physics
     end
 
-    subgraph MLLayer["🧠 Machine Learning & Intelligence Tier"]
-        Normalizer["📝 Observation Normalizer"]:::ai
-        ModelLoader["💾 Lazy Model Cache (~65MB)"]:::ai
-        XGBoost["🌲 Regional XGBoost Regressors"]:::ai
-        Consensus["🤝 2-of-3 Consensus Engine"]:::ai
+    subgraph Tier3["🧠 TIER 3: INTELLIGENCE & MACHINE LEARNING TIER"]
+        direction LR
+        Normalizer["<b>Feature Normalizer</b><br/>11-D Spatial Telemetry Vector"]:::ai
+        ModelLoader["<b>Lazy Model Cache</b><br/>~65MB Memory-Mapped Cache"]:::ai
+        XGBoost["<b>7 Regional XGBoost Regressors</b><br/>Sector-Trained Hazard Models"]:::ai
+        Consensus["<b>Consensus Engine</b><br/>2-of-3 Model / Sensor Arbiter"]:::ai
+        Normalizer --> ModelLoader
         ModelLoader --> XGBoost
+        XGBoost --> Consensus
     end
 
-    subgraph ExternalLayer["🌐 External Telemetry Providers"]
-        WeatherAPI["🌧️ Open-Meteo Weather API"]:::cloud
-        TrafficAPI["🚦 TomTom Traffic Flow API"]:::cloud
-        GroqAPI["⚡ Groq LLaMA-3.3-70B API"]:::cloud
-        OTPService["🔐 Twilio SMS / Auth Gateway"]:::cloud
+    subgraph Tier4["🌐 TIER 4: EXTERNAL TELEMETRY & CLOUD INFRASTRUCTURE"]
+        direction LR
+        Weather["<b>Open-Meteo API</b><br/>Hourly Rain, Wind, Visibility"]:::ext
+        Traffic["<b>TomTom Flow API</b><br/>Live Speeds & Congestion Delays"]:::ext
+        Groq["<b>Groq LLaMA-3.3-70B</b><br/>Grounded Conversational AI"]:::ext
+        Emergency["<b>112 Emergency Dispatch</b><br/>MSRDC Corridor Rescue Link"]:::ext
+        Shorebird["<b>Shorebird Cloud CDN</b><br/>OTA Patch Distribution"]:::cdn
     end
 
-    Core <==>|HTTPS / REST| Controller
-    Fusion --> ModelLoader
-    Fusion --> WeatherAPI
-    Fusion --> TrafficAPI
-    Optimizer --> ModelLoader
-    Chatbot --> Normalizer
-    Normalizer --> GroqAPI
-    Updater <==>|OTA CodePush| ShorebirdCloud["☁️ Shorebird Cloud CDN"]:::cloud
+    %% Clean Inter-Tier Communication Pipes
+    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
+    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
+    Fusion <===>|Telemetry Ingestion| Weather
+    Fusion <===>|Traffic Feeds| Traffic
+    GW <===>|Grounded Chat Queries| Groq
+    SOSHandler ===>|Hardware GPS Coordinates| Emergency
+    Updater <====>|Background Silent CodePush| Shorebird
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="usecase" id="uml-use-case">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Use Case</span>
+                <span class="uml-cat-badge">USECASE</span>
+              </div>
               <div class="uml-card-title">Comprehensive UML Use Case Specification</div>
-              <div class="uml-card-summary">Detailed mapping of the six distinct human and system actor personas interacting with RouteRadar's primary and secondary operational use cases.</div>
+              <div class="uml-card-summary">Full UML 2.5 use case specification organized into 4 functional subsystems (Tactical Operations, Community Crowdsourcing, Emergency Rescue, and Commute Automation) connecting 6 human and system personas.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Use Case</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-use-case')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-use-case', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-use-case', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-use-case')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-use-case')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-use-case')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-use-case">
+              <div class="mermaid" id="mermaid-uml-use-case">
 flowchart LR
-    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
-    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    classDef actor fill:#0B132B,stroke:#94A3B8,stroke-width:2.5px,color:#F8FAFC,font-weight:bold
+    classDef ops fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef crowd fill:#063B2C,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef emer fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef sched fill:#3B2203,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
 
-    Traveler(("👤 Live Commuter")):::actor
+    %% Human Commuters (Left Side)
+    Commuter(("👤 Live Commuter")):::actor
     Planner(("📅 Advance Planner")):::actor
     Reporter(("📢 Hazard Reporter")):::actor
     Victim(("🆘 Distress Victim")):::actor
-    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
-    Daemon(("⚙️ Background Scheduler")):::actor
 
-    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
-        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
-        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
-        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
-        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
-        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
-        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
-        UC7(["UC7: Autonomous Push Notification"]):::schedUC
-        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
-        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
-        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
+    subgraph Platform["🛰️ RouteRadar Highway Intelligence Platform"]
+        subgraph GroupOps["🚗 Tactical Travel Intelligence"]
+            UC1(["UC1: Evaluate Real-Time Corridor Safety"]):::ops
+            UC2(["UC2: Scan Departure Windows -60m to +60m"]):::ops
+            UC6(["UC6: Consult Grounded Route Copilot"]):::ops
+            UC8(["UC8: Calculate Dynamic Speed Advisory"]):::ops
+        end
+
+        subgraph GroupCrowd["👥 Community & Hazard Crowdsourcing"]
+            UC3(["UC3: Submit Real-Time Road Hazard"]):::crowd
+            UC9(["UC9: Auto-Detect Expressway GPS Sector"]):::crowd
+        end
+
+        subgraph GroupEmergency["🚨 Critical Emergency & SOS Rescue"]
+            UC4(["UC4: Request Mandatory SOS Rescue Dispatch"]):::emer
+            UC10(["UC10: Hardware GPS Location Lockout"]):::emer
+        end
+
+        subgraph GroupSchedule["⏰ Proactive Commute Automation"]
+            UC5(["UC5: Configure Daily Commute Alerts"]):::sched
+            UC7(["UC7: Autonomous Push Notification"]):::sched
+        end
     end
 
-    Traveler --> UC1
-    Traveler --> UC6
-    Reporter --> UC3
+    %% External Systems & Emergency Actors (Right Side)
+    Dispatcher(("🚑 MSRDC / 112 Dispatch")):::actor
+    Daemon(("⚙️ Alert Scheduler Daemon")):::actor
+
+    %% Clean Commuter Associations
+    Commuter --> UC1
+    Commuter --> UC6
     Planner --> UC2
     Planner --> UC5
+    Reporter --> UC3
     Victim --> UC4
 
+    %% Include / Extend Relationships
     UC1 -.->|"<<include>>"| UC8
     UC3 -.->|"<<include>>"| UC9
     UC4 -.->|"<<include>>"| UC10
     UC5 -.->|"<<extend>>"| UC7
 
-    Dispatcher <-- UC4
+    %% External System Associations
+    UC4 --> Dispatcher
     Daemon --> UC7
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="activity" id="uml-data-fusion-activity">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Activity</span>
+                <span class="uml-cat-badge">ACTIVITY</span>
+              </div>
               <div class="uml-card-title">Multi-Source Sensor Fusion & Re-Normalization UML Activity Diagram</div>
-              <div class="uml-card-summary">Stateful execution workflow detailing parallel sensor health gates, dynamic weight sum checks, mathematical re-normalization, physics parameter deductions, and confidence grading.</div>
+              <div class="uml-card-summary">Detailed decision workflow illustrating dynamic weight re-normalization, sensor availability gating, AASHTO grade friction deduction, and Horne hydroplaning velocity evaluation.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Activity</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-data-fusion-activity')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-data-fusion-activity', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-data-fusion-activity', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-data-fusion-activity')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-data-fusion-activity')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-data-fusion-activity')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-data-fusion-activity">
+              <div class="mermaid" id="mermaid-uml-data-fusion-activity">
 flowchart TD
-    classDef terminal fill:#064E3B,stroke:#10B981,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef action fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
-    classDef decision fill:#713F12,stroke:#EAB308,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef hazard fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
+    classDef startEnd fill:#063B2C,stroke:#10B981,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef process fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+    classDef decision fill:#3B2203,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef hazard fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
+    classDef join fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#FFFFFF
 
-    Start(["● INITIATE SEGMENT EVALUATION"]):::terminal --> Ingest["📥 Ingest Sector Telemetry (Weather, Traffic, ML, Reports)"]:::action
+    Start(["● START: INITIATE CORRIDOR EVALUATION"]):::startEnd --> Ingest["📥 Ingest Corridor Spatial Telemetry<br/>(Coordinates, Time of Day, Vehicle Type)"]:::process
 
-    subgraph SensorChecks["🔍 Sensor Validation & Availability Gate"]
-        Ingest --> C1{"Open-Meteo<br/>Available?"}:::decision
-        Ingest --> C2{"TomTom<br/>Available?"}:::decision
-        Ingest --> C3{"Regional ML<br/>Available?"}:::decision
-        Ingest --> C4{"Community<br/>Reports Active?"}:::decision
+    subgraph ForkTelemetry["🔀 Step 1: Parallel Sensor Availability Check"]
+        Ingest --> S1{"Open-Meteo<br/>Weather Feed?"}:::decision
+        Ingest --> S2{"TomTom<br/>Traffic Flow?"}:::decision
+        Ingest --> S3{"Regional ML<br/>Model Cached?"}:::decision
+        Ingest --> S4{"Community<br/>Reports Active?"}:::decision
 
-        C1 -- Yes --> W1["Set w_weather = 0.45"]:::action
-        C1 -- No --> W0["Set w_weather = 0.00"]:::hazard
-        C2 -- Yes --> T1["Set w_traffic = 0.30"]:::action
-        C2 -- No --> T0["Set w_traffic = 0.00"]:::hazard
-        C3 -- Yes --> M1["Set w_ml = 0.10"]:::action
-        C3 -- No --> M0["Set w_ml = 0.00"]:::hazard
-        C4 -- Yes --> TR1["Set w_crowd = 0.10"]:::action
-        C4 -- No --> TR0["Set w_crowd = 0.00"]:::hazard
+        S1 -- Online --> W1["w_weather = 0.45"]:::process
+        S1 -- Offline --> W0["w_weather = 0.00"]:::hazard
+        S2 -- Online --> T1["w_traffic = 0.30"]:::process
+        S2 -- Offline --> T0["w_traffic = 0.00"]:::hazard
+        S3 -- Online --> M1["w_ml = 0.15"]:::process
+        S3 -- Offline --> M0["w_ml = 0.00"]:::hazard
+        S4 -- Online --> C1["w_crowd = 0.10"]:::process
+        S4 -- Offline --> C0["w_crowd = 0.00"]:::hazard
     end
 
-    W1 & W0 & T1 & T0 & M1 & M0 & TR1 & TR0 --> SumW["Sum Active Weights: W_active = Σ w_k"]:::action
+    W1 & W0 & T1 & T0 & M1 & M0 & C1 & C0 --> Join1["⚖️ Step 2: Sum Active Sensor Weights<br/>W_active = Σ w_k"]:::join
 
-    subgraph NormalizationEngine["⚖️ Dynamic Weight Re-Normalization"]
-        SumW --> ZeroCheck{"W_active > 0?"}:::decision
-        ZeroCheck -- No --> Fail["Return Status: score_unavailable"]:::hazard
-        ZeroCheck -- Yes --> Renorm["Re-normalize Weights: w'_k = w_k / W_active"]:::action
-        Renorm --> WeightedSum["Compute Base Score: S_base = Σ w'_k * S_k"]:::action
+    subgraph WeightNormalization["⚖️ Step 3: Dynamic Weight Re-Normalization"]
+        Join1 --> WeightGate{"W_active > 0?"}:::decision
+        WeightGate -- "No (Zero Evidence)" --> FallbackScore["⚠️ Return Degraded Fallback<br/>(Safe Default: 50/100, Low Confidence)"]:::hazard
+        WeightGate -- "Yes (Evidence Valid)" --> Renorm["Compute Normalized Weights:<br/>w'_k = w_k / W_active"]:::process
+        Renorm --> BaseScore["Calculate Composite Base Score:<br/>S_base = Σ (w'_k × S_k)"]:::process
     end
 
-    subgraph PhysicsRiskEngine["🏎️ Physics & User Parameter Deductions"]
-        WeightedSum --> PhysDeduct["Compute Physics Penalties: P_user = P_veh + P_night + P_speed"]:::action
-        PhysDeduct --> ClampScore["Clamp Composite Score: S_sector = clamp(S_base - P_user, 0, 100)"]:::action
-        ClampScore --> CalcConf["Compute Confidence Index: C = W_active * 100%"]:::action
+    subgraph PhysicsAdjustments["🏎️ Step 4: AASHTO Physics & Risk Deductions"]
+        BaseScore --> CalcPenalties["Calculate Dynamic Physics Penalties:<br/>• Rain & Fog Speed Deduction: P_weather<br/>• Bhor Ghat 4.6% Grade Friction: P_grade<br/>• Vehicle Mass & Brake Heating: P_veh<br/>• Night Driving Low Visibility: P_night"]:::process
+        CalcPenalties --> HorneCheck{"Speed > Horne<br/>Hydroplaning?"}:::decision
+        HorneCheck -- "Yes (v > 6.35√p)" --> DeductHydro["Deduct Severe Hydroplaning Penalty<br/>(-20 to -35 pts)"]:::hazard
+        HorneCheck -- "No" --> PassHydro["Maintain Standard Surface Friction"]:::process
+        DeductHydro & PassHydro --> ClampScore["Clamp Final Score to Range 0-100:<br/>S_sector = clamp(S_base - Σ Penalties, 0, 100)"]:::process
     end
 
-    subgraph StatusClassification["🚦 Status Classification & Packaging"]
-        CalcConf --> ScoreGate{"Score Thresholds"}:::decision
-        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
-        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
-        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
-        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+    subgraph ClassificationOutput["🚦 Step 5: Safety Status Classification"]
+        ClampScore --> ThresholdGate{"Safety Score S"}:::decision
+        ThresholdGate -- "S ≥ 85" --> StatusOptimal["🟢 OPTIMAL & CLEAR<br/>Maintain 85-90 km/h"]:::startEnd
+        ThresholdGate -- "70 ≤ S < 85" --> StatusGood["🔵 GOOD CONDITIONS<br/>Normal Flow with Awareness"]:::process
+        ThresholdGate -- "50 ≤ S < 70" --> StatusCaution["🟡 CAUTION ADVISED<br/>Throttle Down to 55-60 km/h"]:::decision
+        ThresholdGate -- "S < 50" --> StatusHazard["🔴 CRITICAL HAZARD<br/>Mountain Curves / Heavy Rain"]:::hazard
     end
 
-    StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal
+    StatusOptimal & StatusGood & StatusCaution & StatusHazard & FallbackScore --> EndNode(["◉ END: RETURN STANDARDIZED EVALUATION DTO"]):::startEnd
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="sequence" id="uml-traveler-seq">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Sequence</span>
+                <span class="uml-cat-badge">SEQUENCE</span>
+              </div>
               <div class="uml-card-title">Real-Time Traveler Tactical Evaluation Sequence Diagram</div>
-              <div class="uml-card-summary">End-to-end asynchronous interaction showing live GPS bounding box resolution, concurrent parallel API ingestion, regional XGBoost inference, and instant response delivery.</div>
+              <div class="uml-card-summary">Synchronous request/response timeline tracing how the Flutter app invokes FastAPI and parallelizes Open-Meteo, TomTom, and local XGBoost inference in under 3 milliseconds.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Sequence</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-traveler-seq')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-traveler-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-traveler-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-traveler-seq')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-traveler-seq')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-traveler-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-traveler-seq">
+              <div class="mermaid" id="mermaid-uml-traveler-seq">
 sequenceDiagram
     autonumber
-    actor Driver as Commuter En-Route
-    participant App as RouteRadar Flutter App
-    participant GW as FastAPI Gateway
-    participant Fusion as Data Fusion Service
-    participant OpenMeteo as Open-Meteo Weather API
-    participant TomTom as TomTom Traffic Flow API
-    participant ML as Regional XGBoost Loader
+    actor Driver as 👤 Commuter En-Route
+    participant App as 📱 RouteRadar App
+    participant GW as ⚡ FastAPI Gateway
+    participant Fusion as 🧮 Data Fusion Service
+    participant OpenMeteo as 🌧️ Open-Meteo API
+    participant TomTom as 🚦 TomTom Traffic API
+    participant ML as 🧠 Regional ML Loader
 
-    Driver->>App: Open Corridor Telemetry Dashboard
+    Driver->>App: Tap Corridor Telemetry Dashboard
     activate App
     App->>GW: GET /trips/telemetry?corridor=mumbai-pune
     activate GW
-    GW->>Fusion: evaluate_corridor_sectors(R1..R8)
+    GW->>Fusion: evaluate_corridor(R1..R8)
     activate Fusion
 
-    par Ingest Weather Telemetry
-        Fusion->>OpenMeteo: Fetch Hourly Rain, Fog, Gust (Parallel)
-        OpenMeteo-->>Fusion: Return Radar Precipitation & Vis
-    and Ingest Traffic Telemetry
-        Fusion->>TomTom: Fetch Real-Time Speed & Incident Delays
-        TomTom-->>Fusion: Return Speed Ratios & Jam Coordinates
-    and Ingest Regional ML
-        Fusion->>ML: Predict Sector Accident Risk (R1..R8)
-        ML-->>Fusion: Return Probability Scores (<3ms)
+    par Query Weather Telemetry
+        Fusion->>OpenMeteo: GET /v1/forecast<br/>(Parallel Sectors R1..R8)
+        OpenMeteo-->>Fusion: JSON (Precip, Visibility, Wind)
+    and Query Traffic Conditions
+        Fusion->>TomTom: GET /flowSegmentData<br/>(Speed vs Free-flow Delays)
+        TomTom-->>Fusion: JSON (Current Speed, Congestion Index)
+    and Regional XGBoost Inference
+        Fusion->>ML: Predict Risk (11-D Spatial Vector)
+        ML-->>Fusion: ML Risk Index (0-100, Latency < 3ms)
     end
 
-    Fusion->>Fusion: Dynamic Re-Normalization & User Risk Penalty
-    Fusion-->>GW: Return Composite Sector Scores & Confidence
+    Fusion->>Fusion: Dynamic Re-Normalization<br/>& AASHTO Physics Penalties
+    Fusion-->>GW: Return Standardized CorridorScoreDTO (e.g. 96/100)
     deactivate Fusion
-    GW-->>App: HTTP 200 JSON Telemetry Payload
+    GW-->>App: 200 OK (Corridor Telemetry DTO)
     deactivate GW
-    App->>App: Render Dynamic Safety Meter & Safe Speeds
-    App-->>Driver: Display High-Contrast Telemetry Cards
+    App-->>Driver: Render Dynamic Speedometer Gauge & Elevation Canvas
     deactivate App
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="sequence" id="uml-departure-seq">
           <div class="uml-card-header">
-            <div>
-              <div class="uml-card-title">Advance 5-Day Planner & Departure Window Scanner Sequence Diagram</div>
-              <div class="uml-card-summary">Illustrates how the departure optimizer scans forward and backward in time across 30-minute intervals to find optimal travel windows during monsoon storms.</div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Sequence</span>
+                <span class="uml-cat-badge">SEQUENCE</span>
+              </div>
+              <div class="uml-card-title">Advance 5-Day Planner & Departure Window Scanner Sequence</div>
+              <div class="uml-card-summary">Interactive sequence showing the temporal scanning engine comparing 5 windows from -60 min to +60 min against weather radar forecasts to find the golden departure window.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Sequence</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-departure-seq')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-departure-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-departure-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-departure-seq')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-departure-seq')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-departure-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-departure-seq">
+              <div class="mermaid" id="mermaid-uml-departure-seq">
 sequenceDiagram
     autonumber
-    actor Planner as Advance Commuter
-    participant App as Mobile App
-    participant GW as FastAPI Router
-    participant Optimizer as Departure Optimizer Service
-    participant WeatherSvc as Open-Meteo 5-Day Radar
-    participant DB as SQLite Trip Repository
+    actor Planner as 📅 Advance Commuter
+    participant App as 📱 RouteRadar App
+    participant GW as ⚡ FastAPI Router
+    participant Optimizer as ⏱️ Departure Optimizer
+    participant WeatherSvc as 🌧️ Open-Meteo 5-Day API
+    participant DB as 💾 SQLite Trip Repository
 
-    Planner->>App: Select Date, Time & Vehicles (e.g. July 25, 08:00 AM)
+    Planner->>App: Select Date, Time & Vehicle Class<br/>(e.g., Saturday 08:00 AM, SUV)
     activate App
     App->>GW: POST /trips/analyze-departure-windows
     activate GW
     GW->>Optimizer: scan_windows(origin, dest, departure_time)
     activate Optimizer
 
-    loop Scan Windows: -60m, -30m, 0m, +30m, +60m
-        Optimizer->>WeatherSvc: Query Atmospheric Forecast at (t + delta)
-        WeatherSvc-->>Optimizer: Convective Cloudburst & Fog Velocity
-        Optimizer->>Optimizer: Calculate Composite Route Score S(delta)
+    loop Scan 5 Temporal Slots (-60m, -30m, 0m, +30m, +60m)
+        Optimizer->>WeatherSvc: Query Hourly Weather Forecast at t_k
+        WeatherSvc-->>Optimizer: Weather Features at Slot t_k
+        Optimizer->>Optimizer: Evaluate S(t_k) with Vehicle Mass & Grade Penalties
     end
 
-    Optimizer->>Optimizer: Identify Optimal Departure delta* = argmax(S)
-    Optimizer->>DB: Cache Window Analysis Results
-    Optimizer-->>GW: Return Delta Scores (+34 pts at +30m)
+    Optimizer->>Optimizer: Rank Golden Slot & Compute Differential ΔS
+    Optimizer-->>GW: DepartureOptimizationResult<br/>(Slots, Golden Window, Score Delta)
     deactivate Optimizer
-    GW-->>App: HTTP 200 JSON Response
+    GW->>DB: Save Planned Trip Evaluation
+    DB-->>GW: Trip Saved (ID: 1042)
+    GW-->>App: 200 OK (Departure Windows DTO)
     deactivate GW
-    App->>App: Render Interactive Departure Window Timeline
-    App-->>Planner: Show Proactive Advice: 'Delay +30m for Clear Skies'
+    App-->>Planner: Highlight Golden Window (e.g., +30m: Score 94/100 vs 72/100)
     deactivate App
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="sequence" id="uml-sos-seq">
           <div class="uml-card-header">
-            <div>
-              <div class="uml-card-title">Emergency SOS Mandatory Location Authorization & Rescue Dispatch Sequence</div>
-              <div class="uml-card-summary">Life-safety protocol demonstrating strict GPS coordinate acquisition, milestone snapping, and WhatsApp/SMS emergency dispatching to MSRDC 98224 98224.</div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Sequence</span>
+                <span class="uml-cat-badge">SEQUENCE</span>
+              </div>
+              <div class="uml-card-title">Emergency SOS Mandatory Location Authorization & Rescue Dispatch</div>
+              <div class="uml-card-summary">Critical safety sequence showing the un-dismissible modal loop that forces GPS activation before unlocking 112 emergency calls and WhatsApp rescue dispatch.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Sequence</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-sos-seq')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-sos-seq', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-sos-seq', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-sos-seq')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-sos-seq')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-sos-seq')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-sos-seq">
+              <div class="mermaid" id="mermaid-uml-sos-seq">
 sequenceDiagram
     autonumber
-    actor Victim as Commuter in Distress
-    participant App as Mobile App (SOS Screen)
-    participant Geo as Geolocator System Service
-    participant Modal as Mandatory Location Modal
-    participant Dialer as Android Native Phone Dialer
-    participant Share as Android Intent (WhatsApp/SMS)
+    actor Victim as 🆘 Commuter in Distress
+    participant App as 📱 Mobile App (SOS Screen)
+    participant Geo as 🛰️ Geolocator Service
+    participant Modal as ⚠️ Mandatory GPS Modal
+    participant Dialer as 📞 Phone Dialer (112)
+    participant Share as 💬 Android Intent (WhatsApp)
 
-    Victim->>App: Tap Emergency SOS Icon
+    Victim->>App: Tap Emergency SOS Button
     activate App
-    App->>Geo: Check Location Permissions
-    alt Permission Denied or GPS Off
-        Geo-->>App: Permission Missing
-        App->>Modal: Display Mandatory Location Modal (Exit Blocked)
-        Victim->>Modal: Tap "Grant Location Permission"
-        Modal->>Geo: Request High-Accuracy GPS
-        Geo-->>App: Return Coordinates (18.7842N, 73.3412E)
-    else Permission Already Granted
-        Geo-->>App: Immediate High-Accuracy GPS Coordinates
+    App->>Geo: Check Location Permissions & Hardware GPS
+
+    alt GPS Disabled or Permission Missing
+        Geo-->>App: Permission Denied / GPS Disabled
+        App->>Modal: Display Mandatory Location Modal<br/>(Dismiss Disabled / Exit Blocked)
+        Victim->>Modal: Tap "Enable High-Accuracy GPS"
+        Modal->>Geo: Open System Settings
+        Note over App: App waits in background
+        App->>App: didChangeAppLifecycleState(resumed)<br/>Auto-recheck permission
+        Geo-->>App: Precise GPS Acquired (18.7842° N, 73.3421° E)
+        App->>App: Auto-Snap Sector: "Khopoli to Khandala (Bhor Ghat)"
+    else GPS Already Granted
+        Geo-->>App: Direct Lat/Lon Position
     end
 
-    App->>App: Snap to Expressway KM 48.2 (Amrutanjan Bridge)
-    App-->>Victim: Display Locked Coordinates & Hotline Cards
+    App-->>Victim: Display Locked GPS Badge & Emergency Hotline Buttons
 
-    alt Emergency Phone Call
-        Victim->>App: Tap "Call MSRDC Control (98224 98224)"
-        App->>Dialer: Launch tel:9822498224
-        Dialer-->>Victim: Connect Call to MSRDC Emergency Dispatch
-    else WhatsApp / SMS Telemetry Broadcast
-        Victim->>App: Tap "Send WhatsApp SOS Broadcast"
-        App->>Share: Format Pre-Populated Rescue Payload with Google Maps Pin
-        Share-->>Victim: Broadcast Exact Crash Coordinates to Responders
+    alt Call 112 Highway Patrol
+        Victim->>App: Tap "Call 112 Highway Police"
+        App->>Dialer: Launch Intent tel:112
+        Dialer-->>Victim: Connects Call to Highway Control Room
+    else WhatsApp Rescue Dispatch
+        Victim->>App: Tap "Share Location on WhatsApp"
+        App->>Share: Launch Intent with Pre-filled Message:<br/>"EMERGENCY on Mumbai-Pune Expressway at Bhor Ghat (KM 48.2)..."
+        Share-->>Victim: WhatsApp Opened with Direct GPS Pin
     end
     deactivate App
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="statemachine" id="uml-state-trip">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">State Machine</span>
+                <span class="uml-cat-badge">STATEMACHINE</span>
+              </div>
               <div class="uml-card-title">Trip Entity Lifecycle State Machine Diagram</div>
               <div class="uml-card-summary">State transitions of a corridor trip entity from Draft initialization through active evaluation, en-route telemetry tracking, and persistent archive.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML State Machine</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-state-trip')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-state-trip', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-state-trip', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-state-trip')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-state-trip')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-state-trip')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-state-trip">
+              <div class="mermaid" id="mermaid-uml-state-trip">
 stateDiagram-v2
+    classDef stateBox fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+    classDef activeState fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef failState fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF
+
     [*] --> DRAFT : User enters Origin & Destination
+    
+    state DRAFT {
+        [*] --> EnteringDetails
+        EnteringDetails --> FormComplete : Select Vehicle Class & Time
+    }
+
     DRAFT --> EVALUATING : Submit evaluation request
-    EVALUATING --> ACTIVE : Telemetry ingested & score calculated
-    EVALUATING --> FAILED : Timeout / Service unavailable
-    FAILED --> DRAFT : Retry with cached telemetry
-    ACTIVE --> EN_ROUTE : User departs (Traveler Mode)
-    ACTIVE --> PLANNED : Future trip saved (Planner Mode)
-    EN_ROUTE --> COMPLETED : Arrives at destination
-    EN_ROUTE --> CANCELLED : Trip aborted by user
+    
+    state EVALUATING {
+        [*] --> FetchingTelemetry
+        FetchingTelemetry --> FusingSensors : Ingest Weather, Traffic & ML
+        FusingSensors --> ComputingScore : Apply AASHTO Physics Engine
+    }
+
+    EVALUATING --> ACTIVE : Telemetry fused & score calculated:::activeState
+    EVALUATING --> FAILED : Network timeout / Service down:::failState
+    
+    FAILED --> DRAFT : Auto-retry with cached local data
+    
+    ACTIVE --> EN_ROUTE : Commuter begins driving (Traveler Mode):::activeState
+    ACTIVE --> PLANNED : Future departure saved (Planner Mode)
+    
     PLANNED --> ACTIVE : Departure window arrives
-    COMPLETED --> ARCHIVED : Saved to SQLite Report Database
-    CANCELLED --> [*]
+    
+    state EN_ROUTE {
+        [*] --> TrackingCorridor
+        TrackingCorridor --> WarningTriggered : Hazard reported ahead
+        WarningTriggered --> TrackingCorridor : User navigates past hazard
+    }
+
+    EN_ROUTE --> COMPLETED : Destination reached safely
+    EN_ROUTE --> CANCELLED : Trip aborted by driver:::failState
+    
+    COMPLETED --> ARCHIVED : Persisted in SQLite Trip Repository
     ARCHIVED --> [*]
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="statemachine" id="uml-state-sos">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">State Machine</span>
+                <span class="uml-cat-badge">STATEMACHINE</span>
+              </div>
               <div class="uml-card-title">Emergency SOS Mandatory Location State Machine Diagram</div>
               <div class="uml-card-summary">Rigorous finite state machine enforcing that emergency dispatch is impossible without high-accuracy verified GPS coordinates.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML State Machine</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-state-sos')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-state-sos', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-state-sos', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-state-sos')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-state-sos')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-state-sos')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-state-sos">
+              <div class="mermaid" id="mermaid-uml-state-sos">
 stateDiagram-v2
-    [*] --> SCREEN_OPENED : User taps SOS
-    SCREEN_OPENED --> CHECKING_PERMISSION : initState triggers permission check
-    CHECKING_PERMISSION --> GRANTED : Permission already granted
-    CHECKING_PERMISSION --> DENIED : Permission missing / GPS off
-    DENIED --> MODAL_BLOCKED : Show mandatory location modal
-    MODAL_BLOCKED --> CHECKING_PERMISSION : User taps "Grant Permission"
-    MODAL_BLOCKED --> SCREEN_CLOSED : User cancels (Navigates Back)
-    GRANTED --> ACQUIRING_COORDINATES : Geolocator.getCurrentPosition()
-    ACQUIRING_COORDINATES --> DISPATCH_READY : Coordinates locked + KM Marker resolved
-    DISPATCH_READY --> CALLING_HOTLINE : User taps 98224 98224 or 112
-    DISPATCH_READY --> SHARING_TELEMETRY : User taps WhatsApp / SMS
-    CALLING_HOTLINE --> DISPATCH_READY : Call concluded
-    SHARING_TELEMETRY --> DISPATCH_READY : Message broadcast
-    SCREEN_CLOSED --> [*]
+    classDef safeState fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef alertState fill:#3D121A,stroke:#F43F5E,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef neutralState fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF
+
+    [*] --> SCREEN_OPENED : User triggers Emergency SOS
+    SCREEN_OPENED --> CHECKING_PERMISSION : initState() requests GPS state
+
+    CHECKING_PERMISSION --> GRANTED : Permission already granted:::safeState
+    CHECKING_PERMISSION --> DENIED : Permission denied / GPS disabled:::alertState
+
+    DENIED --> MODAL_BLOCKED : Show un-dismissible location modal:::alertState
+    MODAL_BLOCKED --> SYSTEM_SETTINGS : User taps "Enable High-Accuracy GPS"
+    SYSTEM_SETTINGS --> APP_RESUMED : Return to app via lifecycle hook
+    APP_RESUMED --> CHECKING_PERMISSION : Auto-recheck location state
+
+    GRANTED --> ACQUIRING_GPS : Geolocator.getCurrentPosition():::neutralState
+    ACQUIRING_GPS --> SNAP_CORRIDOR : Reverse-geocode to Expressway KM marker:::neutralState
+    SNAP_CORRIDOR --> DISPATCH_READY : Coordinates locked (Accuracy < 10m):::safeState
+
+    state DISPATCH_READY {
+        [*] --> ReadyState
+        ReadyState --> CALL_112_ACTIVE : User taps Police 112
+        ReadyState --> WHATSAPP_SHARED : User shares GPS pin with family
+    }
+
+    DISPATCH_READY --> [*] : Emergency resolved / Commuter safe
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="class" id="uml-domain-classes">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">UML Class</span>
+                <span class="uml-cat-badge">CLASS</span>
+              </div>
               <div class="uml-card-title">Domain Class Diagram & Relational Entity Model</div>
-              <div class="uml-card-summary">Object-oriented class hierarchy detailing entities, associations, type signatures, and methods powering RouteRadar's database and business logic.</div>
+              <div class="uml-card-summary">Core object-oriented domain classes showing fields, method signatures, relationships, and multiplicity across the RouteRadar backend.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">UML Class Diagram</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-domain-classes')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-domain-classes', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-domain-classes', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-domain-classes')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-domain-classes')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-domain-classes')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-domain-classes">
+              <div class="mermaid" id="mermaid-uml-domain-classes">
 classDiagram
+    direction TB
     class User {
         +int id
         +string email
@@ -1442,6 +1821,8 @@ classDiagram
         +datetime created_at
         +list~Trip~ trips
         +list~CommuteHabit~ habits
+        +authenticate() bool
+        +update_preferences() void
     }
 
     class Trip {
@@ -1454,6 +1835,8 @@ classDiagram
         +string status
         +string persona_type
         +dict route_geometry
+        +calculate_composite_risk() float
+        +get_sector_breakdown() list
     }
 
     class TravelReport {
@@ -1461,96 +1844,141 @@ classDiagram
         +int trip_id
         +float corridor_score
         +float confidence
-        +string primary_hazard
-        +dict sector_breakdown
-        +datetime created_at
+        +datetime generated_at
+        +dict weather_summary
+        +dict traffic_summary
+        +list recommendations
+        +render_plain_english_summary() string
+        +export_pdf_dto() dict
     }
 
-    class TravelerReport {
+    class CorridorSectorScore {
         +int id
-        +string region_code
-        +string condition_type
+        +int report_id
+        +string sector_id
+        +string sector_name
+        +float score
+        +float weather_score
+        +float traffic_score
+        +float ml_risk_score
+        +float physics_penalty
+        +string risk_level
+    }
+
+    class CrowdsourcedHazard {
+        +int id
+        +string sector_id
+        +string hazard_type
         +string severity
+        +datetime reported_at
+        +datetime expires_at
         +float latitude
         +float longitude
-        +datetime created_at
+        +is_active(datetime current_time) bool
     }
 
     class CommuteHabit {
         +int id
         +int user_id
-        +string typical_origin
-        +string typical_destination
-        +time typical_departure_time
-        +list~int~ travel_days
-        +bool is_active
+        +string origin
+        +string destination
+        +string departure_time
+        +list active_days
+        +bool alert_enabled
+        +should_dispatch_alert(datetime now) bool
     }
 
-    User "1" --> "*" Trip : plans
-    User "1" --> "*" CommuteHabit : establishes
-    Trip "1" --> "1" TravelReport : generates
-    Trip "*" --> "*" TravelerReport : cross_references
+    User "1" --> "*" Trip : schedules
+    Trip "1" --> "1" TravelReport : produces
+    TravelReport "1" --> "8" CorridorSectorScore : evaluates
+    User "1" --> "*" CommuteHabit : configures
+    CorridorSectorScore "1" --> "*" CrowdsourcedHazard : aggregates
+              </div>
             </div>
           </div>
         </div>
         
         <div class="uml-card" data-cat="topology" id="uml-cloud-topology">
           <div class="uml-card-header">
-            <div>
+            <div class="uml-card-header-left">
+              <div class="uml-card-tag-row">
+                <span class="uml-badge">Cloud Topology</span>
+                <span class="uml-cat-badge">TOPOLOGY</span>
+              </div>
               <div class="uml-card-title">Cloud Infrastructure & Deployment Topology Diagram</div>
-              <div class="uml-card-summary">Production infrastructure mapping edge CDN ingress, Render PaaS container instances, persistent SQLite databases, and Shorebird CodePush OTA pipelines.</div>
+              <div class="uml-card-summary">Production deployment architecture on Render Cloud, Cloudflare Edge, Shorebird OTA distribution, and external microservice APIs.</div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="uml-badge">Deployment Topology</span>
-              <button class="btn-uml-action" onclick="zoomDiagram('uml-cloud-topology')">🔍 Fullscreen</button>
+            <div class="uml-card-toolbar">
+              <button class="btn-uml-action" onclick="diagramZoom('uml-cloud-topology', 0.15)" title="Zoom In">➕ Zoom In</button>
+              <button class="btn-uml-action" onclick="diagramZoom('uml-cloud-topology', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+              <button class="btn-uml-action" onclick="diagramReset('uml-cloud-topology')" title="Reset to 100%">↺ 100%</button>
+              <button class="btn-uml-action" onclick="diagramFitToggle('uml-cloud-topology')" title="Fit to Container / Scroll">↔ Fit</button>
+              <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('uml-cloud-topology')" title="Fullscreen Lightbox">⛶ Lightbox</button>
             </div>
           </div>
-          <div class="mermaid-wrapper">
-            <div class="mermaid">
+          <div class="mermaid-card-body">
+            <div class="diagram-scroll-hint">
+              <span>↔ Scroll or drag horizontally to view full blueprint</span>
+              <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+            </div>
+            <div class="mermaid-wrapper" id="wrapper-uml-cloud-topology">
+              <div class="mermaid" id="mermaid-uml-cloud-topology">
 flowchart TB
-    classDef client fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef client fill:#0B2338,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
     classDef edge fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef app fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef storage fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef ext fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef app fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef storage fill:#3B2203,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef ext fill:#3D121A,stroke:#F43F5E,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
 
-    subgraph UserFleet["📱 Mobile Client Fleet"]
-        AndroidFleet["Android Devices (v1.0.5+6)"]:::client
-        IOSFleet["iOS Devices"]:::client
+    subgraph MobileFleet["📱 Mobile Client Fleet (Android / iOS)"]
+        direction LR
+        Android["<b>Android Native App</b><br/>Flutter 3.x Engine"]:::client
+        ShorebirdAgent["<b>Shorebird Updater</b><br/>Patch 40 (v1.0.5+6)"]:::client
+        LocalCache["<b>Offline Storage</b><br/>SharedPreferences & Hive"]:::client
+        Android <--> ShorebirdAgent
+        Android <--> LocalCache
     end
 
-    subgraph EdgeTier["🛡️ Edge Network & CDN"]
-        CloudflareEdge["Cloudflare Edge SSL / DDoS Protection"]:::edge
-        ShorebirdEdge["Shorebird Cloud CDN (Patch 40 Stable)"]:::edge
+    subgraph EdgeLayer["🌐 Cloudflare Global Edge Network"]
+        direction LR
+        CF["<b>Cloudflare Edge CDN</b><br/>SSL / TLS 1.3 Termination"]:::edge
+        WAF["<b>DDoS Protection & WAF</b><br/>Rate Limiting & Threat Shield"]:::edge
+        CF --> WAF
     end
 
-    subgraph ContainerPaaS["⚡ Render Cloud Application Tier"]
-        FastAPIInstance["FastAPI Uvicorn Container (Port 8000)"]:::app
-        HealthEndpoint["/health Fast Probe (<2ms)"]:::app
-        LazyML["Lazy Model Cache (~65MB Container RAM)"]:::app
-        FastAPIInstance --> HealthEndpoint
-        FastAPIInstance --> LazyML
+    subgraph CloudCompute["⚡ Render.com Managed Cloud Infrastructure"]
+        direction LR
+        Uvicorn["<b>Uvicorn ASGI Server</b><br/>4 Worker Processes"]:::app
+        FastAPIInstance["<b>FastAPI Core Application</b><br/>Python 3.11 Runtime"]:::app
+        ModelMemory["<b>Lazy Model Cache</b><br/>~65MB In-Memory Regressors"]:::app
+        Uvicorn --> FastAPIInstance
+        FastAPIInstance <--> ModelMemory
     end
 
-    subgraph StorageTier["💾 Persistent Storage Tier"]
-        SQLiteDB[("SQLite Persistent Database")]:::storage
-        TripArchive[("Archived Trip Analysis JSON")]:::storage
-        FastAPIInstance --> SQLiteDB
-        FastAPIInstance --> TripArchive
+    subgraph PersistenceTier["💾 Persistence & State Tier"]
+        direction LR
+        SQLiteDB["<b>SQLite Relational DB</b><br/>Users, Trips, Commute Habits"]:::storage
+        HazardStore["<b>Corridor Hazard Store</b><br/>Strict 1-Hour Time-to-Live"]:::storage
     end
 
-    subgraph ExternalAPIs["🌐 External Live Telemetry Services"]
-        OpenMeteo["Open-Meteo Hourly Weather API"]:::ext
-        TomTom["TomTom Traffic Flow & Incidents"]:::ext
-        Groq["Groq Cloud (LLaMA-3.3-70B)"]:::ext
-        FastAPIInstance --> OpenMeteo
-        FastAPIInstance --> TomTom
-        FastAPIInstance --> Groq
+    subgraph ExternalTelemetry["📡 External Telemetry & Intelligence APIs"]
+        direction LR
+        OpenMeteo["<b>Open-Meteo Weather API</b><br/>Hourly Rain, Wind, Visibility"]:::ext
+        TomTom["<b>TomTom Flow API</b><br/>Live Traffic Speeds"]:::ext
+        GroqCloud["<b>Groq LLaMA-3.3-70B</b><br/>Fast Inference LLM"]:::ext
+        ShorebirdCloud["<b>Shorebird CodePush CDN</b><br/>Instant OTA Delivery"]:::ext
     end
 
-    UserFleet <==>|HTTPS / REST| CloudflareEdge
-    CloudflareEdge <==> FastAPIInstance
-    UserFleet <==>|Silent OTA CodePush| ShorebirdEdge
+    %% Network Connections
+    MobileFleet <===>|HTTPS / TLS 1.3| CF
+    WAF <===>|Internal Secure Tunnel| Uvicorn
+    FastAPIInstance <===>|Async SQL / ORM| SQLiteDB
+    FastAPIInstance <===>|Active Hazard Filtering| HazardStore
+    FastAPIInstance <===>|Parallel HTTP/2 Calls| OpenMeteo
+    FastAPIInstance <===>|Parallel HTTP/2 Calls| TomTom
+    FastAPIInstance <===>|Streaming Completion| GroqCloud
+    ShorebirdAgent <===>|Silent Background OTA Check| ShorebirdCloud
+              </div>
             </div>
           </div>
         </div>
@@ -2081,50 +2509,65 @@ The system architecture follows a decoupled, micro-service-oriented model where 
 
 ```mermaid
 flowchart TD
-    subgraph MobileLayer["Mobile Application Layer (Flutter 3.x)"]
-        UI["Presentation UI / Screens"]
-        Core["Core Services & Repositories"]
-        Painters["Custom Canvas Painters"]
-        Updater["Shorebird CodePush Updater"]
-        UI --> Core
-        UI --> Painters
+    classDef client fill:#0B2338,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef api fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ai fill:#2E0854,stroke:#A855F7,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ext fill:#3D121A,stroke:#F43F5E,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef cdn fill:#3B2203,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+
+    subgraph Tier1["📱 TIER 1: CLIENT PRESENTATION (Flutter 3.x Mobile Fleet)"]
+        direction LR
+        UI["<b>Flutter UI Presentation</b><br/>Riverpod State & Nav"]:::client
+        Sensors["<b>Device Sensors & GPS</b><br/>Geolocator & Permission Guard"]:::client
+        Canvas["<b>Custom Canvas Visualizer</b><br/>Corridor Elevation Profile"]:::client
+        Updater["<b>Shorebird Client</b><br/>Silent OTA Patch Manager"]:::client
+        UI <--> Sensors
+        UI <--> Canvas
+        UI <--> Updater
     end
 
-    subgraph APILayer["API & Business Logic Layer (FastAPI)"]
-        Controller["Trip & Report Controller"]
-        Fusion["Safety Score Fusion Engine"]
-        Optimizer["Departure Optimizer Engine"]
-        Physics["Corridor Physics Engine"]
-        Scheduler["Commute Alert Scheduler"]
-        Chatbot["Grounded Chatbot Service"]
-        Controller --> Fusion
-        Controller --> Optimizer
-        Fusion --> Physics
+    subgraph Tier2["⚡ TIER 2: API GATEWAY & BUSINESS ORCHESTRATION (FastAPI)"]
+        direction LR
+        GW["<b>FastAPI Router</b><br/>Uvicorn Asynchronous Core"]:::api
+        Fusion["<b>Multi-Source Fusion</b><br/>Dynamic Re-Normalization"]:::api
+        Optimizer["<b>Departure Optimizer</b><br/>±60m Window Search"]:::api
+        Physics["<b>Highway Physics Engine</b><br/>AASHTO SSD & Hydroplaning"]:::api
+        SOSHandler["<b>Emergency Controller</b><br/>Mandatory GPS Verification"]:::api
+        GW --> Fusion
+        GW --> Optimizer
+        GW --> SOSHandler
+        Fusion <--> Physics
+        Optimizer <--> Physics
     end
 
-    subgraph MLLayer["Intelligence & ML Layer"]
-        Normalizer["Observation Normalizer (LLM)"]
-        ModelLoader["Lazy Regional Model Loader"]
-        XGBoost["XGBoost Cost-Weighted Regressors"]
-        Consensus["Spatial-Temporal Consensus Engine"]
+    subgraph Tier3["🧠 TIER 3: INTELLIGENCE & MACHINE LEARNING TIER"]
+        direction LR
+        Normalizer["<b>Feature Normalizer</b><br/>11-D Spatial Telemetry Vector"]:::ai
+        ModelLoader["<b>Lazy Model Cache</b><br/>~65MB Memory-Mapped Cache"]:::ai
+        XGBoost["<b>7 Regional XGBoost Regressors</b><br/>Sector-Trained Hazard Models"]:::ai
+        Consensus["<b>Consensus Engine</b><br/>2-of-3 Model / Sensor Arbiter"]:::ai
+        Normalizer --> ModelLoader
         ModelLoader --> XGBoost
+        XGBoost --> Consensus
     end
 
-    subgraph ExternalLayer["External Telemetry & Cloud Providers"]
-        WeatherAPI["Open-Meteo Radar / Forecast API"]
-        TrafficAPI["TomTom Live Traffic Flow & Incidents API"]
-        GroqAPI["Groq LLaMA-3.3-70B API"]
-        OTPService["Twilio / SendGrid OTP Service"]
+    subgraph Tier4["🌐 TIER 4: EXTERNAL TELEMETRY & CLOUD INFRASTRUCTURE"]
+        direction LR
+        Weather["<b>Open-Meteo API</b><br/>Hourly Rain, Wind, Visibility"]:::ext
+        Traffic["<b>TomTom Flow API</b><br/>Live Speeds & Congestion Delays"]:::ext
+        Groq["<b>Groq LLaMA-3.3-70B</b><br/>Grounded Conversational AI"]:::ext
+        Emergency["<b>112 Emergency Dispatch</b><br/>MSRDC Corridor Rescue Link"]:::ext
+        Shorebird["<b>Shorebird Cloud CDN</b><br/>OTA Patch Distribution"]:::cdn
     end
 
-    Core <==>|HTTPS / REST| Controller
-    Fusion --> ModelLoader
-    Fusion --> WeatherAPI
-    Fusion --> TrafficAPI
-    Optimizer --> ModelLoader
-    Chatbot --> Normalizer
-    Normalizer --> GroqAPI
-    Updater <==>|OTA CodePush| ShorebirdCloud["Shorebird Cloud CDN"]
+    %% Clean Inter-Tier Communication Pipes
+    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
+    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
+    Fusion <===>|Telemetry Ingestion| Weather
+    Fusion <===>|Traffic Feeds| Traffic
+    GW <===>|Grounded Chat Queries| Groq
+    SOSHandler ===>|Hardware GPS Coordinates| Emergency
+    Updater <====>|Background Silent CodePush| Shorebird
 ```
 
 ## 3.2 UML Domain Class Diagram & Relational Entity Model
@@ -2220,45 +2663,62 @@ The system supports three primary actors: **Live Traveler**, **Advance Trip Plan
 
 ```mermaid
 flowchart LR
-    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
-    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    classDef actor fill:#0B132B,stroke:#94A3B8,stroke-width:2.5px,color:#F8FAFC,font-weight:bold
+    classDef ops fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef crowd fill:#063B2C,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef emer fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef sched fill:#3B2203,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
 
-    Traveler(("👤 Live Commuter")):::actor
+    %% Human Commuters (Left Side)
+    Commuter(("👤 Live Commuter")):::actor
     Planner(("📅 Advance Planner")):::actor
     Reporter(("📢 Hazard Reporter")):::actor
     Victim(("🆘 Distress Victim")):::actor
-    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
-    Daemon(("⚙️ Background Scheduler")):::actor
 
-    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
-        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
-        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
-        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
-        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
-        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
-        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
-        UC7(["UC7: Autonomous Push Notification"]):::schedUC
-        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
-        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
-        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
+    subgraph Platform["🛰️ RouteRadar Highway Intelligence Platform"]
+        subgraph GroupOps["🚗 Tactical Travel Intelligence"]
+            UC1(["UC1: Evaluate Real-Time Corridor Safety"]):::ops
+            UC2(["UC2: Scan Departure Windows -60m to +60m"]):::ops
+            UC6(["UC6: Consult Grounded Route Copilot"]):::ops
+            UC8(["UC8: Calculate Dynamic Speed Advisory"]):::ops
+        end
+
+        subgraph GroupCrowd["👥 Community & Hazard Crowdsourcing"]
+            UC3(["UC3: Submit Real-Time Road Hazard"]):::crowd
+            UC9(["UC9: Auto-Detect Expressway GPS Sector"]):::crowd
+        end
+
+        subgraph GroupEmergency["🚨 Critical Emergency & SOS Rescue"]
+            UC4(["UC4: Request Mandatory SOS Rescue Dispatch"]):::emer
+            UC10(["UC10: Hardware GPS Location Lockout"]):::emer
+        end
+
+        subgraph GroupSchedule["⏰ Proactive Commute Automation"]
+            UC5(["UC5: Configure Daily Commute Alerts"]):::sched
+            UC7(["UC7: Autonomous Push Notification"]):::sched
+        end
     end
 
-    Traveler --> UC1
-    Traveler --> UC6
-    Reporter --> UC3
+    %% External Systems & Emergency Actors (Right Side)
+    Dispatcher(("🚑 MSRDC / 112 Dispatch")):::actor
+    Daemon(("⚙️ Alert Scheduler Daemon")):::actor
+
+    %% Clean Commuter Associations
+    Commuter --> UC1
+    Commuter --> UC6
     Planner --> UC2
     Planner --> UC5
+    Reporter --> UC3
     Victim --> UC4
 
+    %% Include / Extend Relationships
     UC1 -.->|"<<include>>"| UC8
     UC3 -.->|"<<include>>"| UC9
     UC4 -.->|"<<include>>"| UC10
     UC5 -.->|"<<extend>>"| UC7
 
-    Dispatcher <-- UC4
+    %% External System Associations
+    UC4 --> Dispatcher
     Daemon --> UC7
 ```
 
@@ -4747,9 +5207,41 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
 
   const renderer = new marked.Renderer();
   const defaultCodeRenderer = renderer.code.bind(renderer);
+  let repDiagramCount = 0;
   renderer.code = function(code, language) {
     if (language === 'mermaid') {
-      return '<div class="mermaid">' + code + '</div>';
+      repDiagramCount++;
+      const cardId = 'rep-uml-' + repDiagramCount;
+      return `
+      <div class="uml-card" id="${cardId}" style="margin: 28px 0;">
+        <div class="uml-card-header">
+          <div class="uml-card-header-left">
+            <div class="uml-card-tag-row">
+              <span class="uml-badge">Report Architecture Diagram #${repDiagramCount}</span>
+            </div>
+            <div class="uml-card-title">Interactive Architectural Blueprint</div>
+          </div>
+          <div class="uml-card-toolbar">
+            <button class="btn-uml-action" onclick="diagramZoom('${cardId}', 0.15)" title="Zoom In">➕ Zoom In</button>
+            <button class="btn-uml-action" onclick="diagramZoom('${cardId}', -0.15)" title="Zoom Out">➖ Zoom Out</button>
+            <button class="btn-uml-action" onclick="diagramReset('${cardId}')" title="Reset to 100%">↺ 100%</button>
+            <button class="btn-uml-action" onclick="diagramFitToggle('${cardId}')" title="Fit to Container / Scroll">↔ Fit</button>
+            <button class="btn-uml-action btn-primary-action" onclick="zoomDiagram('${cardId}')" title="Fullscreen Lightbox">⛶ Lightbox</button>
+          </div>
+        </div>
+        <div class="mermaid-card-body">
+          <div class="diagram-scroll-hint">
+            <span>↔ Scroll or drag horizontally to view diagram</span>
+            <span style="color:var(--accent-cyan); font-weight:700;">Vector Crisp (100% DPI)</span>
+          </div>
+          <div class="mermaid-wrapper" id="wrapper-${cardId}">
+            <div class="mermaid" id="mermaid-${cardId}">
+${code}
+            </div>
+          </div>
+        </div>
+      </div>
+      `;
     }
     return defaultCodeRenderer(code, language);
   };
@@ -4773,6 +5265,50 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
   window.addEventListener('mermaid-ready', () => {
     renderMermaidInActivePane();
   });
+
+  const diagramScales = {};
+
+  function diagramZoom(cardId, delta) {
+    if (!diagramScales[cardId]) diagramScales[cardId] = 1.0;
+    diagramScales[cardId] = Math.max(0.35, Math.min(3.5, diagramScales[cardId] + delta));
+    applyDiagramTransform(cardId);
+  }
+
+  function diagramReset(cardId) {
+    diagramScales[cardId] = 1.0;
+    applyDiagramTransform(cardId);
+  }
+
+  function diagramFitToggle(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const wrapper = card.querySelector('.mermaid-wrapper');
+    const svg = card.querySelector('.mermaid svg');
+    if (!wrapper || !svg) return;
+
+    const wrapperWidth = wrapper.clientWidth - 48;
+    const svgBBox = svg.getBBox ? svg.getBBox() : { width: svg.clientWidth };
+    const naturalWidth = svgBBox.width || svg.clientWidth;
+
+    if (naturalWidth > 0) {
+      if (!diagramScales[cardId] || Math.abs(diagramScales[cardId] - 1.0) < 0.05) {
+        diagramScales[cardId] = Math.min(1.0, wrapperWidth / naturalWidth);
+      } else {
+        diagramScales[cardId] = 1.0;
+      }
+      applyDiagramTransform(cardId);
+    }
+  }
+
+  function applyDiagramTransform(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const mermaidDiv = card.querySelector('.mermaid');
+    if (mermaidDiv) {
+      const scale = diagramScales[cardId] || 1.0;
+      mermaidDiv.style.transform = `scale(${scale})`;
+    }
+  }
 
   function filterUML(cat, elem) {
     document.querySelectorAll('.uml-filter-bar .filter-pill').forEach(p => p.classList.remove('active'));
@@ -4799,9 +5335,10 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
     container.innerHTML = svgElem.outerHTML;
     const innerSvg = container.querySelector('svg');
     if (innerSvg) {
-      innerSvg.style.maxWidth = '100%';
-      innerSvg.style.maxHeight = '80vh';
+      innerSvg.style.maxWidth = 'none';
+      innerSvg.style.width = '100%';
       innerSvg.style.height = 'auto';
+      innerSvg.style.transform = 'none';
     }
     modal.style.display = 'flex';
   }
@@ -4809,6 +5346,10 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
   function closeModal() {
     document.getElementById('lightboxModal').style.display = 'none';
   }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
 
   function filterReportNav() {
     const query = document.getElementById('reportSearchInput').value.toLowerCase();

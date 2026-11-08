@@ -275,50 +275,65 @@ The system architecture follows a decoupled, micro-service-oriented model where 
 
 ```mermaid
 flowchart TD
-    subgraph MobileLayer["Mobile Application Layer (Flutter 3.x)"]
-        UI["Presentation UI / Screens"]
-        Core["Core Services & Repositories"]
-        Painters["Custom Canvas Painters"]
-        Updater["Shorebird CodePush Updater"]
-        UI --> Core
-        UI --> Painters
+    classDef client fill:#0B2338,stroke:#38BDF8,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef api fill:#063B2C,stroke:#10B981,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ai fill:#2E0854,stroke:#A855F7,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef ext fill:#3D121A,stroke:#F43F5E,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+    classDef cdn fill:#3B2203,stroke:#F59E0B,stroke-width:2.5px,color:#FFFFFF,font-weight:bold
+
+    subgraph Tier1["📱 TIER 1: CLIENT PRESENTATION (Flutter 3.x Mobile Fleet)"]
+        direction LR
+        UI["<b>Flutter UI Presentation</b><br/>Riverpod State & Nav"]:::client
+        Sensors["<b>Device Sensors & GPS</b><br/>Geolocator & Permission Guard"]:::client
+        Canvas["<b>Custom Canvas Visualizer</b><br/>Corridor Elevation Profile"]:::client
+        Updater["<b>Shorebird Client</b><br/>Silent OTA Patch Manager"]:::client
+        UI <--> Sensors
+        UI <--> Canvas
+        UI <--> Updater
     end
 
-    subgraph APILayer["API & Business Logic Layer (FastAPI)"]
-        Controller["Trip & Report Controller"]
-        Fusion["Safety Score Fusion Engine"]
-        Optimizer["Departure Optimizer Engine"]
-        Physics["Corridor Physics Engine"]
-        Scheduler["Commute Alert Scheduler"]
-        Chatbot["Grounded Chatbot Service"]
-        Controller --> Fusion
-        Controller --> Optimizer
-        Fusion --> Physics
+    subgraph Tier2["⚡ TIER 2: API GATEWAY & BUSINESS ORCHESTRATION (FastAPI)"]
+        direction LR
+        GW["<b>FastAPI Router</b><br/>Uvicorn Asynchronous Core"]:::api
+        Fusion["<b>Multi-Source Fusion</b><br/>Dynamic Re-Normalization"]:::api
+        Optimizer["<b>Departure Optimizer</b><br/>±60m Window Search"]:::api
+        Physics["<b>Highway Physics Engine</b><br/>AASHTO SSD & Hydroplaning"]:::api
+        SOSHandler["<b>Emergency Controller</b><br/>Mandatory GPS Verification"]:::api
+        GW --> Fusion
+        GW --> Optimizer
+        GW --> SOSHandler
+        Fusion <--> Physics
+        Optimizer <--> Physics
     end
 
-    subgraph MLLayer["Intelligence & ML Layer"]
-        Normalizer["Observation Normalizer (LLM)"]
-        ModelLoader["Lazy Regional Model Loader"]
-        XGBoost["XGBoost Cost-Weighted Regressors"]
-        Consensus["Spatial-Temporal Consensus Engine"]
+    subgraph Tier3["🧠 TIER 3: INTELLIGENCE & MACHINE LEARNING TIER"]
+        direction LR
+        Normalizer["<b>Feature Normalizer</b><br/>11-D Spatial Telemetry Vector"]:::ai
+        ModelLoader["<b>Lazy Model Cache</b><br/>~65MB Memory-Mapped Cache"]:::ai
+        XGBoost["<b>7 Regional XGBoost Regressors</b><br/>Sector-Trained Hazard Models"]:::ai
+        Consensus["<b>Consensus Engine</b><br/>2-of-3 Model / Sensor Arbiter"]:::ai
+        Normalizer --> ModelLoader
         ModelLoader --> XGBoost
+        XGBoost --> Consensus
     end
 
-    subgraph ExternalLayer["External Telemetry & Cloud Providers"]
-        WeatherAPI["Open-Meteo Radar / Forecast API"]
-        TrafficAPI["TomTom Live Traffic Flow & Incidents API"]
-        GroqAPI["Groq LLaMA-3.3-70B API"]
-        OTPService["Twilio / SendGrid OTP Service"]
+    subgraph Tier4["🌐 TIER 4: EXTERNAL TELEMETRY & CLOUD INFRASTRUCTURE"]
+        direction LR
+        Weather["<b>Open-Meteo API</b><br/>Hourly Rain, Wind, Visibility"]:::ext
+        Traffic["<b>TomTom Flow API</b><br/>Live Speeds & Congestion Delays"]:::ext
+        Groq["<b>Groq LLaMA-3.3-70B</b><br/>Grounded Conversational AI"]:::ext
+        Emergency["<b>112 Emergency Dispatch</b><br/>MSRDC Corridor Rescue Link"]:::ext
+        Shorebird["<b>Shorebird Cloud CDN</b><br/>OTA Patch Distribution"]:::cdn
     end
 
-    Core <==>|HTTPS / REST| Controller
-    Fusion --> ModelLoader
-    Fusion --> WeatherAPI
-    Fusion --> TrafficAPI
-    Optimizer --> ModelLoader
-    Chatbot --> Normalizer
-    Normalizer --> GroqAPI
-    Updater <==>|OTA CodePush| ShorebirdCloud["Shorebird Cloud CDN"]
+    %% Clean Inter-Tier Communication Pipes
+    Tier1 <===>|Encrypted HTTPS / REST API| Tier2
+    Fusion ===>|11-D Vector Inference (<3.2ms)| Tier3
+    Fusion <===>|Telemetry Ingestion| Weather
+    Fusion <===>|Traffic Feeds| Traffic
+    GW <===>|Grounded Chat Queries| Groq
+    SOSHandler ===>|Hardware GPS Coordinates| Emergency
+    Updater <====>|Background Silent CodePush| Shorebird
 ```
 
 ## 3.2 UML Domain Class Diagram & Relational Entity Model
@@ -414,45 +429,62 @@ The system supports three primary actors: **Live Traveler**, **Advance Trip Plan
 
 ```mermaid
 flowchart LR
-    classDef actor fill:#1E293B,stroke:#94A3B8,stroke-width:2px,color:#F8FAFC,font-weight:bold
-    classDef primaryUC fill:#0F2942,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef secondaryUC fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    classDef emergencyUC fill:#4C0519,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
-    classDef schedUC fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    classDef actor fill:#0B132B,stroke:#94A3B8,stroke-width:2.5px,color:#F8FAFC,font-weight:bold
+    classDef ops fill:#0B2338,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef crowd fill:#063B2C,stroke:#10B981,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef emer fill:#3D121A,stroke:#F43F5E,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef sched fill:#3B2203,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF,font-weight:bold
 
-    Traveler(("👤 Live Commuter")):::actor
+    %% Human Commuters (Left Side)
+    Commuter(("👤 Live Commuter")):::actor
     Planner(("📅 Advance Planner")):::actor
     Reporter(("📢 Hazard Reporter")):::actor
     Victim(("🆘 Distress Victim")):::actor
-    Dispatcher(("🚑 MSRDC / 112 Control")):::actor
-    Daemon(("⚙️ Background Scheduler")):::actor
 
-    subgraph RouteRadarPlatform["🛰️ RouteRadar Travel Intelligence Platform"]
-        UC1(["UC1: Tactical Journey Evaluation"]):::primaryUC
-        UC2(["UC2: Departure Window Scanner -60m to +60m"]):::primaryUC
-        UC3(["UC3: Submit Live Community Report"]):::secondaryUC
-        UC4(["UC4: Request Mandatory SOS Rescue"]):::emergencyUC
-        UC5(["UC5: Configure Daily Travel Alerts"]):::schedUC
-        UC6(["UC6: Consult Grounded AI Copilot"]):::primaryUC
-        UC7(["UC7: Autonomous Push Notification"]):::schedUC
-        UC8(["UC8: Dynamic Speed Limit Throttling"]):::primaryUC
-        UC9(["UC9: Auto-Snap Corridor GPS Sector"]):::secondaryUC
-        UC10(["UC10: Lock Mandatory GPS Milestone"]):::emergencyUC
+    subgraph Platform["🛰️ RouteRadar Highway Intelligence Platform"]
+        subgraph GroupOps["🚗 Tactical Travel Intelligence"]
+            UC1(["UC1: Evaluate Real-Time Corridor Safety"]):::ops
+            UC2(["UC2: Scan Departure Windows -60m to +60m"]):::ops
+            UC6(["UC6: Consult Grounded Route Copilot"]):::ops
+            UC8(["UC8: Calculate Dynamic Speed Advisory"]):::ops
+        end
+
+        subgraph GroupCrowd["👥 Community & Hazard Crowdsourcing"]
+            UC3(["UC3: Submit Real-Time Road Hazard"]):::crowd
+            UC9(["UC9: Auto-Detect Expressway GPS Sector"]):::crowd
+        end
+
+        subgraph GroupEmergency["🚨 Critical Emergency & SOS Rescue"]
+            UC4(["UC4: Request Mandatory SOS Rescue Dispatch"]):::emer
+            UC10(["UC10: Hardware GPS Location Lockout"]):::emer
+        end
+
+        subgraph GroupSchedule["⏰ Proactive Commute Automation"]
+            UC5(["UC5: Configure Daily Commute Alerts"]):::sched
+            UC7(["UC7: Autonomous Push Notification"]):::sched
+        end
     end
 
-    Traveler --> UC1
-    Traveler --> UC6
-    Reporter --> UC3
+    %% External Systems & Emergency Actors (Right Side)
+    Dispatcher(("🚑 MSRDC / 112 Dispatch")):::actor
+    Daemon(("⚙️ Alert Scheduler Daemon")):::actor
+
+    %% Clean Commuter Associations
+    Commuter --> UC1
+    Commuter --> UC6
     Planner --> UC2
     Planner --> UC5
+    Reporter --> UC3
     Victim --> UC4
 
+    %% Include / Extend Relationships
     UC1 -.->|"<<include>>"| UC8
     UC3 -.->|"<<include>>"| UC9
     UC4 -.->|"<<include>>"| UC10
     UC5 -.->|"<<extend>>"| UC7
 
-    Dispatcher <-- UC4
+    %% External System Associations
+    UC4 --> Dispatcher
     Daemon --> UC7
 ```
 
