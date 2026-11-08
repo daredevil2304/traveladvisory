@@ -2602,7 +2602,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
 
     final StringBuffer brief = StringBuffer();
     brief.writeln('====================================');
-    brief.writeln('  MUMBAI-PUNE TRAVEL ADVISORY BRIEF');
+    brief.writeln('  MUMBAI-PUNE ROUTERADAR BRIEF');
     brief.writeln('====================================');
     brief.writeln('Route: $source → $destination');
     brief.writeln('Departure: $date at $time');
@@ -2633,7 +2633,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
             children: const [
               Icon(Icons.assignment_turned_in_rounded, color: AppTheme.royalCobalt),
               SizedBox(width: 8),
-              Text('Travel Advisory Brief', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              Text('RouteRadar Brief', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             ],
           ),
           content: Container(
@@ -2669,7 +2669,7 @@ class _JourneyAnalysisScreenState extends State<JourneyAnalysisScreen> {
                 Clipboard.setData(ClipboardData(text: brief.toString()));
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Travel Advisory Brief copied to clipboard!')),
+                  const SnackBar(content: Text('RouteRadar Brief copied to clipboard!')),
                 );
               },
             ),

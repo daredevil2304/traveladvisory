@@ -214,7 +214,7 @@ class _SplashScreenState
               right: 0,
               bottom: 30,
               child: Text(
-                'WEATHER BASED TRAVEL ADVISORY',
+                'ROUTERADAR • MUMBAI–PUNE CORRIDOR',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white54,

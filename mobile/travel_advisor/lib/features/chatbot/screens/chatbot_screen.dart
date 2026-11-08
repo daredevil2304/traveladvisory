@@ -181,7 +181,7 @@ class _ChatbotScreenState
         _role == 'planner';
 
     _addBotMessage(
-      'Hello! I am your Weather Based Travel Advisory assistant. 🌤️',
+      'Hello! I am your RouteRadar assistant. 🚗',
     );
 
     _addBotMessage(
@@ -3617,7 +3617,7 @@ List<String> _stringList(
           ),
           const SizedBox(width: 6),
           const Text(
-            'Weather Based Travel Advisory',
+            'RouteRadar AI Assistant',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -4090,7 +4090,7 @@ Widget build(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Weather Based Travel Advisory',
+                    'RouteRadar AI Assistant',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

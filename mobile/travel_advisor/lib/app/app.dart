@@ -8,7 +8,7 @@ class TravelAdvisorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Weather Based Travel Advisory',
+      title: 'RouteRadar',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.splash,

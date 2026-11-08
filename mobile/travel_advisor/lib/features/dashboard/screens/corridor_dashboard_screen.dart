@@ -790,7 +790,7 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Travel Advisor Guide',
+                              'RouteRadar User Guide',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -966,21 +966,58 @@ class _CorridorDashboardScreenState extends State<CorridorDashboardScreen>
                 ],
               ),
               child: const Icon(
-                Icons.directions_car_rounded,
+                Icons.radar_rounded,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
         ),
-        title: const Text(
-          'Weather Based Travel Advisory',
-          style: TextStyle(
-            fontSize: 16.5,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.darkNavy,
-          ),
-          overflow: TextOverflow.ellipsis,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'RouteRadar',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+                color: AppTheme.darkNavy,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.electricCobalt.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: AppTheme.electricCobalt.withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.radar_rounded,
+                    size: 11,
+                    color: AppTheme.electricCobalt,
+                  ),
+                  SizedBox(width: 3),
+                  Text(
+                    'LIVE',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: AppTheme.electricCobalt,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
