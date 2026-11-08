@@ -293,4 +293,5 @@ class PredictionService:
 prediction_service = PredictionService()
 
 # Pre-warm ML models in background thread immediately upon module import
-threading.Thread(target=prediction_service.warmup_models, daemon=True).start()
+# Model pre-warming runs on demand to preserve startup memory on Render free tier
+# (cached automatically after first read in ModelLoader)

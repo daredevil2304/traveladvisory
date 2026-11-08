@@ -147,9 +147,8 @@ async def _commute_alert_worker():
 async def startup_event():
     init_db()
     asyncio.create_task(_commute_alert_worker())
-    from services.prediction_service import prediction_service
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, prediction_service.warmup_models)
+    # Prediction models load lazily into cache on first trip request to prevent startup OOM on 512MB free tier
+    pass
 
 
 # ================================================================
