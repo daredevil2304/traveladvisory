@@ -173,18 +173,18 @@ class _SplashScreenState
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
                                 color: AppTheme.skyGlow.withValues(alpha: 0.35),
-                                blurRadius: 36,
+                                blurRadius: 40,
                                 spreadRadius: 2,
-                                offset: const Offset(0, 10),
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(20),
                             child: SvgPicture.string(
                               routeRadarLogoSvg,
                               width: 280,
