@@ -583,8 +583,8 @@ class SegmentIntelligenceService:
         # Adaptive Multi-Source Clearance Verification Model:
         # A hazard's clearance duration is uncertain (can clear in 1h or take 5-8+ hours).
         # We cross-examine report age against real-time Google Maps telemetry & structural severity:
-        from services.timezone_service import get_ist_now, to_ist
-        now_ist = get_ist_now()
+        from services.timezone_service import get_ist_now_aware, to_ist
+        now_ist = get_ist_now_aware()
 
         traffic_delay = live_traffic.get("delay_minutes", 0) if isinstance(live_traffic, dict) else 0
         traffic_congestion = str(live_traffic.get("congestion_level", "")).lower() if isinstance(live_traffic, dict) else ""

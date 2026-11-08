@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../app/routes.dart';
+import '../../../app/route_radar_logo.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/api_service.dart';
 
@@ -170,9 +171,25 @@ class _SplashScreenState
                       mainAxisAlignment:
                           MainAxisAlignment.center,
                       children: [
-                        SvgPicture.asset(
-                          'assets/images/mumbai_pune_travel_advisor_logo.svg',
-                          width: 280,
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.skyGlow.withValues(alpha: 0.35),
+                                blurRadius: 36,
+                                spreadRadius: 2,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: SvgPicture.string(
+                              routeRadarLogoSvg,
+                              width: 280,
+                            ),
+                          ),
                         ),
 
                         const SizedBox(
