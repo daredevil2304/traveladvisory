@@ -109,11 +109,11 @@ class SafetyScoreService:
     #   ML Model                = 10% (Reduced on highway sections)
     # -------------------------------------------------------------
     TRAVELER_SOURCE_WEIGHTS = {
-        "weather": 0.35,
-        "traffic": 0.20,
-        "traveler": 0.25,
-        "terrain": 0.10,
+        "weather": 0.45,
+        "traffic": 0.30,
         "ml": 0.10,
+        "traveler": 0.10,
+        "terrain": 0.05,
     }
 
     # -------------------------------------------------------------
@@ -146,11 +146,11 @@ class SafetyScoreService:
     }
 
     TRAVELER_GHAT_SOURCE_WEIGHTS = {
-        "weather": 0.25,
-        "traveler": 0.25,
-        "terrain": 0.20,
+        "weather": 0.35,
+        "terrain": 0.25,
         "ml": 0.20,
         "traffic": 0.10,
+        "traveler": 0.10,
     }
 
     SOURCE_WEIGHTS = TRAVELER_SOURCE_WEIGHTS
@@ -370,13 +370,33 @@ class SafetyScoreService:
             weights=active_weights,
         )
 
-        # 4. Critical Hazard Floor Override & Live Traveler Safe Verification
-        # If an active catastrophic hazard is reported (road closure, severe landslide, flooding),
-        # cap the segment score at that hazard's floor so high scores elsewhere cannot mask it.
+        # 4. Critical Hazard Floor Override & Live Traveler Corroboration
+        # USER RULE: A single user input should affect the score moderately, but NOT crash it to 25.
+        # Only if >= 3 users report the same or similar catastrophic hazard (landslide, road closure, flooding)
+        # do we apply the severe floor cap.
+        hazard_report_count = (
+            traveler_result.get("unusual_conditions_count", 1)
+            if isinstance(traveler_result, dict)
+            else 1
+        )
+        total_reports = (
+            traveler_result.get("total_reports_count", 1)
+            if isinstance(traveler_result, dict)
+            else 1
+        )
+
         if traveler_dimensions.get("unusual_conditions") is not None:
             unusual_val = traveler_dimensions["unusual_conditions"]
             if unusual_val < 35.0 and safety_score is not None:
-                safety_score = min(safety_score, unusual_val)
+                # Corroborated consensus: >= 3 users reported this severe hazard
+                if hazard_report_count >= 3 or total_reports >= 3:
+                    safety_score = min(safety_score, unusual_val)
+                else:
+                    # Single or unverified user report (1-2 users):
+                    # Do NOT apply the catastrophic floor cap!
+                    # The calibrated low traveler weight (10%) applies an organic deduction.
+                    # Add a modest caution adjustment (at most 8 pts), keeping score reasonable (>= 75.0).
+                    safety_score = max(75.0, safety_score - 8.0)
 
         # Ground-truth traveler safe verification:
         # If a traveler on the road confirms that conditions are safe (roads smooth/dry,
@@ -499,7 +519,13 @@ class SafetyScoreService:
                 and unusual.casefold() not in SAFE_ROAD_CONDITIONS
                 and not any(s in unusual.casefold() for s in ["smooth", "dry", "clear", "normal", "good", "safe"])
             ):
-                risk_factors.append(f"Road hazard: {unusual}.")
+                h_cnt = traveler_result.get("unusual_conditions_count", 1)
+                if h_cnt >= 3:
+                    risk_factors.append(f"Road hazard: {unusual} (Verified by {h_cnt} drivers).")
+                elif h_cnt > 1:
+                    risk_factors.append(f"Road hazard: {unusual} ({h_cnt} driver reports).")
+                else:
+                    risk_factors.append(f"Road hazard: {unusual} (Single unverified report).")
 
         # Traffic delay / bottleneck risk (suppressed if traveler confirmed free flow)
         user_traffic = traveler_result.get("traffic") if isinstance(traveler_result, dict) else None

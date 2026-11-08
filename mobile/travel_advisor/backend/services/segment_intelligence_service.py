@@ -570,6 +570,11 @@ class SegmentIntelligenceService:
                 dimensions[field] = (
                     selected_value
                 )
+                # Track corroboration count for consensus validation
+                dimensions[f"{field}_count"] = counts.get(str(selected_value).casefold(), 1)
+
+        if dimensions:
+            dimensions["total_reports_count"] = len(reports)
 
         return dimensions or None
 
