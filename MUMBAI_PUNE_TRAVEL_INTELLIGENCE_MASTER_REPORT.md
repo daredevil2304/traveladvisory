@@ -478,10 +478,10 @@ flowchart LR
     Victim --> UC4
 
     %% Include / Extend Relationships
-    UC1 -.->|"<<include>>"| UC8
-    UC3 -.->|"<<include>>"| UC9
-    UC4 -.->|"<<include>>"| UC10
-    UC5 -.->|"<<extend>>"| UC7
+    UC1 -.->|includes| UC8
+    UC3 -.->|includes| UC9
+    UC4 -.->|includes| UC10
+    UC5 -.->|extends| UC7
 
     %% External System Associations
     UC4 --> Dispatcher
@@ -723,10 +723,10 @@ flowchart TD
 
     subgraph StatusClassification["🚦 Status Classification & Packaging"]
         CalcConf --> ScoreGate{"Score Thresholds"}:::decision
-        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
-        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
-        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
-        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+        ScoreGate -- "Score 85+" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
+        ScoreGate -- "Score 70 to 84" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
+        ScoreGate -- "Score 50 to 69" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
+        ScoreGate -- "Score Below 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
     end
 
     StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal

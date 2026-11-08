@@ -1783,10 +1783,10 @@ flowchart LR
     Victim --> UC4
 
     %% Include / Extend Relationships
-    UC1 -.->|"<<include>>"| UC8
-    UC3 -.->|"<<include>>"| UC9
-    UC4 -.->|"<<include>>"| UC10
-    UC5 -.->|"<<extend>>"| UC7
+    UC1 -.->|includes| UC8
+    UC3 -.->|includes| UC9
+    UC4 -.->|includes| UC10
+    UC5 -.->|extends| UC7
 
     %% External System Associations
     UC4 --> Dispatcher
@@ -1858,17 +1858,17 @@ flowchart TD
     subgraph PhysicsAdjustments["🏎️ Step 4: AASHTO Physics & Risk Deductions"]
         BaseScore --> CalcPenalties["Calculate Dynamic Physics Penalties:<br/>• Rain & Fog Speed Deduction: P_weather<br/>• Bhor Ghat 4.6% Grade Friction: P_grade<br/>• Vehicle Mass & Brake Heating: P_veh<br/>• Night Driving Low Visibility: P_night"]:::process
         CalcPenalties --> HorneCheck{"Speed > Horne<br/>Hydroplaning?"}:::decision
-        HorneCheck -- "Yes (v > 6.35√p)" --> DeductHydro["Deduct Severe Hydroplaning Penalty<br/>(-20 to -35 pts)"]:::hazard
-        HorneCheck -- "No" --> PassHydro["Maintain Standard Surface Friction"]:::process
+        HorneCheck -- "Speed Exceeds Hydroplaning Limit" --> DeductHydro["Deduct Severe Hydroplaning Penalty<br/>(-20 to -35 pts)"]:::hazard
+        HorneCheck -- "Speed Below Hydroplaning Limit" --> PassHydro["Maintain Standard Surface Friction"]:::process
         DeductHydro & PassHydro --> ClampScore["Clamp Final Score to Range 0-100:<br/>S_sector = clamp(S_base - Σ Penalties, 0, 100)"]:::process
     end
 
     subgraph ClassificationOutput["🚦 Step 5: Safety Status Classification"]
         ClampScore --> ThresholdGate{"Safety Score S"}:::decision
-        ThresholdGate -- "S ≥ 85" --> StatusOptimal["🟢 OPTIMAL & CLEAR<br/>Maintain 85-90 km/h"]:::startEnd
-        ThresholdGate -- "70 ≤ S < 85" --> StatusGood["🔵 GOOD CONDITIONS<br/>Normal Flow with Awareness"]:::process
-        ThresholdGate -- "50 ≤ S < 70" --> StatusCaution["🟡 CAUTION ADVISED<br/>Throttle Down to 55-60 km/h"]:::decision
-        ThresholdGate -- "S < 50" --> StatusHazard["🔴 CRITICAL HAZARD<br/>Mountain Curves / Heavy Rain"]:::hazard
+        ThresholdGate -- "Score 85+" --> StatusOptimal["🟢 OPTIMAL & CLEAR<br/>Maintain 85-90 km/h"]:::startEnd
+        ThresholdGate -- "Score 70 to 84" --> StatusGood["🔵 GOOD CONDITIONS<br/>Normal Flow with Awareness"]:::process
+        ThresholdGate -- "Score 50 to 69" --> StatusCaution["🟡 CAUTION ADVISED<br/>Throttle Down to 55-60 km/h"]:::decision
+        ThresholdGate -- "Score Below 50" --> StatusHazard["🔴 CRITICAL HAZARD<br/>Mountain Curves / Heavy Rain"]:::hazard
     end
 
     StatusOptimal & StatusGood & StatusCaution & StatusHazard & FallbackScore --> EndNode(["◉ END: RETURN STANDARDIZED EVALUATION DTO"]):::startEnd
@@ -3340,10 +3340,10 @@ flowchart LR
     Victim --> UC4
 
     %% Include / Extend Relationships
-    UC1 -.->|"<<include>>"| UC8
-    UC3 -.->|"<<include>>"| UC9
-    UC4 -.->|"<<include>>"| UC10
-    UC5 -.->|"<<extend>>"| UC7
+    UC1 -.->|includes| UC8
+    UC3 -.->|includes| UC9
+    UC4 -.->|includes| UC10
+    UC5 -.->|extends| UC7
 
     %% External System Associations
     UC4 --> Dispatcher
@@ -3585,10 +3585,10 @@ flowchart TD
 
     subgraph StatusClassification["🚦 Status Classification & Packaging"]
         CalcConf --> ScoreGate{"Score Thresholds"}:::decision
-        ScoreGate -- "Score >= 85" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
-        ScoreGate -- "70 <= Score < 85" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
-        ScoreGate -- "50 <= Score < 70" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
-        ScoreGate -- "Score < 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
+        ScoreGate -- "Score 85+" --> StatusGreen["Status: OPTIMAL & CLEAR"]:::terminal
+        ScoreGate -- "Score 70 to 84" --> StatusBlue["Status: GOOD CONDITIONS"]:::action
+        ScoreGate -- "Score 50 to 69" --> StatusAmber["Status: CAUTION ADVISED"]:::decision
+        ScoreGate -- "Score Below 50" --> StatusRed["Status: CRITICAL HAZARD"]:::hazard
     end
 
     StatusGreen & StatusBlue & StatusAmber & StatusRed --> EndNode(["◉ RETURN STANDARDIZED SAFETY RESULT"]):::terminal
@@ -5836,7 +5836,15 @@ This chapter provides exhaustive, bulletproof answers to all prospective examine
   const renderer = new marked.Renderer();
   const defaultCodeRenderer = renderer.code.bind(renderer);
   let repDiagramCount = 0;
-  renderer.code = function(code, language) {
+  renderer.code = function(arg1, arg2) {
+    let code, language;
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      code = arg1.text || '';
+      language = arg1.lang || '';
+    } else {
+      code = arg1 || '';
+      language = arg2 || '';
+    }
     if (language === 'mermaid') {
       repDiagramCount++;
       const cardId = 'rep-uml-' + repDiagramCount;
@@ -5876,8 +5884,18 @@ ${code}
   };
 
   // Chapter Box Header Renderer
-  renderer.heading = function(text, level, raw) {
-    const slug = raw.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+  renderer.heading = function(arg1, arg2, arg3) {
+    let text, level, raw;
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      text = arg1.text || '';
+      level = arg1.depth || 1;
+      raw = arg1.raw || text;
+    } else {
+      text = arg1 || '';
+      level = arg2 || 1;
+      raw = arg3 || text;
+    }
+    const slug = (raw || '').toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
     if (level === 1) {
       if (raw.toUpperCase().includes('CHAPTER') || raw.toUpperCase().includes('PROLOGUE')) {
         let chBadge = 'CAPSTONE SECTION';
